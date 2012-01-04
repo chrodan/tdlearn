@@ -181,32 +181,42 @@ def baird_star():
 
 def random_walk_lin():
     n = 5
-    n_iter = 3000
-    n_indep = 50
+    n_iter = 6000
+    n_indep = 20
     rw_mdp = RandomWalkChain(n)
     mu = rw_mdp.stationary_distrubution(seed=5, iterations=10000)
     print mu
-    phi = rw_mdp.dependent_phi
+    phi = rw_mdp.tabular_phi
     T = measures.bellman_operator(rw_mdp, gamma=1)
     Pi = measures.projection_operator(rw_mdp, mu, phi)
 
-    # define the methods to examine    
-    tdc = td.TDC(0.1, 0.2, phi)
-    tdc.name = "TDC mu=2"
-
-    tdc1 = td.TDC(0.1, 0.05, phi)
-    tdc1.name = "TDC mu=1/2"    
-    
+    # define the methods to examine          
     gtd2 = td.GTD2(0.1, 0.05, phi)
     gtd2.name = "GTD2"
+    gtd2.color = "#0F6E08"
     
     gtd = td.GTD(0.1, 0.05, phi)
     gtd.name = "GTD"
+    gtd.color = "#6E086D"
     
     td0 = td.LinearTD0(0.1, phi)
     td0.name = "TD(0)"    
+    td0.color = "k"
     
-    methods = (tdc, tdc1, td0, gtd, gtd2)
+    
+    methods = [td0, gtd, gtd2]
+
+    for i in [1, 2, 0.5, 0.25]:
+        tdc = td.TDC(0.1, i*0.1, phi)
+        tdc.name = "TDC alpha=0.1 mu={}".format(i)   
+        tdc.color = "r"        
+        methods.append(tdc)
+        
+    for i in np.linspace(0,1,5):
+        lstd = td.LSTDLambda(i, phi)
+        lstd.name = "LSTD({})".format(i)    
+        lstd.color = "b"        
+        methods.append(lstd)
     
     # define the evaluation measures
     mspbe = defaultdict(lambda: np.zeros(n_iter))    
@@ -238,16 +248,16 @@ def random_walk_lin():
     plt.figure()
     plt.ylabel("RMSPBE")
     plt.xlabel("Timesteps")    
-    for k,v in mspbe.items():    
-        plt.plot(v/n_indep, label=k)
+    for m in methods:    
+        plt.plot(mspbe[m.name]/n_indep, label=m.name, color=m.color)
     plt.legend()
     
     
     plt.figure()
     plt.ylabel("RMSBE")
     plt.xlabel("Timesteps")    
-    for k,v in msbe.items():    
-        plt.plot(v, label=k)
+    for m in methods:    
+        plt.plot(msbe[m.name]/n_indep, label=m.name, color=m.color)
     plt.legend()
     
     plt.show()

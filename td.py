@@ -32,8 +32,28 @@ class ValueFunctionPredictor(object):
         except TypeError:
             return itertools.repeat(p)
 
+class OffPolicyValueFunctionPredictor(ValueFunctionPredictor):
+    """
+        base class for value function predictors for a MDP given target and
+        behaviour policy
+    """
+    
+    def update_V_offpolicy(self, s0, s1, r, a, theta,
+                           beh_pi, target_pi, **kwargs):
+        """
+        off policy training version for transition (s0, a, s1) with reward r
+        which was sampled by following the behaviour policy beh_pi.
+        The parameters are learned for the target policy target_pi
 
-class GTDBase(ValueFunctionPredictor):
+         beh_pi, target_pi: S x A -> R
+                numpy array of shape (n_s, n_a)
+                *_pi(s,a) is the probability of taking action a in state s
+        """
+        rho = target_pi[s0, a] / beh_pi[s0, a]
+        return self.update_V(s0, s1, r, theta, rho=rho, **kwargs)
+        
+
+class GTDBase(OffPolicyValueFunctionPredictor):
     """ Base class for GTD, GTD2 and TDC algorithm """
 
     def __init__(self, alpha, beta, phi, gamma=1):
@@ -56,19 +76,7 @@ class GTDBase(ValueFunctionPredictor):
         if hasattr(self, 'theta'):
             del self.theta
 
-    def update_V_offpolicy(self, s0, s1, r, a, theta,
-                           beh_pi, target_pi, **kwargs):
-        """
-        off policy training version for transition (s0, a, s1) with reward r
-        which was sampled by following the behaviour policy beh_pi.
-        The parameters are learned for the target policy target_pi
 
-         beh_pi, target_pi: S x A -> R
-                numpy array of shape (n_s, n_a)
-                *_pi(s,a) is the probability of taking action a in state s
-        """
-        rho = target_pi[s0, a] / beh_pi[s0, a]
-        return self.update_V(s0, s1, r, theta, rho=rho, **kwargs)
 
 class GTD(GTDBase):
     """
@@ -164,7 +172,6 @@ class TDC(GTDBase):
 
         delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
         a = np.dot(f0, w)
-        #import ipdb; ipdb.set_trace()
 
         w += self.beta.next() * (rho * delta - a) * f0
         logging.debug("Weight: {}".format(w))
@@ -175,6 +182,68 @@ class TDC(GTDBase):
         return theta
 
 
+
+class LSTDLambda(OffPolicyValueFunctionPredictor):
+    """
+        recursive Implementation of Least Squared Temporal Difference Learning
+         LSTD(\lambda) with linear function approximation, also works in the
+         off-policy case and uses eligibility traces
+        
+        for details see Scherrer, B., & Geist, M. (EWRL 2011). :
+            Recursive Least-Squares Learning with Eligibility Traces.
+            Algorithm 1
+    """
+
+    def __init__(self, lam, phi, gamma=1):
+        """
+            lam: lambda in [0, 1] specifying the tradeoff between bootstrapping
+                    and MC sampling
+            gamma:  discount factor
+        """
+        self.phi = phi
+        self.lam = lam
+        self.gamma = gamma
+
+    def reset(self):
+        if hasattr(self, 'z'):
+            del self.z
+        if hasattr(self, 'C'):
+            del self.C
+        if hasattr(self, 'theta'):
+            del self.theta
+
+    def update_V(self, s0, s1, r, theta, rho=1, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        f0 = self.phi(s0)
+        f1 = self.phi(s1)
+
+        if "z" in kwargs:
+            z = kwargs["z"]
+        elif hasattr(self, "z"):
+            z = self.z
+        else:
+            z = np.zeros_like(theta) + f0
+            
+        if "C" in kwargs:
+            C = kwargs["C"]
+        elif hasattr(self, "C"):
+            C = self.C
+        else:
+            C = np.eye(len(theta)) * 10**-3
+        #import ipdb; ipdb.set_trace()
+        self.C = C
+        
+        L = np.dot(C,z)
+        deltaf = f0 - self.gamma * rho * f1
+        K = L / (1+ np.dot(deltaf,L))
+        
+        theta += K * (rho*r - np.dot(deltaf, theta))
+        self.C -= K*(np.dot(C.T, deltaf))
+        self.z = self.gamma * self.lam * rho * z + f1
+        self.theta = theta
+        return theta
 
 class LinearTDLambda(ValueFunctionPredictor):
     """
