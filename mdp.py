@@ -206,6 +206,38 @@ class MDP(object):
         return mu
                                                                 
 
+    def synchronous_sweep(self, seed=None, policy="uniform"):
+        """
+        generate samples from the MDP so that exactly one transition from each
+        non-terminal-state is yielded  
+        
+        Parameters
+        -----------
+            policy pi: S x A -> R
+                numpy array of shape (n_s, n_a)
+                pi(s,a) is the probability of taking action a in state s
+                
+            seed: optional seed for the random generator to generate
+                deterministic samples
+                
+        Returns
+        ---------
+            transition tuple (X_n, A, X_n+1, R)
+        """
+        if seed is not None:
+            np.random.seed(seed)
+        if policy is "uniform":
+            policy = self.uniform_policy()
+
+        for s0 in self.states:
+            if self.s_terminal[s0]:
+                break
+            a = _multinomial_sample(1, policy[s0, :])
+            s1 = _multinomial_sample(1, self.P[s0, a])
+            r = self.r[s0, a, s1]
+            yield (s0, a, s1, r)
+
+
     def sample_transition(self, max_n, policy="uniform", seed=None,
                                     with_restart=True):
         """

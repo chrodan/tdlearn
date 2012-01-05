@@ -10,6 +10,8 @@ Created on Sun Dec 11 01:06:00 2011
 import numpy as np
 import itertools
 import logging
+import copy
+
 #logging.basicConfig(level=logging.DEBUG)
 
 class ValueFunctionPredictor(object):
@@ -18,20 +20,73 @@ class ValueFunctionPredictor(object):
         samples
     """
 
+    def __init__(self, gamma=1, **kwargs):
+        self.gamma = gamma
+        if not hasattr(self, "init_vals"):
+            self.init_vals = {}
+
     def update_V(self, s0, s1, r, V, **kwargs):
         raise NotImplementedError("Each predictor has to implement this")
 
     def reset(self):
-        if hasattr(self, 'theta'):
-            del self.theta
+        self.reset_trace()
+        for k,v in self.init_vals.items():
+            self.__setattr__(k,copy.copy(v))
         
+    def reset_trace(self):
+        if hasattr(self, "z"):
+            if "z" in self.init_vals:
+                self.z = self.init_vals["z"]
+            else:
+                del self.z
 
     def _assert_iterator(self, p):
         try:
             return iter(p)
         except TypeError:
             return itertools.repeat(p)
+            
+class LinearValueFunctionPredictor(ValueFunctionPredictor):
+    """
+        base class for value function predictors that predict V as a linear
+        approximation, i.e.:
+            V(x) = theta * phi(x)
+    """
+    def __init__(self, phi, theta0=None, **kwargs):
+        
+        ValueFunctionPredictor.__init__(self, **kwargs)
+        self.phi = phi
+        if theta0 is None:
+            self.init_vals['theta'] = np.zeros_like(phi(0))
+        else:
+            self.init_vals['theta'] = theta0    
+            
+    def V(self, theta=None):
+        """
+        returns a the approximate value function for the given parameter
+        """
+        if theta is None:
+            if not hasattr(self, "theta"):
+                raise Exception("no theta available, has to be specified"
+                    " by parameter")
+            theta = self.theta
 
+        return lambda x: np.dot(theta, self.phi(x))
+
+class LambdaValueFunctionPredictor(ValueFunctionPredictor):
+    """
+        base class for predictors that have the lambda parameter as a tradeoff
+        parameter for bootstrapping and sampling
+    """
+    def __init__(self, lam, z0=None, **kwargs):
+        """
+            z0: optional initial value for the eligibility trace        
+        """
+        ValueFunctionPredictor.__init__(self, **kwargs)
+        self.lam = lam
+        if z0 is not None:
+            self.init_vals["z"] = z0
+        
 class OffPolicyValueFunctionPredictor(ValueFunctionPredictor):
     """
         base class for value function predictors for a MDP given target and
@@ -53,10 +108,10 @@ class OffPolicyValueFunctionPredictor(ValueFunctionPredictor):
         return self.update_V(s0, s1, r, theta, rho=rho, **kwargs)
         
 
-class GTDBase(OffPolicyValueFunctionPredictor):
+class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
     """ Base class for GTD, GTD2 and TDC algorithm """
 
-    def __init__(self, alpha, beta, phi, gamma=1):
+    def __init__(self, alpha, beta, **kwargs):
         """
             alpha:  step size. This can either be a constant number or
                     an iterable object providing step sizes
@@ -64,17 +119,20 @@ class GTDBase(OffPolicyValueFunctionPredictor):
                     number or an iterable object providing step sizes
             gamma: discount factor
         """
+        LinearValueFunctionPredictor.__init__(self, **kwargs)        
+        OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
 
-        self.alpha = self._assert_iterator(alpha)
-        self.beta = self._assert_iterator(beta)
-        self.phi = phi
-        self.gamma = gamma
+        self.init_vals['alpha'] = alpha        
+        self.init_vals['beta'] = beta
+        self.init_vals['w'] = np.zeros_like(self.init_vals['theta'])
+
+        self.reset()
 
     def reset(self):
-        if hasattr(self, 'w'):
-            del self.w
-        if hasattr(self, 'theta'):
-            del self.theta
+        LinearValueFunctionPredictor.reset(self)
+        self.alpha = self._assert_iterator(self.init_vals['alpha'])
+        self.beta = self._assert_iterator(self.init_vals['beta'])
+
 
 
 
@@ -86,17 +144,14 @@ class GTD(GTDBase):
     Maei, H. R. (2011). Gradient Temporal-Difference Learning Algorithms.
     (p. 36)
     """
-    def update_V(self, s0, s1, r, theta, rho=1, **kwargs):
+    def update_V(self, s0, s1, r, rho=1, theta=None, **kwargs):
         """
             rho: weight for this sample in case of off-policy learning
         """
-        if "w" in kwargs:
-            w = kwargs["w"]
-        elif hasattr(self, "w"):
-            w = self.w
-        else:
-            w = np.zeros_like(theta)
-
+        w = self.w
+        if theta is None:
+            theta = self.theta
+        
         f0 = self.phi(s0)
         f1 = self.phi(s1)
 
@@ -121,21 +176,17 @@ class GTD2(GTDBase):
     (p. 38)
     """
 
-    def update_V(self, s0, s1, r, theta, rho=1, **kwargs):
+    def update_V(self, s0, s1, r, rho=1, theta=None, **kwargs):
         """
             rho: weight for this sample in case of off-policy learning
         """
-        if "w" in kwargs:
-            w = kwargs["w"]
-        elif hasattr(self, "w"):
-            w = self.w
-        else:
-            w = np.zeros_like(theta)
+        w = self.w
+        if theta is None:
+            theta = self.theta
 
         f0 = self.phi(s0)
         f1 = self.phi(s1)
 
-        # TODO check if rho has to be in here
         delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
         a = np.dot(f0, w)
 
@@ -156,16 +207,13 @@ class TDC(GTDBase):
     (p. 38)
     """
 
-    def update_V(self, s0, s1, r, theta, rho=1, **kwargs):
+    def update_V(self, s0, s1, r, rho=1, theta=None, **kwargs):
         """
             rho: weight for this sample in case of off-policy learning
         """
-        if "w" in kwargs:
-            w = kwargs["w"]
-        elif hasattr(self, "w"):
-            w = self.w
-        else:
-            w = np.zeros_like(theta)
+        w = self.w
+        if theta is None:
+            theta = self.theta
 
         f0 = self.phi(s0)
         f1 = self.phi(s1)
@@ -183,7 +231,7 @@ class TDC(GTDBase):
 
 
 
-class LSTDLambda(OffPolicyValueFunctionPredictor):
+class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
     """
         recursive Implementation of Least Squared Temporal Difference Learning
          LSTD(\lambda) with linear function approximation, also works in the
@@ -194,54 +242,36 @@ class LSTDLambda(OffPolicyValueFunctionPredictor):
             Algorithm 1
     """
 
-    def __init__(self, lam, phi, gamma=1):
+    def __init__(self, eps=1, **kwargs):
         """
             lam: lambda in [0, 1] specifying the tradeoff between bootstrapping
                     and MC sampling
             gamma:  discount factor
         """
-        self.phi = phi
-        self.lam = lam
-        self.gamma = gamma
+        LinearValueFunctionPredictor.__init__(self, **kwargs)        
+        OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
+        LambdaValueFunctionPredictor.__init__(self, **kwargs)     
+        self.init_vals["C"] = np.eye(len(self.init_vals["theta"]))*eps
+        self.reset()
 
-    def reset(self):
-        if hasattr(self, 'z'):
-            del self.z
-        if hasattr(self, 'C'):
-            del self.C
-        if hasattr(self, 'theta'):
-            del self.theta
-
-    def update_V(self, s0, s1, r, theta, rho=1, **kwargs):
+    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
         """
             rho: weight for this sample in case of off-policy learning
         """
         f0 = self.phi(s0)
         f1 = self.phi(s1)
-
-        if "z" in kwargs:
-            z = kwargs["z"]
-        elif hasattr(self, "z"):
-            z = self.z
-        else:
-            z = np.zeros_like(theta) + f0
-            
-        if "C" in kwargs:
-            C = kwargs["C"]
-        elif hasattr(self, "C"):
-            C = self.C
-        else:
-            C = np.eye(len(theta)) * 10**-3
-        #import ipdb; ipdb.set_trace()
-        self.C = C
+  
+        if theta is None: theta=self.theta
+        if not hasattr(self, "z"):
+            self.z = f0
         
-        L = np.dot(C,z)
+        L = np.dot(self.C,self.z)
         deltaf = f0 - self.gamma * rho * f1
         K = L / (1+ np.dot(deltaf,L))
         
         theta += K * (rho*r - np.dot(deltaf, theta))
-        self.C -= K*(np.dot(C.T, deltaf))
-        self.z = self.gamma * self.lam * rho * z + f1
+        self.C -= K*(np.dot(self.C.T, deltaf))
+        self.z = self.gamma * self.lam * rho * self.z + f1
         self.theta = theta
         return theta
 
@@ -271,7 +301,7 @@ class LinearTDLambda(ValueFunctionPredictor):
         if hasattr(self, 'theta'):
             del self.theta
 
-    def update_V(self, s0, s1, r, theta, **kwargs):
+    def update_V(self, s0, s1, r, theta=None, **kwargs):
         if "z" in kwargs:
             z = kwargs["z"]
         elif hasattr(self, "z"):
@@ -288,7 +318,7 @@ class LinearTDLambda(ValueFunctionPredictor):
         return theta
 
 
-class LinearTD0(LinearTDLambda):
+class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
     """
     TD(0) learning algorithm for on- and off-policy value function estimation
     with linear function approximation
@@ -297,37 +327,30 @@ class LinearTD0(LinearTDLambda):
     University of Alberta. (p. 31)
     """
 
-    def __init__(self, alpha, phi, gamma=1):
+    def __init__(self, alpha, **kwargs):
         """
             alpha:  step size. This can either be a constant number or
                     an iterable object providing step sizes
             gamma:  discount factor
         """
-        self.alpha = self._assert_iterator(alpha)
-        self.phi = phi
-        self.gamma = gamma
+        LinearValueFunctionPredictor.__init__(self, **kwargs)
+        self.init_vals['alpha'] = alpha        
+        self.reset()
 
-    def update_V_offpolicy(self, s0, s1, r, a, theta,
-                           beh_pi, target_pi, **kwargs):
-        """
-        off policy training version for transition (s0, a, s1) with reward r
-        which was sampled by following the behaviour policy beh_pi.
-        The parameters are learned for the target policy target_pi
+    def reset(self):
+        LinearValueFunctionPredictor.reset(self)
+        self.alpha = self._assert_iterator(self.init_vals['alpha'])
 
-         beh_pi, target_pi: S x A -> R
-                numpy array of shape (n_s, n_a)
-                *_pi(s,a) is the probability of taking action a in state s
-        """
-        rho = target_pi[s0, a] / beh_pi[s0, a]
-        logging.debug("Off-Policy weight {}".format(rho))
-        return self.update_V(s0, s1, r, theta, rho=rho, **kwargs)
 
-    def update_V(self, s0, s1, r, theta, rho=1, **kwargs):
+
+    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
         """
         adapt the current parameters theta given the current transition
         (s0 -> s1) with reward r and (a weight of rho)
         returns the next theta
         """
+        if theta is None:
+            theta = self.theta
         delta = r + self.gamma * np.dot(theta, self.phi(s1)) \
                                - np.dot(theta, self.phi(s0))
         logging.debug("TD Learning Delta {}".format(delta))
@@ -337,17 +360,7 @@ class LinearTD0(LinearTDLambda):
 
 
 
-    def V(self, theta=None):
-        """
-        returns a the approximate value function for the given parameter
-        """
-        if theta is None:
-            if not hasattr(self, "theta"):
-                raise Exception("no theta available, has to be specified"
-                    " by parameter")
-            theta = self.theta
 
-        return lambda x: np.dot(theta, self.phi(x))
 
 
 class TabularTD0(ValueFunctionPredictor):
