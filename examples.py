@@ -13,6 +13,26 @@ import measures
 from collections import defaultdict
 from util.progressbar import ProgressBar
 
+
+class RandomMDP(mdp.MDP):
+    
+    def __init__(self, n_states, seed=None):
+        if seed is not None:
+            np.random.seed(seed)
+        n_s = n_states        
+        actions = [0, ]
+        states = range(n_s)
+        
+        d0 = np.random.rand(n_s) + 1e-5
+        d0 = d0 / d0.sum()
+        
+        r = np.random.rand(n_s, 1, n_s)
+        r[:, :, n_s - 1] = 1
+        P = np.random.rand(n_s, 1, n_s) + 1e-5
+        P /= P.sum(axis=2)[:,:,np.newaxis]
+
+        mdp.MDP.__init__(self, states, actions, r, P, d0)
+
 class RandomWalkChain(mdp.MDP):
     """ Random Walk chain example MDP """
     # TODO: explain + reference
@@ -79,7 +99,7 @@ class BoyanChain(mdp.MDP):
                     n_feat <= n_states
         """
         assert n_states >= n_feat
-        assert n_states % n_feat == 1
+        #assert (n_states - 1) % (n_feat - 1) == 0
         n_s = n_states
         self.n_feat = n_feat 
         states = range(n_s)
@@ -97,16 +117,20 @@ class BoyanChain(mdp.MDP):
 
         mdp.MDP.__init__(self, states, actions, r, P, d0)
         
-    def phi(self, state):
+    def phi(self, state):       
         n = len(self.states)
-        a = int((n - 1) / (self.n_feat - 1))
-        i = int(state / a)
-        f1 = float(state % a) / a # fraction second position
-        res = np.zeros(self.n_feat)
-        res[i] = 1 - f1
-        if state < n - 1:
-            res[i + 1] = f1
-        return res
+        a = (n - 1.) / (self.n_feat - 1)
+        r = 1 - abs((state - np.linspace(1,n,self.n_feat)) / a)
+        r[r < 0] = 0
+        return r
+#        i = int(state / a)
+#        f1 = max(1 - float(state - (1 + i * a)) / a, 0)
+#        #f1 = float(state % a) / a # fraction second position
+#        res = np.zeros(self.n_feat)
+#        res[i] = f1
+#        if state < n - 1:
+#            res[i + 1] = 1 - f1
+#        return res
 
 class BairdStarExample(mdp.MDP):
     """

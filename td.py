@@ -11,6 +11,7 @@ import numpy as np
 import itertools
 import logging
 import copy
+import time
 
 #logging.basicConfig(level=logging.DEBUG)
 
@@ -22,6 +23,7 @@ class ValueFunctionPredictor(object):
 
     def __init__(self, gamma=1, **kwargs):
         self.gamma = gamma
+        self.time = 0
         if not hasattr(self, "init_vals"):
             self.init_vals = {}
 
@@ -45,6 +47,10 @@ class ValueFunctionPredictor(object):
             return iter(p)
         except TypeError:
             return itertools.repeat(p)
+    def _tic(self):
+        self._start = time.clock()
+    def _toc(self):
+        self.time += (time.clock() - self._start)
             
 class LinearValueFunctionPredictor(ValueFunctionPredictor):
     """
@@ -93,8 +99,8 @@ class OffPolicyValueFunctionPredictor(ValueFunctionPredictor):
         behaviour policy
     """
     
-    def update_V_offpolicy(self, s0, s1, r, a, theta,
-                           beh_pi, target_pi, **kwargs):
+    def update_V_offpolicy(self, s0, s1, r, a, beh_pi, target_pi, theta=None, 
+                                                                    **kwargs):
         """
         off policy training version for transition (s0, a, s1) with reward r
         which was sampled by following the behaviour policy beh_pi.
@@ -105,7 +111,8 @@ class OffPolicyValueFunctionPredictor(ValueFunctionPredictor):
                 *_pi(s,a) is the probability of taking action a in state s
         """
         rho = target_pi[s0, a] / beh_pi[s0, a]
-        return self.update_V(s0, s1, r, theta, rho=rho, **kwargs)
+        kwargs["rho"] = rho
+        return self.update_V(s0, s1, r, theta=theta, **kwargs)
         
 
 class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
@@ -155,6 +162,7 @@ class GTD(GTDBase):
         f0 = self.phi(s0)
         f1 = self.phi(s1)
 
+        self._tic()
         # TODO check if rho is used correctly
         delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
         a = np.dot(f0, w)
@@ -164,6 +172,8 @@ class GTD(GTDBase):
 
         self.w = w
         self.theta = theta
+        
+        self._toc()
         return theta
     
 
@@ -183,9 +193,10 @@ class GTD2(GTDBase):
         w = self.w
         if theta is None:
             theta = self.theta
-
         f0 = self.phi(s0)
         f1 = self.phi(s1)
+
+        self._tic()
 
         delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
         a = np.dot(f0, w)
@@ -195,6 +206,7 @@ class GTD2(GTDBase):
 
         self.w = w
         self.theta = theta
+        self._toc()
         return theta
 
 
@@ -218,15 +230,15 @@ class TDC(GTDBase):
         f0 = self.phi(s0)
         f1 = self.phi(s1)
 
+        self._tic()
         delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
         a = np.dot(f0, w)
 
         w += self.beta.next() * (rho * delta - a) * f0
-        logging.debug("Weight: {}".format(w))
         theta += self.alpha.next() * rho * (delta * f0 - self.gamma * f1 * a)
-        logging.debug("Theta:  {}".format(theta))
         self.w = w
         self.theta = theta
+        self._toc()
         return theta
 
 
@@ -260,7 +272,7 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         """
         f0 = self.phi(s0)
         f1 = self.phi(s1)
-  
+        self._tic()
         if theta is None: theta=self.theta
         if not hasattr(self, "z"):
             self.z = f0
@@ -273,16 +285,17 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         self.C -= K*(np.dot(self.C.T, deltaf))
         self.z = self.gamma * self.lam * rho * self.z + f1
         self.theta = theta
+        self._toc()
         return theta
 
-class LinearTDLambda(ValueFunctionPredictor):
+class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
     """
         TD(\lambda) with linear function approximation
         for details see Szepesvári (2009): Algorithms for Reinforcement
         Learning (p. 30)
     """
 
-    def __init__(self, alpha, lam, phi, gamma=1):
+    def __init__(self, **kwargs):
         """
             alpha:  step size. This can either be a constant number or
                     an iterable object providing step sizes
@@ -290,31 +303,27 @@ class LinearTDLambda(ValueFunctionPredictor):
                     and MC sampling
             gamma:  discount factor
         """
-        self.alpha = self._assert_iterator(alpha)
-        self.phi = phi
-        self.lam = lam
-        self.gamma = gamma
+        LinearValueFunctionPredictor.__init__(self, **kwargs)        
+        OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
+        LambdaValueFunctionPredictor.__init__(self, **kwargs) 
+        self.reset()
 
-    def reset(self):
-        if hasattr(self, 'z'):
-            del self.z
-        if hasattr(self, 'theta'):
-            del self.theta
 
-    def update_V(self, s0, s1, r, theta=None, **kwargs):
-        if "z" in kwargs:
-            z = kwargs["z"]
-        elif hasattr(self, "z"):
-            z = self.z
-        else:
-            z = np.zeros_like(theta)
 
-        delta = r + self.gamma * np.dot(theta, self.phi(s1)) \
-                               - np.dot(theta, self.phi(s0))
-        z = self.phi(s0) + self.lam * self.gamma * z
-        theta += self.alpha.next() * delta * z
-        self.z = z
+    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
+
+        f0 = self.phi(s0)
+        f1 = self.phi(s1)
+        if theta is None: theta=self.theta
+        if not hasattr(self, "z"):
+            self.z = f0
+        self._tic()
+        delta = r + self.gamma * np.dot(theta, f1) \
+                               - np.dot(theta, f0)
+        self.z = f0 + rho * self.lam * self.gamma * self.z
+        theta += self.alpha.next() * delta * self.z * rho
         self.theta = theta
+        self._toc()
         return theta
 
 
@@ -351,11 +360,16 @@ class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         """
         if theta is None:
             theta = self.theta
-        delta = r + self.gamma * np.dot(theta, self.phi(s1)) \
-                               - np.dot(theta, self.phi(s0))
+            
+        f0 = self.phi(s0)
+        f1 = self.phi(s1)
+        self._tic()
+        delta = r + self.gamma * np.dot(theta, f1) \
+                               - np.dot(theta, f0)
         logging.debug("TD Learning Delta {}".format(delta))
-        theta += self.alpha.next() * delta * rho * self.phi(s0)
+        theta += self.alpha.next() * delta * rho * f0
         self.theta = theta
+        self._toc()
         return theta
 
 
@@ -384,8 +398,10 @@ class TabularTD0(ValueFunctionPredictor):
         self.gamma = gamma
 
     def update_V(self, s0, s1, r, V, **kwargs):
+        self._tic()
         delta = r + self.gamma * V[s1] - V[s0]
         V[s0] += self.alpha.next() * delta
+        self._toc()        
         return V
 
 
@@ -423,7 +439,7 @@ class TabularTDLambda(ValueFunctionPredictor):
             z = self.z
         else:
             z = np.zeros_like(V)
-
+        self._tic()
         delta = r + self.gamma * V[s1] - V[s0]
         z = self.lam * self.gamma * z
         if self.trace_type == "replacing":
@@ -432,6 +448,7 @@ class TabularTDLambda(ValueFunctionPredictor):
             z[s0] += 1
         V += self.alpha.next() * delta * z
         self.z = z
+        self._toc()
         return V
 
 

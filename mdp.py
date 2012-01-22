@@ -11,6 +11,7 @@ import networkx as nx
 import pygraphviz as pgv
 import matplotlib
 import matplotlib.pyplot as plt
+import dynamic_prog
 def _multinomial_sample(n, p):
     """
     draw n random samples of integers with probabilies p
@@ -190,6 +191,7 @@ class MDP(object):
         policy /= policy.sum(axis=1).reshape(-1, 1)
         return policy
 
+
     def stationary_distrubution(self, iterations=10000,
                                 seed=None, avoid0=True, policy="uniform"):
         """
@@ -282,7 +284,7 @@ class MDP(object):
 
     def sample_episodes(self, n, max_len=1000, policy="uniform"):
         """
-        generate a n markov chains (episodes) by sampling
+        generate a n markov chain realizations (episodes) by sampling
 
             n: numer of episodes
             max_len: maximum length of each episode
