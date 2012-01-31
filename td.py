@@ -61,6 +61,7 @@ class LinearValueFunctionPredictor(ValueFunctionPredictor):
     def __init__(self, phi, theta0=None, **kwargs):
         
         ValueFunctionPredictor.__init__(self, **kwargs)
+        
         self.phi = phi
         if theta0 is None:
             self.init_vals['theta'] = np.zeros_like(phi(0))
@@ -131,7 +132,6 @@ class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
 
         self.init_vals['alpha'] = alpha        
         self.init_vals['beta'] = beta
-        self.init_vals['w'] = np.zeros_like(self.init_vals['theta'])
 
         self.reset()
 
@@ -139,7 +139,7 @@ class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         LinearValueFunctionPredictor.reset(self)
         self.alpha = self._assert_iterator(self.init_vals['alpha'])
         self.beta = self._assert_iterator(self.init_vals['beta'])
-
+        self.w = np.zeros_like(self.init_vals['theta'])
 
 
 
@@ -295,7 +295,7 @@ class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredict
         Learning (p. 30)
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, alpha, **kwargs):
         """
             alpha:  step size. This can either be a constant number or
                     an iterable object providing step sizes
@@ -306,9 +306,12 @@ class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredict
         LinearValueFunctionPredictor.__init__(self, **kwargs)        
         OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
         LambdaValueFunctionPredictor.__init__(self, **kwargs) 
+        self.init_vals['alpha'] = alpha  
         self.reset()
 
-
+    def reset(self):
+        LinearValueFunctionPredictor.reset(self)
+        self.alpha = self._assert_iterator(self.init_vals['alpha'])
 
     def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
 
@@ -320,8 +323,62 @@ class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredict
         self._tic()
         delta = r + self.gamma * np.dot(theta, f1) \
                                - np.dot(theta, f0)
-        self.z = f0 + rho * self.lam * self.gamma * self.z
-        theta += self.alpha.next() * delta * self.z * rho
+        self.z = rho * (f0 + self.lam * self.gamma * self.z)
+        theta += self.alpha.next() * delta * self.z
+        self.theta = theta
+        self._toc()
+        return theta
+
+class RMalpha(object):
+    """
+    step size generator of the form
+        alpha = c*t^{-mu}
+    """
+    def __init__(self, c,  mu):
+        self.mu = mu
+        self.c = c
+        self.t = 0.
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        self.t += 1.
+        return self.c * self.t ** (-self.mu)
+        
+class ResidualGradient(OffPolicyValueFunctionPredictor, LinearValueFunctionPredictor):
+    """
+        Residual Gradient algorithm with linear function approximation
+        for details see Baird, L. (1995): Residual Algorithms : Reinforcement :
+        Learning with Function Approximation.
+    """
+
+    def __init__(self, alpha, **kwargs):
+        """
+            alpha:  step size. This can either be a constant number or
+                    an iterable object providing step sizes
+
+            gamma:  discount factor
+        """
+        LinearValueFunctionPredictor.__init__(self, **kwargs)        
+        OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
+        self.init_vals['alpha'] = alpha  
+        self.reset()
+
+    def reset(self):
+        LinearValueFunctionPredictor.reset(self)
+        self.alpha = self._assert_iterator(self.init_vals['alpha'])
+
+    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
+
+        f0 = self.phi(s0)
+        f1 = self.phi(s1)
+        if theta is None: theta=self.theta
+
+        self._tic()
+        delta = r + self.gamma * np.dot(theta, f1) \
+                               - np.dot(theta, f0)
+        theta += self.alpha.next() * delta * rho * (f0 - self.gamma * f1)
         self.theta = theta
         self._toc()
         return theta
@@ -345,7 +402,6 @@ class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         LinearValueFunctionPredictor.__init__(self, **kwargs)
         self.init_vals['alpha'] = alpha        
         self.reset()
-
     def reset(self):
         LinearValueFunctionPredictor.reset(self)
         self.alpha = self._assert_iterator(self.init_vals['alpha'])
@@ -431,6 +487,7 @@ class TabularTDLambda(ValueFunctionPredictor):
         assert trace_type in ("replacing", "accumulating")
         self.gamma = gamma
         self.lam = lam
+        self.time=0
 
     def update_V(self, s0, s1, r, V, **kwargs):
         if "z" in kwargs:
