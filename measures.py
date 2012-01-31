@@ -6,6 +6,26 @@ Created on Sun Jan  1 18:42:16 2012
 """
 import numpy as np
 
+
+def prepare_MSE(mu, mdp, phi, V_true):
+    
+    Phi = Phi_matrix(mdp, phi)
+    return lambda theta: np.sum(((theta * np.asarray(Phi)).sum(axis=1) - V_true)**2 * mu)
+
+def prepare_MSPBE(mu, mdp, phi, gamma=1, policy="uniform"):
+    
+    Phi = Phi_matrix(mdp, phi)
+    D = np.diag(mu)
+    Pi = Phi * np.linalg.inv(Phi.T * D * Phi) * Phi.T * D
+    T = bellman_operator(mdp, gamma, policy)
+        
+    def _MSPBE(theta):
+        V = (theta * np.asarray(Phi)).sum(axis=1)
+        v = np.asarray(V - np.dot(Pi, T(V)))
+        return np.sum(v**2 * mu)
+    
+    return _MSPBE
+    
 def MSPBE(theta, mu, mdp, phi, gamma=1, policy="uniform", Pi=None, T=None):
     """
     compute the Mean Squared Projected Bellman Error

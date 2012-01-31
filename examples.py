@@ -10,10 +10,149 @@ import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
 import measures
+import dynamic_prog
 from collections import defaultdict
 from util.progressbar import ProgressBar
 
 
+class ValuePredictionProblem():
+    
+    def __init__(self, mdp, gamma, phi, theta0, policy="uniform", target_policy=None):
+        self.mdp = mdp
+        self.gamma = gamma
+        self.phi = phi
+        self.theta0 = theta0
+        if policy == "uniform":
+            policy = mdp.uniform_policy()
+        self.behavior_policy = policy 
+
+        if target_policy is not None:
+            self.off_policy = True
+            if target_policy == "uniform":
+                target_policy = mdp.uniform_policy()
+            self.target_policy = target_policy
+        else:
+            self.target_policy =policy
+            self.off_policy = False
+        self.mu = self.mdp.stationary_distrubution(seed=50, iterations=100000)
+        self.V_true = dynamic_prog.estimate(mdp, policy=self.target_policy, gamma=gamma)
+    
+    def _init_methods(self, methods):
+        for method in methods:
+            method.phi=self.phi
+            method.init_vals["theta"] = self.theta0
+            method.gamma = self.gamma
+            method.reset()
+            
+    def _init_error_fun(self, criterion):
+        if criterion is "MSE":
+            err_f = measures.prepare_MSE(self.mu, self.mdp, self.phi, self.V_true)    
+        elif criterion is "RMSE":
+            err_o = measures.prepare_MSE(self.mu, self.mdp, self.phi, self.V_true)  
+            err_f = lambda x: np.sqrt(err_o(x))
+        elif criterion is "MSPBE":
+            err_f = measures.prepare_MSPBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
+        return err_f
+    def min_error(self, methods, n_eps=10000, n_samples=1000, seed=None, criterion="MSE"):
+
+        self._init_methods(methods)
+        err_f = self._init_error_fun(criterion)
+        min_errors = np.ones(len(methods))*np.inf
+        
+        for i in xrange(n_eps):
+            for m in methods: m.reset_trace()
+            cur_seed = i+n_samples*seed if seed is not None else None
+            for s, a, s_n, r in self.mdp.sample_transition(n_samples, 
+                                                           with_restart=False, 
+                                                           seed=cur_seed):
+                for k, m in enumerate(methods):
+                    if self.off_policy:
+                        cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
+                                                              self.behavior_policy, 
+                                                              self.target_policy)
+                    else:
+                        cur_theta = m.update_V(s, s_n, r)
+                    min_errors[k] = min(min_errors[k], err_f(cur_theta))
+               
+
+        return min_errors
+
+    def avg_error_traces(self, methods, n_indep, n_eps=None, **kwargs):
+
+        res = []
+        with ProgressBar() as p:
+            
+            for seed in range(n_indep):
+                p.update(seed, n_indep, "{} of {} seeds".format(seed, n_indep))
+                kwargs['seed']=seed
+                if n_eps is None:
+                    res.append(self.ergodic_error_traces(methods, **kwargs))
+                else:
+                    res.append(self.episodic_error_traces(methods, n_eps=n_eps, **kwargs))
+        res = np.array(res).swapaxes(0,1)
+        return np.mean(res, axis=1), np.std(res, axis=1), res
+
+    def ergodic_error_traces(self, methods, n_samples=1000, seed=None, criterion="MSE"):
+
+        self._init_methods(methods)
+        err_f = self._init_error_fun(criterion)
+        errors = np.ones((n_samples,len(methods)))*np.inf
+        
+        for m in methods: m.reset_trace()
+        i=0
+        for s, a, s_n, r in self.mdp.sample_transition(n_samples, 
+                                                       with_restart=True, 
+                                                       seed=seed):
+            for k, m in enumerate(methods):
+                if self.off_policy:
+                    cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
+                                                          self.behavior_policy, 
+                                                          self.target_policy)
+                else:
+                    cur_theta = m.update_V(s, s_n, r)
+                errors[i,k] = err_f(cur_theta)
+            i += 1
+               
+        return errors.T
+      
+    def episodic_error_traces(self, methods, n_eps=10000, n_samples=1000, seed=None, criterion="MSE"):
+
+        self._init_methods(methods)
+        err_f = self._init_error_fun(criterion)
+        errors = np.ones((n_eps,len(methods)))*np.inf
+        
+        for i in xrange(n_eps):
+            for m in methods: m.reset_trace()
+            cur_seed = i+n_samples*seed if seed is not None else None
+            for s, a, s_n, r in self.mdp.sample_transition(n_samples, 
+                                                           with_restart=False, 
+                                                           seed=cur_seed):
+                for k, m in enumerate(methods):
+                    if self.off_policy:
+                        cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
+                                                              self.behavior_policy, 
+                                                              self.target_pi)
+                    else:
+                        cur_theta = m.update_V(s, s_n, r)
+                    errors[i,k] = err_f(cur_theta)
+               
+        return errors.T
+
+class ConvergenceTrace:
+    def __init__(self, size,shape):
+        self.data = np.nan * np.zeros((size, )+shape)
+        self.i = 0
+    def converged(self, x):
+        i = self.i        
+        self.data[i,:] = x
+        s = self.data.shape[0]
+        cur = (self.data[i:,:].sum(0) + self.data[:(i - s/2),:].sum(0))*2./s
+        j = (i + s/2) % s               
+        last = (self.data[j:,:].sum(0) + self.data[:(j - s/2),:].sum(0))*2./s
+        self.i = (i + 1) % s        
+        #print np.abs(cur-last).sum()
+        return np.allclose(cur, last)
+    
 class RandomMDP(mdp.MDP):
     
     def __init__(self, n_states, seed=None):
@@ -49,7 +188,7 @@ class RandomWalkChain(mdp.MDP):
         d0 = np.zeros(n_s)
         d0[n_s / 2] = 1
         r = np.zeros((n_s, 1, n_s))
-        r[:, :, n_s - 1] = 1
+        r[n_s - 2, :, n_s - 1] = 1
         P = np.zeros((n_s, 1, n_s))
         P[0, :, 0] = 1
         P[n_s - 1, :, n_s - 1] = 1
@@ -108,6 +247,7 @@ class BoyanChain(mdp.MDP):
         d0[0] = 1
         r = np.ones((n_s, 1, n_s))*(-3)
         r[-2, :, -1] = -2
+        r[-1,:,-1] = 0
         P = np.zeros((n_s, 1, n_s))
         P[-1, :, -1] = 1
         P[-2, :, -1] = 1

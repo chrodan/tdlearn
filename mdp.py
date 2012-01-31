@@ -11,7 +11,6 @@ import networkx as nx
 import pygraphviz as pgv
 import matplotlib
 import matplotlib.pyplot as plt
-import dynamic_prog
 def _multinomial_sample(n, p):
     """
     draw n random samples of integers with probabilies p

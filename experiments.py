@@ -351,7 +351,7 @@ def random_walk():
 
     V = np.zeros(7)
     
-    tdl = td.TabularTDLambda(0.9, 0.4)
+    tdl = td.TabularTDLambda(1, 0)
     for eps in rw_mdp.sample_episodes(5000):
         for s, a, s_n, r in rw_mdp.extract_transitions(eps):
             V = tdl.update_V(s, s_n, r, V)

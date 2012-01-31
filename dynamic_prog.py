@@ -6,7 +6,7 @@ Created on Sun Jan 22 00:51:55 2012
 @author: Christoph Dann <cdann@cdann.de>
 """
 import numpy as np
-
+import logging
 def estimate(mdp, n_iter=100000, policy="uniform", gamma=1):
     if policy =="uniform":
         policy =mdp.uniform_policy()
@@ -17,12 +17,12 @@ def estimate(mdp, n_iter=100000, policy="uniform", gamma=1):
 
     r = mdp.r * policy[:,:,np.newaxis]
     r = r.sum(axis=1)
-    
     V = np.zeros(len(mdp.states))
     for i in xrange(n_iter):
         V_n = (P * (gamma * V + r)).sum(axis=1)
         if np.linalg.norm(V - V_n) < 1e-22:
-            V = V_n            
+            V = V_n
+            logging.info("Convergence after {} iterations".format(i + 1))            
             break
         V = V_n
     return V
