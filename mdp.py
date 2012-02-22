@@ -7,8 +7,6 @@ Created on Fri Dec  9 19:01:41 2011
 @author: Christoph Dann <cdann@cdann.de>
 """
 import numpy as np
-import networkx as nx
-import pygraphviz as pgv
 import matplotlib
 import matplotlib.pyplot as plt
 def _multinomial_sample(n, p):
@@ -98,79 +96,6 @@ class MDP(object):
         result[state] = 1.
         return result
 
-    def graph(self):
-        """
-        returns the representation of the MDP as a networkx graph
-        """
-        G = nx.MultiDiGraph()
-        for s in self.states:
-            G.add_node(self.state_names[s],
-                       p0=self.P0[s],
-                        terminal=self.s_terminal[s])
-        for s1 in self.states:
-            for a in self.actions:
-                for s2 in self.states:
-                    if np.allclose(self.P[s1, a, s2], 0):
-                        continue
-                    G.add_edge(self.state_names[s1],
-                               self.state_names[s2],
-                                weight=self.P[s1, a, s2],
-                                reward=self.r[s1, a, s2],
-                                action=self.action_names[a])
-        return G
-
-    def visualize(self, transition_label="action"):
-        """
-        plots the MDP in pyplot
-        """
-        A = nx.to_agraph(self.graph())
-        for e in A.edges_iter():
-            e.attr['label'] = e.attr['action']
-        A.layout("dot")
-        G = nx.from_agraph(A)
-        print A.draw('a.xdot')
-        non_terminals = []
-        terminals = []
-        pos = {}
-        for n, d in G.nodes(data=True):
-            xx, yy = d['pos'].split(',')
-            pos[n] = (float(xx), float(yy))
-            if d['terminal'] == True:
-                terminals.append(n)
-            else:
-                non_terminals.append(n)
-
-        edges = []
-        # construct path from graphviz pos argument
-        for n, m, d in G.edges(data=True):
-
-            poslist = d['pos'][2:].split(' ')
-            vert = np.zeros((len(poslist) + 2, 2))
-            vert[0, :] = pos[n]
-            vert[-1, :] = pos[m]
-            inf = np.ones(len(poslist) + 2, 'uint8') * matplotlib.path.Path.CURVE3
-            inf[0] = matplotlib.path.Path.MOVETO
-            inf[-1] = matplotlib.path.Path.LINETO
-            for i, p in enumerate(poslist):
-                xx, yy = p.split(',')
-                vert[i + 1, :] = (float(xx), float(yy))
-            print vert
-            d['path'] = matplotlib.path.Path(vert, inf)
-            edges.append(d['path'])
-        edge_collection = matplotlib.collections.PathCollection(edges,
-                                                                edgecolor="r",
-                                                                facecolor=None)
-        plt.gca().add_collection(edge_collection)
-        plt.axis("equal")
-        nx.draw_networkx_nodes(G, pos, nodelist=terminals, node_color='r',
-                               node_size=450,
-                               alpha=0.5)
-        nx.draw_networkx_nodes(G, pos, nodelist=non_terminals, node_color='b',
-                                node_size=450,
-                               alpha=0.5)
-        nx.draw_networkx_edges(G, pos)
-        nx.draw_networkx_labels(G, pos)
-        return A
 
     def extract_transitions(self, episode):
         """
