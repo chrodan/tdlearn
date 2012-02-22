@@ -282,7 +282,8 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         K = L / (1+ np.dot(deltaf,L))
         
         theta += K * (rho*r - np.dot(deltaf, theta))
-        self.C -= K*(np.dot(self.C.T, deltaf))
+        #import ipdb; ipdb.set_trace()
+        self.C -= np.outer(K, np.dot(deltaf, self.C))
         self.z = self.gamma * self.lam * rho * self.z + f1
         self.theta = theta
         self._toc()
@@ -320,10 +321,13 @@ class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredict
         if theta is None: theta=self.theta
         if not hasattr(self, "z"):
             self.z = f0
+        else:
+            self.z = rho * (f0 + self.lam * self.gamma * self.z)
         self._tic()
         delta = r + self.gamma * np.dot(theta, f1) \
                                - np.dot(theta, f0)
-        self.z = rho * (f0 + self.lam * self.gamma * self.z)
+        
+        
         theta += self.alpha.next() * delta * self.z
         self.theta = theta
         self._toc()
