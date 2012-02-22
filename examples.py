@@ -15,7 +15,7 @@ from collections import defaultdict
 from util.progressbar import ProgressBar
 
 
-class ValuePredictionProblem():
+class ValuePredictionProblem(object):
     
     def __init__(self, mdp, gamma, phi, theta0, policy="uniform", target_policy=None):
         self.mdp = mdp
@@ -34,9 +34,16 @@ class ValuePredictionProblem():
         else:
             self.target_policy =policy
             self.off_policy = False
-        self.mu = self.mdp.stationary_distrubution(seed=50, iterations=100000)
-        self.V_true = dynamic_prog.estimate(mdp, policy=self.target_policy, gamma=gamma)
-    
+        
+    def __getattr__(self, name):
+        if name is "mu":        
+            self.mu = self.mdp.stationary_distrubution(seed=50, iterations=100000)
+            return self.mu
+        elif name is "V_true":            
+            self.V_true = dynamic_prog.estimate(self.mdp, policy=self.target_policy, gamma=self.gamma)
+            return self.V_true
+        else:
+            raise AttributeError
     def _init_methods(self, methods):
         for method in methods:
             method.phi=self.phi
@@ -52,6 +59,14 @@ class ValuePredictionProblem():
             err_f = lambda x: np.sqrt(err_o(x))
         elif criterion is "MSPBE":
             err_f = measures.prepare_MSPBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
+        elif criterion is "RMSPBE":
+            err_o = measures.prepare_MSPBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
+            err_f = lambda x: np.sqrt(err_o(x))
+        elif criterion is "MSBE":
+            err_f = measures.prepare_MSBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
+        elif criterion is "RMSBE":
+            err_o = measures.prepare_MSBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
+            err_f = lambda x: np.sqrt(err_o(x))
         return err_f
     def min_error(self, methods, n_eps=10000, n_samples=1000, seed=None, criterion="MSE"):
 
@@ -115,6 +130,33 @@ class ValuePredictionProblem():
                
         return errors.T
       
+    def parameter_traces(self, methods, n_samples=1000, seed=None, criterion="MSE"):
+
+        self._init_methods(methods)
+        
+        param = np.empty((n_samples,len(methods)) + self.theta0.shape)
+        param[0,:,:] = self.theta0
+        i = 1
+        while i < n_samples:
+            
+            for m in methods: m.reset_trace()
+            cur_seed = i*seed if seed is not None else None
+            for s, a, s_n, r in self.mdp.sample_transition(n_samples, 
+                                                           with_restart=False, 
+                                                           seed=cur_seed):
+                for k, m in enumerate(methods):
+                    if self.off_policy:
+                        cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
+                                                              self.behavior_policy, 
+                                                              self.target_pi)
+                    else:
+                        cur_theta = m.update_V(s, s_n, r)
+                    param[i,k] = cur_theta
+                i += 1
+                    
+                if i >= n_samples: break
+        return param      
+      
     def episodic_error_traces(self, methods, n_eps=10000, n_samples=1000, seed=None, criterion="MSE"):
 
         self._init_methods(methods)
@@ -138,20 +180,7 @@ class ValuePredictionProblem():
                
         return errors.T
 
-class ConvergenceTrace:
-    def __init__(self, size,shape):
-        self.data = np.nan * np.zeros((size, )+shape)
-        self.i = 0
-    def converged(self, x):
-        i = self.i        
-        self.data[i,:] = x
-        s = self.data.shape[0]
-        cur = (self.data[i:,:].sum(0) + self.data[:(i - s/2),:].sum(0))*2./s
-        j = (i + s/2) % s               
-        last = (self.data[j:,:].sum(0) + self.data[:(j - s/2),:].sum(0))*2./s
-        self.i = (i + 1) % s        
-        #print np.abs(cur-last).sum()
-        return np.allclose(cur, last)
+
     
 class RandomMDP(mdp.MDP):
     
@@ -198,14 +227,7 @@ class RandomWalkChain(mdp.MDP):
 
         mdp.MDP.__init__(self, states, actions, r, P, d0)
 
-    def tabular_phi(self, state):
-        """
-        feature function that makes linear approximation equivalent to
-        tabular algorithms
-        """
-        result = np.zeros(len(self.states))
-        result[state] = 1.
-        return result
+
         
     def dependent_phi(self, state):
         """
@@ -222,6 +244,13 @@ class RandomWalkChain(mdp.MDP):
         res = res.astype("float")
         res /= np.sqrt(np.sum(res))
         return res
+        
+    def linear_phi(self, state):       
+        n = len(self.states)
+        a = (n - 1.) / (self.n_feat - 1)
+        r = 1 - abs((state + 1 - np.linspace(1,n,self.n_feat)) / a)
+        r[r < 0] = 0
+        return r
         
 class BoyanChain(mdp.MDP):
     """
@@ -260,7 +289,7 @@ class BoyanChain(mdp.MDP):
     def phi(self, state):       
         n = len(self.states)
         a = (n - 1.) / (self.n_feat - 1)
-        r = 1 - abs((state - np.linspace(1,n,self.n_feat)) / a)
+        r = 1 - abs((state + 1 - np.linspace(1,n,self.n_feat)) / a)
         r[r < 0] = 0
         return r
 #        i = int(state / a)
