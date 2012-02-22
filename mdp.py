@@ -89,6 +89,15 @@ class MDP(object):
         self.s_terminal = np.asarray([np.all(self.P[s, :, s] == 1)
                                             for s in self.states])
 
+    def tabular_phi(self, state):
+        """
+        feature function that makes linear approximation equivalent to
+        tabular algorithms
+        """
+        result = np.zeros(len(self.states))
+        result[state] = 1.
+        return result
+
     def graph(self):
         """
         returns the representation of the MDP as a networkx graph
