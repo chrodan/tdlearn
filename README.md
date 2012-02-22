@@ -19,6 +19,6 @@ imcluded that are often used in scientific papers.
 Requirements
 ------------
 This code is known to run well with
-* Python 2.7
-* Numpy 1.6.1
-* matplotlib 1.1.0
+*  Python 2.7
+*  Numpy 1.6.1
+*  matplotlib 1.1.0
