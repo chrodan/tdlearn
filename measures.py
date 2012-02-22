@@ -26,6 +26,19 @@ def prepare_MSPBE(mu, mdp, phi, gamma=1, policy="uniform"):
     
     return _MSPBE
     
+def prepare_MSBE(mu, mdp, phi, gamma=1, policy="uniform"):
+    
+    Phi = Phi_matrix(mdp, phi)
+    T = bellman_operator(mdp, gamma, policy)
+        
+    def _MSBE(theta):
+        V = (theta * np.asarray(Phi)).sum(axis=1)
+        #import ipdb; ipdb.set_trace()
+        v = np.asarray(V - T(V))
+        return np.sum(v**2 * mu)
+    
+    return _MSBE
+    
 def MSPBE(theta, mu, mdp, phi, gamma=1, policy="uniform", Pi=None, T=None):
     """
     compute the Mean Squared Projected Bellman Error
@@ -145,14 +158,13 @@ def bellman_operator(mdp, gamma, policy="uniform"):
     if policy is "uniform":
         policy = mdp.uniform_policy()    
     
-    for s in mdp.states:
-        
-        R = mdp.P * mdp.r * policy[:, :, np.newaxis]
-        R = np.sum(R, axis=1) # sum over all A
-        R = np.sum(R, axis=1) # sum over all S'
-        
-        P = mdp.P * policy[:, :, np.newaxis]
-        P = np.sum(P, axis=1) # sum over all A => p(s' | s)
+
+    R = mdp.P * mdp.r * policy[:, :, np.newaxis]
+    R = np.sum(R, axis=1) # sum over all A
+    R = np.sum(R, axis=1) # sum over all S'
+    
+    P = mdp.P * policy[:, :, np.newaxis]
+    P = np.sum(P, axis=1) # sum over all A => p(s' | s)
     
     return lambda V: R + gamma * np.dot(P, V)
     
