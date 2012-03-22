@@ -26,6 +26,11 @@ class ProgressBar(object):
         block -- progress display character (default '█')
         empty -- bar display character (default ' ')
         """
+        try:        
+            if not os.isatty(sys.stdout.fileno()):
+                return
+        except AttributeError:
+            return
         if not os.isatty(sys.stdout.fileno()):
             return
         if color:
@@ -69,7 +74,7 @@ class ProgressBar(object):
         percent -- the progress percentage %
         message -- message string (optional)
         """
-        if not os.isatty(sys.stdout.fileno()):
+        if not hasattr(sys.stdout, "fileno") or not os.isatty(sys.stdout.fileno()):
             if message:
                 print percent, '%  ', message
             else:
@@ -104,7 +109,10 @@ class ProgressBar(object):
         self.lines = len(data.splitlines())
     def clear(self):
         """Clear all printed lines"""
-        if not os.isatty(sys.stdout.fileno()):
+        try:        
+            if not os.isatty(sys.stdout.fileno()):
+                return
+        except AttributeError:
             return
         sys.stdout.write(
             self.lines * (terminal.UP + terminal.BOL + terminal.CLEAR_EOL)

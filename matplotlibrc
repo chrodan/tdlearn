@@ -1,3 +1,5 @@
+backend 	: GTK3Cairo
+
 font.family        : serif
 font.serif         : Times, Palatino, New Century Schoolbook, Bookman, Computer Modern Roman
 font.sans-serif    : Helvetica, Avant Garde, Computer Modern Sans serif
