@@ -1,4 +1,4 @@
-backend 	: GTK3Cairo
+backend 	: Qt4Agg
 
 font.family        : serif
 font.serif         : Times, Palatino, New Century Schoolbook, Bookman, Computer Modern Roman
