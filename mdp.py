@@ -20,7 +20,7 @@ def _multinomial_sample(n, p):
     rnd = np.random.rand(n, n_v, 1)
     m = rnd < p_accum.reshape(1, n_v, n_c)
 
-    m2 = np.zeros_like(m, dtype='bool')
+    m2 = np.zeros(m.shape, dtype='bool')
     m2[:, :, 1:] = m[:, :, :-1]
     np.logical_xor(m, m2, out=m)
     ind_mat = np.arange(n_c, dtype='uint8').reshape(1, 1, n_c)
