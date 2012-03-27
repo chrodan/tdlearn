@@ -156,7 +156,7 @@ class LinearValuePredictionTask(object):
                     if self.off_policy:
                         cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
                                                               self.behavior_policy, 
-                                                              self.target_pi)
+                                                              self.target_policy)
                     else:
                         cur_theta = m.update_V(s, s_n, r)
                     param[i,k] = cur_theta
