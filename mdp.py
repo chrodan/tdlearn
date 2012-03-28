@@ -126,7 +126,7 @@ class MDP(object):
 
 
     def stationary_distrubution(self, iterations=10000,
-                                seed=None, avoid0=True, policy="uniform"):
+                                seed=None, avoid0=False, policy="uniform"):
         """
         computes the stationary distribution by sampling 
         """
@@ -214,6 +214,13 @@ class MDP(object):
                 s0 = s1
             if not with_restart:
                 break
+
+    def policy_P(self, policy="uniform"):
+        if policy is "uniform":
+            policy = self.uniform_policy()
+        T = self.P * policy[:, :, np.newaxis]
+        T = np.sum(T, axis=1)
+        return T
 
     def sample_episodes(self, n, max_len=1000, policy="uniform"):
         """

@@ -41,13 +41,19 @@ class LinearValuePredictionTask(object):
         are very costly to compute, so they are only evaluated, if really needed
         """
         if name is "mu":        
-            self.mu = self.mdp.stationary_distrubution(seed=50, iterations=100000)
+            self.mu = self.mdp.stationary_distrubution(seed=50, iterations=100000, policy=self.target_policy)
             return self.mu
+        elif name is "beh_mu":        
+            self.beh_mu = self.mdp.stationary_distrubution(seed=50, iterations=100000, policy=self.behavior_policy)
+            return self.beh_mu
         elif name is "V_true":            
             self.V_true = dynamic_prog.estimate(self.mdp, policy=self.target_policy, gamma=self.gamma)
             return self.V_true
+        elif name is "Phi":
+            self.Phi = measures.Phi_matrix(self.mdp, self.phi)
+            return self.Phi
         else:
-            raise AttributeError
+            raise AttributeError(name)
             
             
     def _init_methods(self, methods):
@@ -67,6 +73,11 @@ class LinearValuePredictionTask(object):
             err_f = measures.prepare_MSPBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
         elif criterion is "RMSPBE":
             err_o = measures.prepare_MSPBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
+            err_f = lambda x: np.sqrt(err_o(x))
+        elif criterion is "SMSPBE":
+            err_f = measures.prepare_SMSPBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
+        elif criterion is "SRMSPBE":
+            err_o = measures.prepare_SMSPBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
             err_f = lambda x: np.sqrt(err_o(x))
         elif criterion is "MSBE":
             err_f = measures.prepare_MSBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
@@ -114,6 +125,34 @@ class LinearValuePredictionTask(object):
                     res.append(self.episodic_error_traces(methods, n_eps=n_eps, **kwargs))
         res = np.array(res).swapaxes(0,1)
         return np.mean(res, axis=1), np.std(res, axis=1), res
+
+    def deterministic_error_traces(self, methods, n_samples, criterion="MSPBE"):
+        
+        self._init_methods(methods)
+        err_f = self._init_error_fun(criterion)
+        errors = np.ones((len(methods), n_samples))*np.inf
+        for m in methods:
+            m.init_deterministic(self)
+
+        for i in xrange(n_samples):
+            for j,m in enumerate(methods):
+                cur_theta = m.deterministic_update()
+                errors[j,i] = err_f(cur_theta)
+        return errors
+
+    def deterministic_parameter_traces(self, methods, n_samples, criterion="MSPBE"):
+        
+        self._init_methods(methods)
+        err_f = self._init_error_fun(criterion)
+        param = np.ones((len(methods), n_samples) + self.theta0.shape)*np.inf
+        for m in methods:
+            m.init_deterministic(self)
+
+        for i in xrange(n_samples):
+            for j,m in enumerate(methods):
+                cur_theta = m.deterministic_update()
+                param[j,i,:] = cur_theta
+        return param
 
     def ergodic_error_traces(self, methods, n_samples=1000, seed=None, criterion="MSE"):
 

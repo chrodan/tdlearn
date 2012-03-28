@@ -80,6 +80,20 @@ class LinearValueFunctionPredictor(ValueFunctionPredictor):
 
         return lambda x: np.dot(theta, self.phi(x))
 
+    def _compute_detTD_updates(self, task):
+        T = np.matrix(task.mdp.policy_P(task.target_policy))
+        Phi = task.Phi
+        Phi = np.matrix(Phi)
+        D = np.diag(task.beh_mu)
+        F = np.array(Phi.T * np.matrix(D) * (self.gamma*T) * Phi)
+        Cmat = np.array(Phi.T * np.matrix(D) * Phi)
+        R = task.mdp.P * task.mdp.r * task.target_policy[:, :, np.newaxis]
+        R = np.sum(R, axis=1) # sum over all A
+        R = np.sum(R, axis=1) # sum over all S'
+        b = np.array(Phi) * R[:,np.newaxis] * task.beh_mu[:,np.newaxis]
+        b = np.array(np.sum(b, axis=0)).flatten()
+        return F, Cmat, b
+
 class LambdaValueFunctionPredictor(ValueFunctionPredictor):
     """
         base class for predictors that have the lambda parameter as a tradeoff
@@ -140,8 +154,15 @@ class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         self.alpha = self._assert_iterator(self.init_vals['alpha'])
         self.beta = self._assert_iterator(self.init_vals['beta'])
         self.w = np.zeros_like(self.init_vals['theta'])
+        if hasattr(self, "A"): del(self.A)
+        if hasattr(self, "b"): del(self.b)
 
+        if hasattr(self, "F"): del(self.F)
+        if hasattr(self, "Cmat"): del(self.Cmat)
 
+    def init_deterministic(self, task):
+        self.F, self.Cmat, self.b = self._compute_detTD_updates(task)
+        self.A = np.array(self.F - self.Cmat)
 
 class GTD(GTDBase):
     """
@@ -176,6 +197,16 @@ class GTD(GTDBase):
         self._toc()
         return theta
     
+    def deterministic_update(self, theta=None):
+        w = self.w
+        if theta is None:
+            theta = self.theta
+
+        w_d = w + self.beta.next() * (np.dot(self.A, theta) - w + self.b)
+        theta_d = theta + self.alpha.next() * (- np.dot(self.A.T, w) + self.b)
+        self.theta = theta_d
+        self.w = w_d
+        return self.theta
 
 class GTD2(GTDBase):
     """
@@ -209,6 +240,16 @@ class GTD2(GTDBase):
         self._toc()
         return theta
 
+    def deterministic_update(self, theta=None):
+        w = self.w
+        if theta is None:
+            theta = self.theta
+
+        w_d = w + self.beta.next() * (np.dot(self.A, theta) - np.dot(self.Cmat, w) + self.b)
+        theta_d = theta + self.alpha.next() * (- np.dot(self.A.T, w) + self.b)
+        self.theta = theta_d
+        self.w = w_d
+        return self.theta
 
 class TDC(GTDBase):
     """
@@ -242,6 +283,16 @@ class TDC(GTDBase):
         return theta
 
 
+    def deterministic_update(self, theta=None):
+        w = self.w
+        if theta is None:
+            theta = self.theta
+
+        w_d = w + self.beta.next() * (np.dot(self.A, theta) - np.dot(self.Cmat, w) + self.b)
+        theta_d = theta + self.alpha.next() * (np.dot(self.A, theta) - np.dot(self.F.T, w) + self.b)
+        self.theta = theta_d
+        self.w = w_d
+        return self.theta
 
 class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
     """
@@ -313,7 +364,13 @@ class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredict
     def reset(self):
         LinearValueFunctionPredictor.reset(self)
         self.alpha = self._assert_iterator(self.init_vals['alpha'])
+        if hasattr(self, "A"): del(self.A)
+        if hasattr(self, "b"): del(self.b)
 
+    def init_deterministic(self, task):
+        assert self.lam == 0
+        F, Cmat, self.b = self._compute_detTD_updates(task)
+        self.A = np.array(F - Cmat)
     def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
 
         f0 = self.phi(s0)
@@ -328,10 +385,17 @@ class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredict
                                - np.dot(theta, f0)
         
         
-        theta += self.alpha.next() * delta * self.z
-        self.theta = theta
+        theta_d = theta + self.alpha.next() * delta * self.z
+        self.theta = theta_d
         self._toc()
         return theta
+
+
+    def deterministic_update(self, theta=None):
+        if theta is None: theta=self.theta
+        theta_d = theta +  self.alpha.next() * np.dot(self.A, theta) + self.b
+        self.theta = theta_d
+        return self.theta
 
 class RMalpha(object):
     """

@@ -12,11 +12,25 @@ def prepare_MSE(mu, mdp, phi, V_true):
     Phi = Phi_matrix(mdp, phi)
     return lambda theta: np.sum(((theta * np.asarray(Phi)).sum(axis=1) - V_true)**2 * mu)
 
+def prepare_SMSPBE(mu, mdp, phi, gamma=1, policy="uniform"):
+    
+    Phi = Phi_matrix(mdp, phi)
+    D = np.diag(mu)
+    Pi = Phi * np.linalg.pinv(Phi.T * D * Phi) * Phi.T * D
+    T = bellman_operator(mdp, gamma, policy)
+        
+    def _sMSPBE(theta):
+        V = (theta * np.asarray(Phi)).sum(axis=1)
+        v = np.asarray(V - np.dot(Pi, T(V))).flatten()
+        return v**2
+    
+    return _sMSPBE
+
 def prepare_MSPBE(mu, mdp, phi, gamma=1, policy="uniform"):
     
     Phi = Phi_matrix(mdp, phi)
     D = np.diag(mu)
-    Pi = Phi * np.linalg.inv(Phi.T * D * Phi) * Phi.T * D
+    Pi = Phi * np.linalg.pinv(Phi.T * D * Phi) * Phi.T * D
     T = bellman_operator(mdp, gamma, policy)
         
     def _MSPBE(theta):
@@ -63,7 +77,7 @@ def MSPBE(theta, mu, mdp, phi, gamma=1, policy="uniform", Pi=None, T=None):
     V = (theta * np.asarray(Phi)).sum(axis=1)
     if Pi is None:
         D = np.diag(mu)
-        Pi = Phi * np.linalg.inv(Phi.T * D * Phi) * Phi.T * D
+        Pi = Phi * np.linalg.pinv(Phi.T * D * Phi) * Phi.T * D
     if T is None:
         T = bellman_operator(mdp, gamma, policy)
     v = np.asarray(V - np.dot(Pi, T(V)))
@@ -139,7 +153,7 @@ def projection_operator(mdp, mu, phi, policy="uniform"):
         Phil.append(f)
     Phi = np.matrix(np.vstack(Phil))
     D = np.diag(mu)
-    Pi = Phi * np.linalg.inv(Phi.T * D * Phi) * Phi.T * D
+    Pi = Phi * np.linalg.pinv(Phi.T * D * Phi) * Phi.T * D
     return Pi
     
 def bellman_operator(mdp, gamma, policy="uniform"):    
