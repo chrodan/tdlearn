@@ -6,4 +6,4 @@ font.sans-serif    : Helvetica, Avant Garde, Computer Modern Sans serif
 font.cursive       : Zapf Chancery
 font.monospace     : Courier, Computer Modern Typewriter
 
-text.usetex        : true
+text.usetex        : false

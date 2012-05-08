@@ -19,13 +19,16 @@ class ProgressBar(object):
     )
     PADDING = 7
  
-    def __init__(self, color=None, width=None, block='#', empty=' '):
+    def __init__(self, enabled=True, color=None, width=None, block='#', empty=' '):
         """
         color -- color name (BLUE GREEN CYAN RED MAGENTA YELLOW WHITE BLACK)
         width -- bar width (optinal)
         block -- progress display character (default '█')
         empty -- bar display character (default ' ')
         """
+        self.enabled = enabled
+        if not enabled:
+            return
         try:        
             if not os.isatty(sys.stdout.fileno()):
                 return
@@ -51,12 +54,14 @@ class ProgressBar(object):
         self.tstart = datetime.datetime.now()
         return self
     def __exit__(self, type, value, traceback):
+        if not self.enabled: return
         if type is None:
             msg = 'Total: %s' % str(datetime.datetime.now() - self.tstart)
             self.done(msg)
         if type is KeyboardInterrupt:
             print "Aborted by user"
     def update(self,cur, total, msg = '', time=True):
+        if not self.enabled: return
         elapsed = datetime.datetime.now() - self.tstart
         perc = float(cur)/float(total)
         if perc > 0:
@@ -74,6 +79,7 @@ class ProgressBar(object):
         percent -- the progress percentage %
         message -- message string (optional)
         """
+        if not self.enabled: return
         if not hasattr(sys.stdout, "fileno") or not os.isatty(sys.stdout.fileno()):
             if message:
                 print percent, '%  ', message
@@ -109,7 +115,8 @@ class ProgressBar(object):
         self.lines = len(data.splitlines())
     def clear(self):
         """Clear all printed lines"""
-        try:        
+        if not self.enabled: return
+        try:
             if not os.isatty(sys.stdout.fileno()):
                 return
         except AttributeError:

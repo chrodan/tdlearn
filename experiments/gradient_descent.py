@@ -22,7 +22,7 @@ n_feat = 2
 n_iter = 100
 mdp = examples.BoyanChain(n, n_feat)
 phi=mdp.phi
-task = task.LinearValuePredictionTask(mdp, 1, phi, np.array([50.,0.]))
+task = task.LinearDiscreteValuePredictionTask(mdp, 1, phi, np.array([50.,0.]))
 
 
 methods = []

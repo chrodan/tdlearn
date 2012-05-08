@@ -9,13 +9,13 @@ Created on Mon Jan 30 12:42:50 2012
 
 import td
 import examples
-from task import LinearValuePredictionTask
+from task import LinearDiscreteValuePredictionTask
 import numpy as np
 import matplotlib.pyplot as plt
 
 
 mdp =examples.RandomWalkChain(7)
-task = LinearValuePredictionTask(mdp, 1, mdp.tabular_phi, np.zeros(7))
+task = LinearDiscreteValuePredictionTask(mdp, 1, mdp.tabular_phi, np.zeros(7))
 phi=mdp.tabular_phi
 
 methods = []
@@ -60,17 +60,17 @@ rg = td.ResidualGradient(alpha=alpha, phi=phi)
 rg.name = r"RG $\alpha$={}".format(alpha)    
 rg.color = "brown"
 methods.append(rg)    
-methods = []
+#methods = []
 alpha=0.1
-for alpha in [0.3, 0.2, 0.1, 0.06, 0.03]:
+#for alpha in [0.3, 0.2, 0.1, 0.06, 0.03]:
 
-    tdl = td.LinearTDLambda(alpha=alpha, lam=0, phi=phi)
-    tdl.name = r"TD({}) $\alpha$={}".format(0, alpha)    
-    tdl.color = "k"
-    methods.append(tdl)
+tdl = td.LinearTDLambda(alpha=alpha, lam=0, phi=phi)
+tdl.name = r"TD({}) $\alpha$={}".format(0, alpha)    
+tdl.color = "k"
+methods.append(tdl)
 
-n_indep = 20
-n_iter = 400
+n_indep = 200
+n_iter = 200
 
 mean, std, raw = task.avg_error_traces(methods, n_indep, n_eps=n_iter, criterion="RMSPBE")
 
@@ -79,6 +79,6 @@ plt.ylabel(r"$\sqrt{MSPBE}$")
 plt.xlabel("Episodes")    
 plt.ylim(0,0.12)
 for i, m in enumerate(methods): 
-    plt.errorbar(range(len(mean[i,:])), mean[i,:], yerr=std[i,:], errorevery=50, label=m.name)
+    plt.errorbar(range(len(mean[i,:])), mean[i,:], yerr=std[i,:], errorevery=25, label=m.name)
 plt.legend()
 plt.show()

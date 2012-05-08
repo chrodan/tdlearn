@@ -9,6 +9,7 @@ on random MDPs with larger number of states
 import td
 import examples
 import numpy as np
+from task import LinearDiscreteValuePredictionTask
 
 for n in [100, 500, 1000, 2500, 5000, 10000]:
     mdp = examples.RandomMDP(n)
@@ -18,7 +19,7 @@ for n in [100, 500, 1000, 2500, 5000, 10000]:
     methods = []
     
     
-    task = examples.ValuePredictionProblem(mdp, 0.9, phi, 
+    task = LinearDiscreteValuePredictionTask(mdp, 0.9, phi, 
                                            np.zeros(n))
     
     alpha, color = 0.75, "orange"

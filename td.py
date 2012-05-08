@@ -64,7 +64,7 @@ class LinearValueFunctionPredictor(ValueFunctionPredictor):
         
         self.phi = phi
         if theta0 is None:
-            self.init_vals['theta'] = np.zeros_like(phi(0))
+            self.init_vals['theta'] = np.zeros_like(phi(np.asarray([0])))
         else:
             self.init_vals['theta'] = theta0    
             
@@ -294,6 +294,33 @@ class TDC(GTDBase):
         self.w = w_d
         return self.theta
 
+class GeriTDC(TDC):
+    """
+    the TDC algorithm except that the pseudo-stationary guess for off-policy estimation is computed differently
+    """
+
+    def update_V(self, s0, s1, r, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        w = self.w
+        if theta is None:
+            theta = self.theta
+
+        f0 = self.phi(s0)
+        f1 = self.phi(s1)
+
+        self._tic()
+        delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
+        a = np.dot(f0, w)
+
+        w += self.beta.next() * rho * (delta - a) * f0
+        theta += self.alpha.next() * rho * (delta * f0 - self.gamma * f1 * a)
+        self.w = w
+        self.theta = theta
+        self._toc()
+        return theta
+
 class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
     """
         recursive Implementation of Least Squared Temporal Difference Learning
@@ -313,9 +340,17 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         """
         LinearValueFunctionPredictor.__init__(self, **kwargs)        
         OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
-        LambdaValueFunctionPredictor.__init__(self, **kwargs)     
+        LambdaValueFunctionPredictor.__init__(self, **kwargs)   
+        self.eps = eps
+        #import ipdb; ipdb.set_trace()
         self.init_vals["C"] = np.eye(len(self.init_vals["theta"]))*eps
         self.reset()
+
+    def reset(self):
+        self.reset_trace()   
+        self.init_vals["C"] = np.eye(len(self.init_vals["theta"]))*self.eps
+        for k,v in self.init_vals.items():
+            self.__setattr__(k,copy.copy(v))
 
     def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
         """
@@ -333,7 +368,6 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         K = L / (1+ np.dot(deltaf,L))
         
         theta += K * (rho*r - np.dot(deltaf, theta))
-        #import ipdb; ipdb.set_trace()
         self.C -= np.outer(K, np.dot(deltaf, self.C))
         self.z = self.gamma * self.lam * rho * self.z + f1
         self.theta = theta
@@ -491,6 +525,8 @@ class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         delta = r + self.gamma * np.dot(theta, f1) \
                                - np.dot(theta, f0)
         logging.debug("TD Learning Delta {}".format(delta))
+        #print theta
+        #print f0, f1
         theta += self.alpha.next() * delta * rho * f0
         self.theta = theta
         self._toc()

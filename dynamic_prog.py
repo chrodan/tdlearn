@@ -7,7 +7,8 @@ Created on Sun Jan 22 00:51:55 2012
 """
 import numpy as np
 import logging
-def estimate(mdp, n_iter=100000, policy="uniform", gamma=1):
+from measures import bellman_operator_LQR
+def estimate_V_discrete(mdp, n_iter=100000, policy="uniform", gamma=1.):
     if policy =="uniform":
         policy =mdp.uniform_policy()
         
@@ -26,3 +27,48 @@ def estimate(mdp, n_iter=100000, policy="uniform", gamma=1):
             break
         V = V_n
     return V
+    
+def estimate_V_LQR(lqmdp, theta_policy, n_iter=100000, gamma=1., as_fun=False, eps=1e-14):
+    """ Evaluate the value function exactly fora given Linear-quadratic MDP
+        the value function has the form
+        V = s^T P s
+        
+        for the policy given by: a = theta_policy^T s.
+        
+        as_fun: returns V as a python function instead of P"""
+        
+    T = bellman_operator_LQR(lqmdp, gamma, lqmdp.linear_policy(theta=theta_policy))
+    P = np.matrix(np.zeros((lqmdp.dim_S,lqmdp.dim_S)))
+    for i in xrange(n_iter):
+        P_n = T(P) #Q + theta.T * R * theta + gamma * (A+ B * theta).T * P * (A + B * theta)     
+        if np.linalg.norm(P - P_n) < eps:
+            print "Converged estimating V after ",i,"iterations"
+            break
+        P = P_n
+    if as_fun:
+        return lambda x: np.dot(x.T,np.dot(P,x))
+    else:
+        return np.array(P)
+        
+def solve_LQR(lqmdp, n_iter=100000, gamma=1., eps=1e-14):
+    """ Solves exactly the Linear-quadratic MDP with 
+        the value function has the form
+        V* = s^T P* s and policy a = theta* s
+        
+        returns (theta*, P*)"""
+        
+    P = np.matrix(np.zeros((lqmdp.dim_S,lqmdp.dim_S)))
+    Q = np.matrix(lqmdp.Q)
+    R = np.matrix(lqmdp.R)
+    theta = np.matrix(np.zeros((lqmdp.dim_A, lqmdp.dim_S)))
+    A = np.matrix(lqmdp.A)
+    B = np.matrix(lqmdp.B)
+    for i in xrange(n_iter):
+        theta_n = - gamma * np.linalg.pinv(R + gamma * B.T * P * B) * B.T * P * A 
+        P_n = Q + theta.T * R * theta + gamma * (A+ B * theta).T * P * (A + B * theta)
+        if np.linalg.norm(P - P_n) < eps and np.linalg.norm(theta_n - theta) < eps:
+            print "Converged solving LQR after ",i,"iterations"
+            break
+        P = P_n
+        theta = theta_n
+    return np.asarray(theta), P

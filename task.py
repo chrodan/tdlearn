@@ -10,8 +10,186 @@ import measures
 import dynamic_prog
 import numpy as np
 from util.progressbar import ProgressBar
+import util
+from joblib import delayed, Parallel
+import matplotlib.pyplot as plt
 
 class LinearValuePredictionTask(object):
+    """ Base class for LQR and discrete case tasks """
+    
+    def _init_methods(self, methods):
+        for method in methods:
+            method.phi=self.phi
+            method.init_vals["theta"] = self.theta0
+            method.gamma = self.gamma
+            method.reset()
+            
+   
+        
+        
+    def min_error(self, methods, n_eps=10000, n_samples=1000, seed=None, criterion="MSE"):
+
+        self._init_methods(methods)
+        err_f = self._init_error_fun(criterion)
+        min_errors = np.ones(len(methods))*np.inf
+        
+        for i in xrange(n_eps):
+            for m in methods: m.reset_trace()
+            cur_seed = i+n_samples*seed if seed is not None else None
+            for s, a, s_n, r in self.mdp.sample_transition(n_samples, 
+                                                           with_restart=False, 
+                                                           seed=cur_seed):
+                for k, m in enumerate(methods):
+                    if self.off_policy:
+                        cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
+                                                              self.behavior_policy, 
+                                                              self.target_policy)
+                    else:
+                        cur_theta = m.update_V(s, s_n, r)
+                    min_errors[k] = min(min_errors[k], err_f(cur_theta))
+               
+
+        return min_errors
+
+    def avg_error_traces(self, methods, n_indep, n_eps=None, verbose=False, **kwargs):
+
+        res = []
+        with ProgressBar(enabled=verbose) as p:
+            
+            for seed in range(n_indep):
+                p.update(seed, n_indep, "{} of {} seeds".format(seed, n_indep))
+                kwargs['seed']=seed
+                if n_eps is None:
+                    res.append(self.ergodic_error_traces(methods, **kwargs))
+                else:
+                    res.append(self.episodic_error_traces(methods, n_eps=n_eps, **kwargs))
+        res = np.array(res).swapaxes(0,1)
+        return np.mean(res, axis=1), np.std(res, axis=1), res
+
+    def deterministic_error_traces(self, methods, n_samples, criterion="MSPBE"):
+        
+        self._init_methods(methods)
+        err_f = self._init_error_fun(criterion)
+        errors = np.ones((len(methods), n_samples))*np.inf
+        for m in methods:
+            m.init_deterministic(self)
+
+        for i in xrange(n_samples):
+            for j,m in enumerate(methods):
+                cur_theta = m.deterministic_update()
+                errors[j,i] = err_f(cur_theta)
+        return errors
+
+    def deterministic_parameter_traces(self, methods, n_samples, criterion="MSPBE"):
+        
+        self._init_methods(methods)
+        param = np.ones((len(methods), n_samples) + self.theta0.shape)*np.inf
+        for m in methods:
+            m.init_deterministic(self)
+
+        for i in xrange(n_samples):
+            for j,m in enumerate(methods):
+                cur_theta = m.deterministic_update()
+                param[j,i,:] = cur_theta
+        return param
+
+    def ergodic_error_traces(self, methods, n_samples=1000, seed=None, criterion="MSE", error_every=1):
+
+        self._init_methods(methods)
+        err_f = self._init_error_fun(criterion)
+        errors = np.ones((int(np.ceil(n_samples/error_every)),len(methods)))*np.inf
+        
+        for m in methods: m.reset_trace()
+        i=0
+        #s_trace = np.array([]).reshape(0,self.mdp.dim_S)
+        #a_trace = np.array([]).reshape(0,1)
+        for s, a, s_n, r in self.mdp.sample_transition(n_samples,
+                                                        policy=self.behavior_policy,
+                                                       with_restart=False, 
+                                                       seed=seed):
+            #s_trace = np.vstack((s_trace, s.reshape(1,self.mdp.dim_S)))
+            #a_trace = np.vstack((a_trace, a.reshape(1,1)))
+                        
+            for k, m in enumerate(methods):
+                if self.off_policy:
+                    cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
+                                                          self.behavior_policy, 
+                                                          self.target_policy)
+                else:
+                    cur_theta = m.update_V(s, s_n, r)
+                if i % error_every == 0:
+                    errors[int(i/error_every),k] = err_f(cur_theta)
+            i += 1
+        #self.mdp.animate_trace(s_trace, action_trace = a_trace)
+        
+#        plt.figure()
+#        ax1 = plt.subplot(2,1,1)        
+#        ax2 = plt.subplot(2,1,2)
+#        ax1.plot(s_trace[:,0], s_trace[:,1], "g-")
+#        ax1.set_xlabel("Pole Angle")
+#        ax1.set_ylabel("Pole Angle Velocity")
+#        ax2.plot(s_trace[:,2], s_trace[:,3], "r-")
+#        ax2.set_xlabel("Cart Position")
+#        ax2.set_ylabel("Cart Velocity")        
+#        print s_trace.shape
+               
+        return errors[:i,:].T
+      
+    def parameter_traces(self, methods, n_samples=1000, seed=None, criterion="MSE"):
+
+        self._init_methods(methods)
+        
+        param = np.empty((n_samples,len(methods)) + self.theta0.shape)
+        param[0,:,:] = self.theta0
+        i = 1
+        while i < n_samples:
+            
+            for m in methods: m.reset_trace()
+            cur_seed = i*seed if seed is not None else None
+            for s, a, s_n, r in self.mdp.sample_transition(n_samples, 
+                                                           with_restart=False, 
+                                                           seed=cur_seed):
+                for k, m in enumerate(methods):
+                    if self.off_policy:
+                        cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
+                                                              self.behavior_policy, 
+                                                              self.target_policy)
+                    else:
+                        cur_theta = m.update_V(s, s_n, r)
+                    param[i,k] = cur_theta
+                i += 1
+                    
+                if i >= n_samples: break
+        return param      
+      
+    def episodic_error_traces(self, methods, n_eps=10000, error_every=1, n_samples=1000, seed=None, criterion="MSE"):
+
+        self._init_methods(methods)
+        err_f = self._init_error_fun(criterion)
+        errors = np.ones((n_eps,len(methods)))*np.inf
+        
+        for i in xrange(n_eps):
+            for m in methods: m.reset_trace()
+            cur_seed = i+n_samples*seed if seed is not None else None
+            for s, a, s_n, r in self.mdp.sample_transition(n_samples, 
+                                                           policy=self.behavior_policy,
+                                                           with_restart=False, 
+                                                           seed=cur_seed):
+                for k, m in enumerate(methods):
+                    if self.off_policy:
+                        cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
+                                                              self.behavior_policy, 
+                                                              self.target_pi)
+                    else:
+                        cur_theta = m.update_V(s, s_n, r)
+                    if i % error_every == 0:
+                        errors[int(i / error_every),k] = err_f(cur_theta)
+               
+        return errors.T
+        
+        
+        
+class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
     """
     A task to perform value function prediction of an mdp. It provides handy 
     methods to evaluate different algorithms on the same problem setting.
@@ -56,13 +234,6 @@ class LinearValuePredictionTask(object):
             raise AttributeError(name)
             
             
-    def _init_methods(self, methods):
-        for method in methods:
-            method.phi=self.phi
-            method.init_vals["theta"] = self.theta0
-            method.gamma = self.gamma
-            method.reset()
-            
     def _init_error_fun(self, criterion):
         if criterion is "MSE":
             err_f = measures.prepare_MSE(self.mu, self.mdp, self.phi, self.V_true)    
@@ -85,144 +256,79 @@ class LinearValuePredictionTask(object):
             err_o = measures.prepare_MSBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
             err_f = lambda x: np.sqrt(err_o(x))
         return err_f
+
+
+
+
+class LinearLQRValuePredictionTask(LinearValuePredictionTask):
+    """
+    A task to perform value function prediction of an mdp. It provides handy 
+    methods to evaluate different algorithms on the same problem setting.
+    """
+    
+    def __init__(self, mdp, gamma, phi, theta0, policy="linear", target_policy=None):
+        self.mdp = mdp
+        self.gamma = gamma
+        self.phi = phi
+        self.theta0 = theta0
+        if policy == "linear":
+            policy = mdp.linear_policy()
+        self.behavior_policy = policy 
+
+        if target_policy is not None:
+            self.off_policy = True
+            if target_policy == "linear":
+                target_policy = mdp.linear_policy()
+            self.target_policy = target_policy
+        else:
+            self.target_policy =policy
+            self.off_policy = False
         
-        
-    def min_error(self, methods, n_eps=10000, n_samples=1000, seed=None, criterion="MSE"):
-
-        self._init_methods(methods)
-        err_f = self._init_error_fun(criterion)
-        min_errors = np.ones(len(methods))*np.inf
-        
-        for i in xrange(n_eps):
-            for m in methods: m.reset_trace()
-            cur_seed = i+n_samples*seed if seed is not None else None
-            for s, a, s_n, r in self.mdp.sample_transition(n_samples, 
-                                                           with_restart=False, 
-                                                           seed=cur_seed):
-                for k, m in enumerate(methods):
-                    if self.off_policy:
-                        cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
-                                                              self.behavior_policy, 
-                                                              self.target_policy)
-                    else:
-                        cur_theta = m.update_V(s, s_n, r)
-                    min_errors[k] = min(min_errors[k], err_f(cur_theta))
-               
-
-        return min_errors
-
-    def avg_error_traces(self, methods, n_indep, n_eps=None, **kwargs):
-
-        res = []
-        with ProgressBar() as p:
+    def __getattr__(self, name):
+        """
+        some attribute such as state distribution or the true value function
+        are very costly to compute, so they are only evaluated, if really needed
+        """
+        if name is "V_true":            
+            self.V_true = dynamic_prog.estimate_V_LQR(self.mdp, theta_policy=self.target_policy.theta, gamma=self.gamma)
+            return self.V_true
+        elif name is "mu":
+            self.mu = self.mdp.state_samples(self.phi, n_iter=200, n_restarts=20, 
+                                        policy=self.target_policy, seed=None,  verbose=False)
+            return self.mu
+        elif name is "mu_phi_full":
+            self.mu_phi_full = util.apply_rowise(self.mdp.full_phi, self.mu)
+            return self.mu_phi_full
+        elif name is "mu_phi":
+            self.mu_phi = util.apply_rowise(self.phi, self.mu)
+            return self.mu_phi
+#        elif name is "mu_beh_phi":
+#            self.mu_phi = self.mdp.stationary_feature_distribution(self.phi, n_iter=100, n_restarts=10, 
+#                                        policy=self.behavior_policy, seed=50, n_jobs=-2,
+#                                        parallel=True, verbose=False)
+#            return self.mu_phi
+        else:
+            raise AttributeError(name)
             
-            for seed in range(n_indep):
-                p.update(seed, n_indep, "{} of {} seeds".format(seed, n_indep))
-                kwargs['seed']=seed
-                if n_eps is None:
-                    res.append(self.ergodic_error_traces(methods, **kwargs))
-                else:
-                    res.append(self.episodic_error_traces(methods, n_eps=n_eps, **kwargs))
-        res = np.array(res).swapaxes(0,1)
-        return np.mean(res, axis=1), np.std(res, axis=1), res
-
-    def deterministic_error_traces(self, methods, n_samples, criterion="MSPBE"):
-        
-        self._init_methods(methods)
-        err_f = self._init_error_fun(criterion)
-        errors = np.ones((len(methods), n_samples))*np.inf
-        for m in methods:
-            m.init_deterministic(self)
-
-        for i in xrange(n_samples):
-            for j,m in enumerate(methods):
-                cur_theta = m.deterministic_update()
-                errors[j,i] = err_f(cur_theta)
-        return errors
-
-    def deterministic_parameter_traces(self, methods, n_samples, criterion="MSPBE"):
-        
-        self._init_methods(methods)
-        err_f = self._init_error_fun(criterion)
-        param = np.ones((len(methods), n_samples) + self.theta0.shape)*np.inf
-        for m in methods:
-            m.init_deterministic(self)
-
-        for i in xrange(n_samples):
-            for j,m in enumerate(methods):
-                cur_theta = m.deterministic_update()
-                param[j,i,:] = cur_theta
-        return param
-
-    def ergodic_error_traces(self, methods, n_samples=1000, seed=None, criterion="MSE"):
-
-        self._init_methods(methods)
-        err_f = self._init_error_fun(criterion)
-        errors = np.ones((n_samples,len(methods)))*np.inf
-        
-        for m in methods: m.reset_trace()
-        i=0
-        for s, a, s_n, r in self.mdp.sample_transition(n_samples, 
-                                                       with_restart=True, 
-                                                       seed=seed):
-            for k, m in enumerate(methods):
-                if self.off_policy:
-                    cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
-                                                          self.behavior_policy, 
-                                                          self.target_policy)
-                else:
-                    cur_theta = m.update_V(s, s_n, r)
-                errors[i,k] = err_f(cur_theta)
-            i += 1
-               
-        return errors.T
-      
-    def parameter_traces(self, methods, n_samples=1000, seed=None, criterion="MSE"):
-
-        self._init_methods(methods)
-        
-        param = np.empty((n_samples,len(methods)) + self.theta0.shape)
-        param[0,:,:] = self.theta0
-        i = 1
-        while i < n_samples:
             
-            for m in methods: m.reset_trace()
-            cur_seed = i*seed if seed is not None else None
-            for s, a, s_n, r in self.mdp.sample_transition(n_samples, 
-                                                           with_restart=False, 
-                                                           seed=cur_seed):
-                for k, m in enumerate(methods):
-                    if self.off_policy:
-                        cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
-                                                              self.behavior_policy, 
-                                                              self.target_policy)
-                    else:
-                        cur_theta = m.update_V(s, s_n, r)
-                    param[i,k] = cur_theta
-                i += 1
-                    
-                if i >= n_samples: break
-        return param      
-      
-    def episodic_error_traces(self, methods, n_eps=10000, n_samples=1000, seed=None, criterion="MSE"):
 
-        self._init_methods(methods)
-        err_f = self._init_error_fun(criterion)
-        errors = np.ones((n_eps,len(methods)))*np.inf
-        
-        for i in xrange(n_eps):
-            for m in methods: m.reset_trace()
-            cur_seed = i+n_samples*seed if seed is not None else None
-            for s, a, s_n, r in self.mdp.sample_transition(n_samples, 
-                                                           with_restart=False, 
-                                                           seed=cur_seed):
-                for k, m in enumerate(methods):
-                    if self.off_policy:
-                        cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
-                                                              self.behavior_policy, 
-                                                              self.target_pi)
-                    else:
-                        cur_theta = m.update_V(s, s_n, r)
-                    errors[i,k] = err_f(cur_theta)
-               
-        return errors.T
+
+    def _init_error_fun(self, criterion):
+        if criterion is "MSE":
+            err_f = measures.prepare_MSE(self.mu_phi_full, self.mdp, self.phi, self.V_true)    
+        elif criterion is "RMSE":
+            err_o = measures.prepare_MSE(self.mu_phi_full, self.mdp, self.phi, self.V_true)  
+            err_f = lambda x: np.sqrt(err_o(x))
+        elif criterion is "MSPBE":
+            err_f = measures.prepare_MSPBE((self.mu_phi_full, self.mu_phi), self.mdp, self.phi, self.gamma, self.target_policy)
+        elif criterion is "MSBE":
+            err_f = measures.prepare_MSBE((self.mu_phi_full, self.mu_phi), self.mdp, self.phi, self.gamma, self.target_policy)
+        elif criterion is "RMSPBE":
+            err_o = measures.prepare_MSPBE((self.mu_phi_full, self.mu_phi), self.mdp, self.phi, self.gamma, self.target_policy)
+            err_f = lambda x: np.sqrt(err_o(x))
+        elif criterion is "RMSBE":
+            err_o = measures.prepare_MSBE((self.mu_phi_full, self.mu_phi), self.mdp, self.phi, self.gamma, self.target_policy)
+            err_f = lambda x: np.sqrt(err_o(x))
+        elif criterion is "MACE":
+            err_f =  lambda x: np.sum(np.abs(self.phi.retransform(x)-self.V_true))
+        return err_f

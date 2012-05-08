@@ -8,8 +8,112 @@ Created on Tue Dec 20 21:04:24 2011
 """
 import mdp
 import numpy as np
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
 
+class MiniLQMDP(mdp.LQRMDP):
+    """
+    toy LQR MDP
+    """
 
+    def __init__(self, dt= .01, sigma=0.1):
+        """
+        mass: point mass of the pendulum
+        length: length of the stick / pendulum
+        mu: friction coefficient
+        dt: time step
+        """
+        A = np.array([[1., dt],
+                  [0., 1.]])
+        B = np.array([0., dt]).reshape(2,1)
+        Q = np.diag([-1., 0.])
+        #terminal_f = lambda x: np.abs(x[0]) > 10
+        
+        terminal_f = lambda x: False
+        R = np.ones((1,1))*(-1)
+
+        mdp.LQRMDP.__init__(self, A, B, Q, R, sigma, terminal_f=terminal_f, 
+                            start_f=lambda : np.array([0.0001, 0]))
+
+class PoleBalancingMDP(mdp.LQRMDP):
+    """
+    Linear Quadratic MDP which models the pole balancing task 
+    i.e. 2D inverted pendulum linearly approximated around the
+    balance point.
+    
+        S = [\alpha, \dot \alpha, x, \dot x]
+        A = [\ddot x]
+        
+    \alpha is the angle of the pendulum.
+    x is the position of the cart / hand 
+    """
+
+    def __init__(self, mass=1., length=5., mu=0.01, dt= .01, sigma=0.):
+        """
+        mass: point mass of the pendulum
+        length: length of the stick / pendulum
+        mu: friction coefficient
+        dt: time step
+        """
+        self.length = length
+        self.dt = dt
+        g = 9.81
+        A = np.array([[1., dt, 0, 0],
+                  [g/length, 1 - (mu*dt)/mass/length/length, 0 ,0],
+                  [0., 0, 1, dt],
+                  [0, 0, 0, 1]])
+        B = np.array([0., dt/length, 0, dt]).reshape(4,1)
+        Q = np.diag([-100., 0., -1, 0])
+        #terminal_f = lambda x: np.abs(x[0]) > 10
+        
+        terminal_f = lambda x: False
+        R = np.ones((1,1))*(-0.1)
+
+        mdp.LQRMDP.__init__(self, A, B, Q, R, sigma, terminal_f=terminal_f, 
+                            start_f=lambda : np.array([0.0001, 0, 0, 0]))
+                            
+    def animate_trace(self, state_trace, action_trace=None):
+        fig = plt.figure()
+        off = np.max(np.abs(state_trace[:,2])) + self.length
+        ax = fig.add_subplot(111, autoscale_on=False, xlim=(-off, off), ylim=(-1, self.length *1.1))
+        ax.grid()
+        line, = ax.plot([], [], 'o-', lw=2)
+        time_template = 'time = %.1fs'
+        time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)    
+        
+        psi_template = r'$\psi$ = %.2g'
+        psi_text = ax.text(0.05, 0.8, '', transform=ax.transAxes)
+        if action_trace is not None:
+            line_a, = ax.plot([], [], 'r-*', lw=2)
+        
+        def init():
+            line.set_data([], [])
+            time_text.set_text('')
+            psi_text.set_text('')
+            
+            if action_trace is not None:
+                line_a.set_data([], [])
+                return line, line_a, time_text, psi_text
+            return line, time_text, psi_text
+
+        def anim(i):
+            thisx = [state_trace[i,2],state_trace[i,2] + self.length * np.sin(10*state_trace[i,0])]
+            thisy = [0,self.length * np.cos(10*state_trace[i,0])]
+
+            line.set_data(thisx, thisy)
+            time_text.set_text(time_template%(i*self.dt))
+            
+            psi_text.set_text(psi_template%(state_trace[i,0]))
+            if action_trace is not None:
+                line_a.set_data([0., action_trace[i,0]/np.max(np.abs(action_trace))], [-0.9, -0.9])
+                return line, line_a, time_text, psi_text
+            return line, time_text, psi_text    
+        
+
+        ani = animation.FuncAnimation(fig, anim, np.arange(state_trace.shape[0]),
+                                      interval=1000.*self.dt*10, blit=True, init_func=init)
+        plt.show()
+                                      
 class RandomMDP(mdp.MDP):
     """ 
     Random MDP with uniformly distributed transition probabilities and

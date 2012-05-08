@@ -9,7 +9,7 @@ import td
 import examples
 import numpy as np
 import matplotlib.pyplot as plt
-from task import LinearValuePredictionTask
+from task import LinearDiscreteValuePredictionTask
 
 n = 7
 beh_pi = np.ones((n + 1, 2))
@@ -27,7 +27,7 @@ n_indep = 20
 methods = []
 
 
-task = LinearValuePredictionTask(mdp, 0.99, mdp.phi, 
+task = LinearDiscreteValuePredictionTask(mdp, 0.99, mdp.phi, 
                                        np.asarray(n * [1.] + [10., 1.]),
                                        policy=beh_pi, target_policy=target_pi)
 

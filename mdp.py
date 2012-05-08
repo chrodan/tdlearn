@@ -7,8 +7,8 @@ Created on Fri Dec  9 19:01:41 2011
 @author: Christoph Dann <cdann@cdann.de>
 """
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
+from joblib import Parallel, delayed
 def _multinomial_sample(n, p):
     """
     draw n random samples of integers with probabilies p
@@ -28,6 +28,181 @@ def _multinomial_sample(n, p):
     S = np.add.reduce(mask, 2, dtype='uint8').squeeze()
     return S
 
+def test_lqrmdp():
+    A = np.eye(2)
+    B = np.eye(2)*0.5
+    Q = np.eye(2)
+    R = np.zeros((2,2))
+    uut = LQRMDP(A,B,Q,R, 3)
+    sc = []
+    for s in uut.sample_transition(1000000):
+        sc.append(s[0])
+    d = np.vstack(tuple(sc))
+    plt.plot(d[:,0], d[:,1], "o-")
+    print d.shape
+    plt.show()
+    
+def test_pole_balancing():
+    """
+    S = [\alpha, \dot \alpha, x, \dot x]
+    A = [\ddot x]
+    """
+    dt = .01
+    m = 1.
+    l = 2.
+    g = 9.81
+    mu = 0.01
+    A = np.array([[1., dt, 0, 0],
+                  [g/l, 1 - (mu*dt)/m/l/l, 0 ,0],
+                  [0., 0, 1, dt],
+                  [0, 0, 0, 1]])
+    B = np.array([0., dt/l, 0, dt]).reshape(4,1)
+    Q = np.diag([-2., -.5, -0.1, 0])
+    terminal_f = lambda x: np.abs(x[0]) > 1
+    R = np.zeros((1,1))
+    sigma = np.zeros((4,4))
+    sigma[-1,-1] = 0.1
+    uut = LQRMDP(A,B,Q,R, sigma, terminal_f=terminal_f, start_f=lambda : np.array([0.0001, 0, 0, 0]))
+    sc = []
+    for s in uut.sample_transition(1000, policy=lambda x: np.array([0])):
+        sc.append(s[0])
+    d = np.vstack(tuple(sc))
+    plt.figure()    
+    plt.plot(d[:,0], "b-")
+    from dynamic_prog import solve_LQR
+    theta, P =  solve_LQR(uut, n_iter=int(1e5))
+    sc = []
+    for s in uut.sample_transition(1000, policy=lambda x: np.dot(theta, x)):
+        sc.append(s[0])
+    d = np.vstack(tuple(sc))
+    plt.plot(d[:,0], "r-")
+    plt.show()
+
+class LQRMDP(object):
+    """
+        Linear Quadratic MDP with continuous states and actions
+        but time discrete transitions
+        
+    """
+    def __init__(self, A, B, Q, R, Sigma, terminal_f=lambda x: False, start_f="zero"):
+        """The MDP is defined by the state transition kernel:
+                s' ~ Normal(As + Ba, Sigma)
+            and the reward
+                r(s,a) = s^T Q s + a^T R a
+            terminal_f: python function S -> Bool that returns True exactly if
+                s is a terminal state
+            start_f: python generator that yields start states S0
+        """
+        
+        self.dim_S = A.shape[0]
+        self.dim_A = B.shape[1]
+        self.A = A
+        self.B = B
+        self.Q = Q
+        self.R = R
+        if start_f is "zero":
+            start_f = lambda: np.zeros((self.dim_S,))
+        self.start_f = start_f
+        self.terminal_f = terminal_f
+        if isinstance(Sigma, (float, int, long)):
+            self.Sigma = np.eye(self.dim_S) * float(Sigma)
+        else:
+            assert Sigma.shape == (self.dim_S, self.dim_S)
+            self.Sigma = Sigma
+        assert A.shape[1] == self.dim_S
+        assert B.shape[0] == self.dim_S
+        
+    def state_samples(self, phi, n_iter=1000, n_restarts=100, 
+                                        policy="linear", seed=None,  verbose=False):
+        result = np.empty((n_restarts * n_iter, self.dim_S))
+        k=0
+        for i in xrange(n_restarts):
+            for s,a,s_n, r in self.sample_transition(n_iter, policy, with_restart=False):
+                result[k,:] = s
+                k+=1
+        return result[:k,:]
+            
+      
+    def stationary_feature_distribution(self, phi, n_iter=1000, n_restarts=100, 
+                                        policy="linear", seed=None,  verbose=False):
+        n_feat = len(phi(np.zeros(self.dim_S)))
+        result = np.empty((n_restarts * n_iter, n_feat))
+        k=0
+        for i in xrange(n_restarts):
+            for s,a,s_n, r in self.sample_transition(n_iter, policy, with_restart=False):
+                result[k,:] = phi(s)
+                k+=1
+        return result
+            
+        
+        
+    def sample_transition(self, max_n, policy="linear", seed=None, with_restart = False):
+        """
+        generator that samples from the MDP
+        be aware that this chains can be infinitely long
+        the chain is restarted if the policy changes
+
+            max_n: maximum number of samples to draw
+
+            policy: python function S -> A that gets the current state and 
+                returns the action to take
+                
+            seed: optional seed for the random generator to generate
+                deterministic samples
+                
+            returns a transition tuple (X_n, A, X_n+1, R)
+        """
+
+        if seed is not None:
+            np.random.seed(seed)
+        if policy is "linear":
+            policy = self.linear_policy()
+
+        i=0
+        while i < max_n:        
+            s0 = self.start_f()
+            while i < max_n:  
+                if self.terminal_f(s0):
+                    if with_restart: 
+                        break
+                    else:
+                        return
+                a = policy(s0)
+                mean = np.dot(self.A,s0) + np.dot(self.B,a)
+                s1 = np.random.multivariate_normal(mean, self.Sigma)
+                #import ipdb; ipdb.set_trace()
+                r = np.dot(s0.T, np.dot(self.Q, s0)) + np.dot(a.T, np.dot(self.R, a))
+                yield (s0, a, s1, r)
+                i+=1
+                s0 = s1
+
+    def linear_policy(self, theta=None, noise=None):
+        if theta is None:
+            theta = np.zeros((self.dim_A,self.dim_S))
+        if noise is None:
+            noise = np.eye(self.dim_A)
+        a = lambda x: np.random.multivariate_normal(np.array(np.dot(theta, x)).flatten(), noise)
+        a.theta = theta
+        return a
+                  
+        
+    def linear_state_policy(self, theta):
+        assert(len(theta) == self.dim_S)
+        return lambda x: np.dot(theta, x)
+        
+    def full_phi(self, state):
+        a = np.outer(state, state)
+        return a.flatten()
+        
+    full_phi.retransform = lambda x: x.reshape(int(np.sqrt(len(x))), int(np.sqrt(len(x))))
+    full_phi.transform = lambda x: x.flatten()
+    
+    def impoverished_phi(self, state):
+        return state * state
+
+    impoverished_phi.retransform = lambda x: np.diag(x)
+    impoverished_phi.transform = lambda x: np.diag(x)
+    
 
 class MDP(object):
     """
@@ -73,7 +248,7 @@ class MDP(object):
         assert np.all(self.P0 >= 0)
         assert np.all(self.P0 <= 1)
 
-         # transition kernel testing
+        # transition kernel testing
         self.P = np.asanyarray(state_transition_kernel)
         assert np.all(self.P >= 0)
         assert np.all(self.P <= 1)

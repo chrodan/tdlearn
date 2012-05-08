@@ -10,7 +10,7 @@ Experiment: search for the optimal lambda value of linear TD learning
 
 import td
 import examples
-from task import LinearValuePredictionTask
+from task import LinearDiscreteValuePredictionTask
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -19,7 +19,7 @@ import matplotlib.transforms as transforms
 n = 19
 mdp =examples.BoyanChain(n,4)
 phi=mdp.phi
-task = LinearValuePredictionTask(mdp, 1, mdp.phi, np.zeros(4))
+task = LinearDiscreteValuePredictionTask(mdp, 1, mdp.phi, np.zeros(4))
 
 
 fig = plt.figure()

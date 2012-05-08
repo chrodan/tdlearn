@@ -9,7 +9,7 @@ Created on Mon Jan 30 21:06:12 2012
 
 import td
 import examples
-from task import LinearValuePredictionTask
+from task import LinearDiscreteValuePredictionTask
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -19,7 +19,7 @@ n_iter = 100
 n_indep = 200
 mdp = examples.BoyanChain(n, n_feat)
 phi=mdp.phi
-task = LinearValuePredictionTask(mdp, 1, phi, np.zeros(n_feat))
+task = LinearDiscreteValuePredictionTask(mdp, 1, phi, np.zeros(n_feat))
 
 # define the methods to examine          
 gtd2 = td.GTD2(alpha=0.5, beta=0.5, phi=phi)

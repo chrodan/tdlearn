@@ -24,7 +24,7 @@ target_pi[:, 1] = 1
 mdp = examples.BairdStarExample(n)
 phi = mdp.phi
 n_iter = 700
-n_indep = 200
+n_indep = 50
 methods = []
 
 
@@ -32,21 +32,10 @@ task = LinearDiscreteValuePredictionTask(mdp, 0.99, mdp.phi,
                                        np.asarray(n * [1.] + [10., 1.]),
                                        policy=beh_pi, target_policy=target_pi)
 
-for alpha, mu, color in [(0.01, 10, "red"), (0.04, 0.5, "orange")]:
-
-    m = td.TDC(alpha=alpha, beta=mu*alpha, phi=phi)        
-    m.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)        
-    m.color = color            
-    methods.append(m)   
-    
-for alpha, beta, c, color in [(0.52, 0.51, 0.07, "black"), (0.6, 0.51, 0.35, "cyan")]:
-    
-    m = td.TDC(alpha=td.RMalpha(c, alpha), beta=td.RMalpha(c, beta), phi=phi)        
-    m.name = r"TDC $\alpha={c}t^{{{}}}$ $\beta={c}t^{{{}}}$".format(alpha, beta, c=c)        
-    m.color = color            
-    methods.append(m)
-        
-for alpha, color in [(0.01, "#00AA00"), (0.03, "#0000ff")]:
+for alpha, color in [(0.01, "#00AA00"), 
+                     (0.03, "#0000ff"),
+                     (0.1, "#ff0000"),
+                     (0.0003, "#ff00ff")]:
     m = td.LinearTDLambda(alpha=alpha, phi=phi, lam=0)
     m.name = r"TD(0) $\alpha$={}".format(alpha)    
     m.color = color                                
