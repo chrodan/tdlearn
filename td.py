@@ -321,6 +321,76 @@ class GeriTDC(TDC):
         self._toc()
         return theta
 
+#class GPTD(ValueFunctionPredictor):
+#    """
+#        Gaussian Process Temporal Difference Learning implementation
+#        with online sparsification
+#        for details see Engel, Y., Mannor, S., & Meir, R. (ICML 2003). 
+#            Bayes Meets Bellman: The Gaussian Process Approach To 
+#            Temporal Difference Learning.
+#            Table 1
+#    """
+#
+#    def __init__(self, kernel, nu=1, sigma0=0.05, **kwargs):
+#        """
+#            kernel: a mercer kernel function as a python function
+#                that takes 2 arguments, i.e. gauss kernel
+#            nu: threshold for sparsification test
+#        """
+#        ValueFunctionPredictor.__init__(self, **kwargs)
+#        self.nu = nu
+#        self.sigma0 = sigma0
+#        self.kernel = np.frompyfunc(kernel,2,1)
+#        self.init_vals["D"] = []
+#        self.init_vals["C"] = 0
+#        self.init_vals["theta"] = 0
+#        self.init_vals["Kinv"] = np.empty(())
+#        self.reset()
+#
+#
+#    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
+#        """
+#            rho: weight for this sample in case of off-policy learning
+#        """
+#        
+#
+#        self._tic()        
+#        # first observation?
+#        if len(self.D) == 0:
+#            self.D.append(s0)
+#            self.Kinv = np.matrix([[1./ self.kernel(s0, s0)]])
+#            self.K = np.matrix([[self.kernel(s0, s0)]])
+#
+#        if theta is None: theta=self.theta
+#        k = self.kernel(self.D,s1)
+#        a = self.Kinv * k
+#        eta = self.kernel(s1, s1) - float(k.T * a)
+#
+#        # sparsification test        
+#        if eta > self.nu:
+#            self.D.append(s1)
+#            
+#            # update K^-1
+#            Kinv = np.matrix(np.ones((self.Kinv.shape[0]+1,self.Kinv.shape[1]+1)))
+#            Kinv[:-1, :-1] = self.Kinv * eta + a*a.T
+#            Kinv[-1,:-1] = -a.T
+#            Kinv[:-1,-1] = -a
+#            self.Kinv = Kinv / eta
+#                         
+#            print "inverted Kernel matrix:", self.Kinv
+#            
+#            theta 
+#        else:
+#            dk = self.kernel(D,s0) - self.gamma * self.kernel(D, s1)
+#            h  = self.Kinv * self.kernel(self.D, s0) - self.gamma * a            
+#            c =  - h
+#            theta += c / s * (dk * theta - r)
+#        self.theta = theta
+#        self._toc()
+#        return theta
+
+        
+
 class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
     """
         recursive Implementation of Least Squared Temporal Difference Learning

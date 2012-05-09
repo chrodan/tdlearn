@@ -70,7 +70,7 @@ def prepare_LQR_MSPBE(mu_samples, mdp, phi, gamma=1, policy="uniform"):
     Phi = np.matrix(mu_phi)
     Pi = np.linalg.pinv(Phi.T * Phi) * Phi.T
     T = bellman_operator_LQR(mdp, gamma, policy)
-    print "Compute MSPBE from",mu.shape[0],"samples"
+    #print "Compute MSPBE from",mu.shape[0],"samples"
     def _MSPBE(theta):
         V = np.matrix((theta * np.asarray(Phi)).sum(axis=1)).T
         #import ipdb; ipdb.set_trace()
@@ -86,7 +86,7 @@ def prepare_LQR_MSBE(mu_samples, mdp, phi, gamma=1, policy="uniform"):
     Phi = np.matrix(mu_phi)
     Phi2 = np.matrix(mu)
     T = bellman_operator_LQR(mdp, gamma, policy)
-    print "Compute MSBE from",mu.shape[0],"samples"
+    #print "Compute MSBE from",mu.shape[0],"samples"
     def _MSPBE(theta):
         V = np.array((theta * np.asarray(Phi)).sum(axis=1))
         proj_theta = np.array(T(phi.retransform(theta))).flatten()

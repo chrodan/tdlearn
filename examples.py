@@ -59,7 +59,7 @@ class PoleBalancingMDP(mdp.LQRMDP):
         self.dt = dt
         g = 9.81
         A = np.array([[1., dt, 0, 0],
-                  [g/length, 1 - (mu*dt)/mass/length/length, 0 ,0],
+                  [g/length, 1, 0 ,0],
                   [0., 0, 1, dt],
                   [0, 0, 0, 1]])
         B = np.array([0., dt/length, 0, dt]).reshape(4,1)

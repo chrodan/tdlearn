@@ -96,6 +96,7 @@ mean, std, raw = task.avg_error_traces(methods, n_indep=1,
                                        n_samples=l, error_every=error_every,
                                        criterion="RMSPBE",
                                        verbose=True)
+print task.parameter_search(methods, s_samples=l, seed=0)
 
 plt.figure()
 plt.ylabel(r"$\sqrt{MSPBE}$")

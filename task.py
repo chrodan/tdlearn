@@ -134,9 +134,34 @@ class LinearValuePredictionTask(object):
 #        print s_trace.shape
                
         return errors[:i,:].T
-      
-    def parameter_traces(self, methods, n_samples=1000, seed=None, criterion="MSE"):
 
+    def parameter_search(self, methods, n_eps=None, n_samples=1000, seed=None):
+
+        self._init_methods(methods)
+        param = [None] * len(methods)
+        if n_eps is None: n_eps=1
+            
+        for s in range(n_eps):
+            cur_seed = s*seed if seed is not None else None
+            for m in methods: m.reset_trace()
+                
+            for s, a, s_n, r in self.mdp.sample_transition(n_samples, policy=self.behavior_policy,
+                                                               with_restart=False, 
+                                                               seed=cur_seed):
+                for k, m in enumerate(methods):
+                    if self.off_policy:
+                        cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
+                                                                  self.behavior_policy, 
+                                                                  self.target_policy)
+                    else:
+                        cur_theta = m.update_V(s, s_n, r)
+                    param[k] = cur_theta
+                
+        return param 
+    
+    def parameter_traces(self, methods, n_samples=1000, seed=None):
+        # deprecated
+        pass
         self._init_methods(methods)
         
         param = np.empty((n_samples,len(methods)) + self.theta0.shape)
@@ -146,7 +171,7 @@ class LinearValuePredictionTask(object):
             
             for m in methods: m.reset_trace()
             cur_seed = i*seed if seed is not None else None
-            for s, a, s_n, r in self.mdp.sample_transition(n_samples, 
+            for s, a, s_n, r in self.mdp.sample_transition(n_samples, policy=self.behavior_policy,
                                                            with_restart=False, 
                                                            seed=cur_seed):
                 for k, m in enumerate(methods):
@@ -166,7 +191,7 @@ class LinearValuePredictionTask(object):
 
         self._init_methods(methods)
         err_f = self._init_error_fun(criterion)
-        errors = np.ones((n_eps,len(methods)))*np.inf
+        errors = np.ones((int(np.ceil(n_samples/error_every)),len(methods)))*np.inf
         
         for i in xrange(n_eps):
             for m in methods: m.reset_trace()
