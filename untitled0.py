@@ -9,8 +9,8 @@ from task import LinearLQRValuePredictionTask
 gamma=0.9
 sigma = np.zeros((4,4))
 sigma[-1,-1] = 0.01
-
-dt = 0.1
+    
+dt = 0.1    
 #mdp = examples.MiniLQMDP(dt=dt)
 mdp = examples.PoleBalancingMDP(sigma=sigma, dt=dt)
 
@@ -26,17 +26,17 @@ policy = mdp.linear_policy(theta_p)
 theta0 =  10*np.ones(n_feat)
 #theta0 =  0.*np.ones(n_feat)
 
-task = LinearLQRValuePredictionTask(mdp, gamma, phi, theta0, policy=policy, normalize_phi=True)
+task = LinearLQRValuePredictionTask(mdp, gamma, phi, theta0, policy=policy, normalize_phi=True)   
 task.seed=0
 #phi = task.phi
 print "V_true", task.V_true
 print "theta_true"
 theta_true = task.V_true
 theta_true = theta_true[np.triu_indices_from(theta_true)] * np.std(util.apply_rowise(phi,task.mu), axis=0)
-task.theta0 = theta_true
+
 methods = []
 
-#task.theta0 = theta_true
+task.theta0 = theta_true
 
 #for alpha in [0.01, 0.005]:
 #    for mu in [0.05, 0.1, 0.2, 0.01]:
@@ -60,48 +60,46 @@ methods.append(gtd)
 #for alpha in [0.005, 0.01, 0.02, 0.03, 0.04]:
 alpha = .01
 td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
-td0.name = r"TD(0) $\alpha$={}".format(alpha)
+td0.name = r"TD(0) $\alpha$={}".format(alpha)    
 td0.color = "k"
 methods.append(td0)
 
 #for alpha in [0.005, 0.01, 0.02]:
 #    for mu in [0.01, 0.1]:
-for alpha, mu in [(.01,0.1)]:
+for alpha, mu in [(.01,0.1)]:        
     tdc = td.TDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
-    tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
-    tdc.color = "b"
+    tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)   
+    tdc.color = "b"        
     methods.append(tdc)
 
 #methods = []
 #for eps in np.power(10,np.arange(-1,4)):
 eps=100
 lstd = td.LSTDLambda(lam=0, eps=eps, phi=phi, gamma=gamma)
-lstd.name = r"LSTD({}) $\epsilon$={}".format(0, eps)
-lstd.color = "g"
+lstd.name = r"LSTD({}) $\epsilon$={}".format(0, eps)    
+lstd.color = "g"        
 methods.append(lstd)
 #
-#methods = []
+#methods = []    
 #for alpha in [0.01, 0.02, 0.03]:
 #alpha = .2
-alpha=.02
+alpha=.02   
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
-rg.name = r"RG $\alpha$={}".format(alpha)
+rg.name = r"RG $\alpha$={}".format(alpha)    
 rg.color = "brown"
-methods.append(rg)
+methods.append(rg)    
+    
+l=10000
+error_every=100
 
-l=20000
-error_every=200
-
-mean, std, raw = task.avg_error_traces(methods, n_indep=3,
-    n_samples=l, error_every=error_every,
-    criterion="RMSBE",
-    verbose=True)
+mean, std, raw = task.ergodic_error_traces(methods, n_samples=l, error_every=error_every,
+                                       criterion="RMSBE")
 
 plt.figure(figsize=(18,12))
-plt.ylabel(r"$\sqrt{MSBE}$")
-plt.xlabel("Timesteps")
+plt.ylabel(r"$\sqrt{MSPBE}$")
+plt.xlabel("Timesteps")  
 
 for i, m in enumerate(methods):
     plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=10000/error_every, label=m.name)
 plt.legend()
-plt.show()
+plt.ylim(0.,1.)

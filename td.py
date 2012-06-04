@@ -321,33 +321,33 @@ class GeriTDC(TDC):
         self._toc()
         return theta
 
-#class GPTD(ValueFunctionPredictor):
-#    """
-#        Gaussian Process Temporal Difference Learning implementation
-#        with online sparsification
-#        for details see Engel, Y., Mannor, S., & Meir, R. (ICML 2003). 
-#            Bayes Meets Bellman: The Gaussian Process Approach To 
-#            Temporal Difference Learning.
-#            Table 1
-#    """
-#
-#    def __init__(self, kernel, nu=1, sigma0=0.05, **kwargs):
-#        """
-#            kernel: a mercer kernel function as a python function
-#                that takes 2 arguments, i.e. gauss kernel
-#            nu: threshold for sparsification test
-#        """
-#        ValueFunctionPredictor.__init__(self, **kwargs)
-#        self.nu = nu
-#        self.sigma0 = sigma0
-#        self.kernel = np.frompyfunc(kernel,2,1)
-#        self.init_vals["D"] = []
-#        self.init_vals["C"] = 0
-#        self.init_vals["theta"] = 0
-#        self.init_vals["Kinv"] = np.empty(())
-#        self.reset()
-#
-#
+class GPTD(ValueFunctionPredictor):
+    """
+        Gaussian Process Temporal Difference Learning implementation
+        with online sparsification
+        for details see Engel, Y., Mannor, S., & Meir, R. (ICML 2003). 
+            Bayes Meets Bellman: The Gaussian Process Approach To 
+            Temporal Difference Learning.
+            Table 1
+    """
+
+    def __init__(self, kernel, nu=1, sigma0=0.05, **kwargs):
+        """
+            kernel: a mercer kernel function as a python function
+                that takes 2 arguments, i.e. gauss kernel
+            nu: threshold for sparsification test
+        """
+        ValueFunctionPredictor.__init__(self, **kwargs)
+        self.nu = nu
+        self.sigma0 = sigma0
+        self.kernel = np.frompyfunc(kernel,2,1)
+        self.init_vals["D"] = []
+        self.init_vals["C"] = 0
+        self.init_vals["theta"] = 0
+        self.init_vals["Kinv"] = np.empty(())
+        self.reset()
+
+
 #    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
 #        """
 #            rho: weight for this sample in case of off-policy learning
@@ -357,17 +357,27 @@ class GeriTDC(TDC):
 #        self._tic()        
 #        # first observation?
 #        if len(self.D) == 0:
+#            first=True
 #            self.D.append(s0)
 #            self.Kinv = np.matrix([[1./ self.kernel(s0, s0)]])
 #            self.K = np.matrix([[self.kernel(s0, s0)]])
-#
+#            self.Hbar = None
+#            self.A = None            
+#        else:
+#            first=False
 #        if theta is None: theta=self.theta
 #        k = self.kernel(self.D,s1)
 #        a = self.Kinv * k
+#        
+#        
 #        eta = self.kernel(s1, s1) - float(k.T * a)
 #
+#        if first:
+#
+#
+#
 #        # sparsification test        
-#        if eta > self.nu:
+#        elif eta > self.nu:
 #            self.D.append(s1)
 #            
 #            # update K^-1
@@ -381,6 +391,11 @@ class GeriTDC(TDC):
 #            
 #            theta 
 #        else:
+#            da = self.Kinv * self.kernel(self.D, s0) - self.gamma * a
+#            da = da.reshape(1, -1)
+#            self.Hbar =np.vstack(self.Hbar, da)   
+#            self.A = np.vstack(self.A, a)  
+#            
 #            dk = self.kernel(D,s0) - self.gamma * self.kernel(D, s1)
 #            h  = self.Kinv * self.kernel(self.D, s0) - self.gamma * a            
 #            c =  - h
@@ -594,6 +609,7 @@ class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         self._tic()
         delta = r + self.gamma * np.dot(theta, f1) \
                                - np.dot(theta, f0)
+        #import ipdb; ipdb.set_trace()
         logging.debug("TD Learning Delta {}".format(delta))
         #print theta
         #print f0, f1

@@ -82,18 +82,18 @@ def prepare_LQR_MSPBE(mu_samples, mdp, phi, gamma=1, policy="uniform"):
     
 def prepare_LQR_MSBE(mu_samples, mdp, phi, gamma=1, policy="uniform"):
     """ Mean Squared Bellman Error """
-    mu, mu_phi = mu_samples 
-    Phi = np.matrix(mu_phi)
-    Phi2 = np.matrix(mu)
+    mu_phi_full, mu_phi = mu_samples
     T = bellman_operator_LQR(mdp, gamma, policy)
     #print "Compute MSBE from",mu.shape[0],"samples"
-    def _MSPBE(theta):
-        V = np.array((theta * np.asarray(Phi)).sum(axis=1))
-        proj_theta = np.array(T(phi.retransform(theta))).flatten()
-        V2 = np.array((proj_theta * np.asarray(Phi2)).sum(axis=1))
+    def _MSBE(theta):
+        V = np.array((theta * mu_phi).sum(axis=1))
+        proj_V = np.array(T(phi.retransform(theta))).flatten()
+        V2 = np.array((proj_V * mu_phi_full).sum(axis=1))
+        
+        #import ipdb; ipdb.set_trace()
         return np.mean((V-V2)**2)
     
-    return _MSPBE
+    return _MSBE
     
 def prepare_discrete_MSBE(mu, mdp, phi, gamma=1, policy="uniform"):
     
@@ -254,9 +254,10 @@ def bellman_operator_LQR(lqmdp, gamma, policy="uniform"):
     theta = np.matrix(policy.theta)
     A = np.matrix(lqmdp.A)
     B = np.matrix(lqmdp.B)
+    Sigma = np.matrix(lqmdp.Sigma)
     
     S = A+ B * theta
     C = Q + theta.T * R * theta
     #import ipdb; ipdb.set_trace()
-    return lambda V: C + gamma * S.T * V * S
+    return lambda V: C + gamma * (S.T * np.matrix(V) * S + np.trace(np.matrix(V)*Sigma))
     

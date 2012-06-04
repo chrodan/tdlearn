@@ -112,17 +112,24 @@ class LQRMDP(object):
         assert A.shape[1] == self.dim_S
         assert B.shape[0] == self.dim_S
         
-    def state_samples(self, phi, n_iter=1000, n_restarts=100, 
+    def samples(self, phi, n_iter=1000, n_restarts=100,
                                         policy="linear", seed=None,  verbose=False):
-        result = np.empty((n_restarts * n_iter, self.dim_S))
+        states = np.empty((n_restarts * n_iter, self.dim_S))
+        actions = np.empty((n_restarts * n_iter, self.dim_A))
+        rewards = np.empty((n_restarts * n_iter))
         k=0
         for i in xrange(n_restarts):
             for s,a,s_n, r in self.sample_transition(n_iter, policy, with_restart=False):
-                result[k,:] = s
+                states[k,:] = s
+                rewards[k] = r
+                actions[k,:] = a
                 k+=1
-        return result[:k,:]
-            
-      
+        return states[:k,:],actions[:k,:], rewards[:k]
+
+    def state_samples(self, phi, n_iter=1000, n_restarts=100,
+                policy="linear", seed=None,  verbose=False):
+        return self.samples(phi, n_iter, n_restarts, policy, seed, verbose)[0]
+
     def stationary_feature_distribution(self, phi, n_iter=1000, n_restarts=100, 
                                         policy="linear", seed=None,  verbose=False):
         n_feat = len(phi(np.zeros(self.dim_S)))
@@ -169,6 +176,7 @@ class LQRMDP(object):
                         return
                 a = policy(s0)
                 mean = np.dot(self.A,s0) + np.dot(self.B,a)
+
                 s1 = np.random.multivariate_normal(mean, self.Sigma)
                 #import ipdb; ipdb.set_trace()
                 r = np.dot(s0.T, np.dot(self.Q, s0)) + np.dot(a.T, np.dot(self.R, a))
@@ -180,7 +188,7 @@ class LQRMDP(object):
         if theta is None:
             theta = np.zeros((self.dim_A,self.dim_S))
         if noise is None:
-            noise = np.eye(self.dim_A)
+            noise = np.zeros((self.dim_A, self.dim_A))
         a = lambda x: np.random.multivariate_normal(np.array(np.dot(theta, x)).flatten(), noise)
         a.theta = theta
         return a
@@ -195,13 +203,29 @@ class LQRMDP(object):
         return a.flatten()
         
     full_phi.retransform = lambda x: x.reshape(int(np.sqrt(len(x))), int(np.sqrt(len(x))))
-    full_phi.transform = lambda x: x.flatten()
+
+    
+    def full_tri_phi(self, state):
+        iu1 = np.triu_indices(len(state))
+        a = np.outer(state, state)
+        a = a* (2-np.eye(len(state)))
+        return a[iu1]
+        
+    def k(p):
+        l = 1 if len(p) == 1 else (-1 + np.sqrt(1 + 8*len(p)))/2
+        iu = np.triu_indices(l)
+        il = np.tril_indices(l)
+        a = np.empty((l,l))
+        a[iu] = p
+        a[il] = a.T[il]
+        #a[np.eye(l)==0] *= .5
+        return a 
+    full_tri_phi.retransform = k
     
     def impoverished_phi(self, state):
         return state * state
 
     impoverished_phi.retransform = lambda x: np.diag(x)
-    impoverished_phi.transform = lambda x: np.diag(x)
     
 
 class MDP(object):

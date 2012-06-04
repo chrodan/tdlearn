@@ -13,7 +13,7 @@ from util.progressbar import ProgressBar
 import util
 from joblib import delayed, Parallel
 import matplotlib.pyplot as plt
-
+import copy
 class LinearValuePredictionTask(object):
     """ Base class for LQR and discrete case tasks """
     
@@ -51,18 +51,30 @@ class LinearValuePredictionTask(object):
 
         return min_errors
 
-    def avg_error_traces(self, methods, n_indep, n_eps=None, verbose=False, **kwargs):
+    def avg_error_traces(self, methods, n_indep, n_eps=None, verbose=False, n_jobs=1, **kwargs):
 
         res = []
-        with ProgressBar(enabled=verbose) as p:
-            
+        if n_jobs==1:
+            with ProgressBar(enabled=verbose) as p:
+                
+                for seed in range(n_indep):
+                    p.update(seed, n_indep, "{} of {} seeds".format(seed, n_indep))
+                    kwargs['seed']=seed
+                    if n_eps is None:
+                        res.append(self.ergodic_error_traces(methods, **kwargs))
+                    else:
+                        res.append(self.episodic_error_traces(methods, n_eps=n_eps, **kwargs))
+        else:
+            jobs = []
             for seed in range(n_indep):
-                p.update(seed, n_indep, "{} of {} seeds".format(seed, n_indep))
                 kwargs['seed']=seed
                 if n_eps is None:
-                    res.append(self.ergodic_error_traces(methods, **kwargs))
+                    jobs.append((LinearLQRValuePredictionTask.ergodic_error_traces,["", methods], kwargs))
+                    
                 else:
-                    res.append(self.episodic_error_traces(methods, n_eps=n_eps, **kwargs))
+                    kwargs["n_eps"] = n_eps
+                    jobs.append((LinearLQRValuePredictionTask.episodic_error_traces,[methods], kwargs))
+            res = Parallel(n_jobs=n_jobs, verbose=verbose)(jobs)
         res = np.array(res).swapaxes(0,1)
         return np.mean(res, axis=1), np.std(res, axis=1), res
 
@@ -291,10 +303,11 @@ class LinearLQRValuePredictionTask(LinearValuePredictionTask):
     methods to evaluate different algorithms on the same problem setting.
     """
     
-    def __init__(self, mdp, gamma, phi, theta0, policy="linear", target_policy=None):
+    def __init__(self, mdp, gamma, phi, theta0, policy="linear", target_policy=None, normalize_phi=False):
         self.mdp = mdp
         self.gamma = gamma
         self.phi = phi
+        self.seed = None
         self.theta0 = theta0
         if policy == "linear":
             policy = mdp.linear_policy()
@@ -308,7 +321,8 @@ class LinearLQRValuePredictionTask(LinearValuePredictionTask):
         else:
             self.target_policy =policy
             self.off_policy = False
-        
+        if normalize_phi:
+            self.phi = util.normalize_phi(phi, self.mu)
     def __getattr__(self, name):
         """
         some attribute such as state distribution or the true value function
@@ -317,9 +331,11 @@ class LinearLQRValuePredictionTask(LinearValuePredictionTask):
         if name is "V_true":            
             self.V_true = dynamic_prog.estimate_V_LQR(self.mdp, theta_policy=self.target_policy.theta, gamma=self.gamma)
             return self.V_true
+        elif name is "normalized_V_true":
+            return self.V_true * np.std(self.mu_phi_full).reshape(self.mdp.dim_S, self.mdp.dim_S)
         elif name is "mu":
-            self.mu = self.mdp.state_samples(self.phi, n_iter=200, n_restarts=20, 
-                                        policy=self.target_policy, seed=None,  verbose=False)
+            self.mu = self.mdp.state_samples(self.phi, n_iter=1000, n_restarts=5,
+                                        policy=self.target_policy, seed=self.seed,  verbose=False)
             return self.mu
         elif name is "mu_phi_full":
             self.mu_phi_full = util.apply_rowise(self.mdp.full_phi, self.mu)
@@ -354,6 +370,4 @@ class LinearLQRValuePredictionTask(LinearValuePredictionTask):
         elif criterion is "RMSBE":
             err_o = measures.prepare_MSBE((self.mu_phi_full, self.mu_phi), self.mdp, self.phi, self.gamma, self.target_policy)
             err_f = lambda x: np.sqrt(err_o(x))
-        elif criterion is "MACE":
-            err_f =  lambda x: np.sum(np.abs(self.phi.retransform(x)-self.V_true))
         return err_f
