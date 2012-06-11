@@ -6,6 +6,7 @@ Created on Sun Jan  1 18:42:16 2012
 """
 import numpy as np
 import mdp as mdpm
+import features
 
 def prepare_MSE(mu, mdp, phi, V_true):
     if isinstance(mdp, mdpm.LQRMDP):
@@ -66,15 +67,16 @@ def prepare_discrete_MSPBE(mu, mdp, phi, gamma=1, policy="uniform"):
     
 def prepare_LQR_MSPBE(mu_samples, mdp, phi, gamma=1, policy="uniform"):
     """ Mean Squared Projected Bellman Error """
-    mu, mu_phi = mu_samples 
+    mu_phi_full, mu_phi = mu_samples 
     Phi = np.matrix(mu_phi)
-    Pi = np.linalg.pinv(Phi.T * Phi) * Phi.T
+    Pi = Phi * np.linalg.pinv(Phi.T * Phi) * Phi.T
     T = bellman_operator_LQR(mdp, gamma, policy)
     #print "Compute MSPBE from",mu.shape[0],"samples"
     def _MSPBE(theta):
         V = np.matrix((theta * np.asarray(Phi)).sum(axis=1)).T
         #import ipdb; ipdb.set_trace()
-        v = np.asarray(V - Phi * Pi * mu * T(phi.retransform(theta)).flatten().T)
+        theta_trans = features.squared_tri().param_forward(*T(*phi.param_back(theta)))
+        v = np.asarray(V - Pi * np.matrix(mu_phi_full) * np.matrix(theta_trans).T)
         
         return np.mean(v**2)
     
@@ -87,8 +89,8 @@ def prepare_LQR_MSBE(mu_samples, mdp, phi, gamma=1, policy="uniform"):
     #print "Compute MSBE from",mu.shape[0],"samples"
     def _MSBE(theta):
         V = np.array((theta * mu_phi).sum(axis=1))
-        proj_V = np.array(T(phi.retransform(theta))).flatten()
-        V2 = np.array((proj_V * mu_phi_full).sum(axis=1))
+        theta_trans = features.squared_tri().param_forward(*T(*phi.param_back(theta)))
+        V2 = np.array((theta_trans * mu_phi_full).sum(axis=1))
         
         #import ipdb; ipdb.set_trace()
         return np.mean((V-V2)**2)
@@ -240,9 +242,9 @@ def bellman_operator(mdp, gamma, policy="uniform"):
 def bellman_operator_LQR(lqmdp, gamma, policy="uniform"):    
     """
     returns a the bellman operator of a given LQR MRP (MDP with policy)
-    as a python function which takes the value function s^T P s represented as a numpy
+    as a python function which takes the value function s^T P s + b represented as a numpy
     aquared array P
-        T(P) = R + theta_p^T Q theta_p + gamma * (A + B theta_p)^T P (A + B theta_p)
+        T(P,b) = R + theta_p^T Q theta_p + gamma * (A + B theta_p)^T P (A + B theta_p), gamma * (b + tr(P * Sigma))
     
     """
 
@@ -259,5 +261,9 @@ def bellman_operator_LQR(lqmdp, gamma, policy="uniform"):
     S = A+ B * theta
     C = Q + theta.T * R * theta
     #import ipdb; ipdb.set_trace()
-    return lambda V: C + gamma * (S.T * np.matrix(V) * S + np.trace(np.matrix(V)*Sigma))
+    def fun(P,b):
+        Pn = C + gamma * (S.T * np.matrix(P) * S)
+        bn = gamma * (b + np.trace(np.matrix(P)*np.matrix(Sigma) )) + np.trace((R + gamma * B.T * np.matrix(P)*B)* np.matrix(policy.noise))
+        return Pn, bn
+    return fun
     

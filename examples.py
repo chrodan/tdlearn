@@ -48,7 +48,7 @@ class PoleBalancingMDP(mdp.LQRMDP):
     x is the position of the cart / hand 
     """
 
-    def __init__(self, mass=1., length=5., mu=0.01, dt= .01, sigma=0.):
+    def __init__(self, mass=1., length=5., dt= .01, sigma=0.):
         """
         mass: point mass of the pendulum
         length: length of the stick / pendulum
@@ -66,11 +66,10 @@ class PoleBalancingMDP(mdp.LQRMDP):
         Q = np.diag([-100., 0., -1, 0])
         #terminal_f = lambda x: np.abs(x[0]) > 10
         
-        terminal_f = lambda x: False
         R = np.ones((1,1))*(-0.1)
 
-        mdp.LQRMDP.__init__(self, A, B, Q, R, sigma, terminal_f=terminal_f, 
-                            start_f=lambda : np.array([0.0001, 0, 0, 0]))
+        mdp.LQRMDP.__init__(self, A, B, Q, R, sigma, 
+                            start_f=np.array([0.0001, 0, 0, 0]))
                             
     def animate_trace(self, state_trace, action_trace=None):
         fig = plt.figure()

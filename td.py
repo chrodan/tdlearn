@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+	# -*- coding: utf-8 -*-
 """
 Temporal Difference Learning for finite MDPs
 
@@ -14,6 +14,8 @@ import copy
 import time
 
 #logging.basicConfig(level=logging.DEBUG)
+
+
 
 class ValueFunctionPredictor(object):
     """
@@ -64,7 +66,7 @@ class LinearValueFunctionPredictor(ValueFunctionPredictor):
         
         self.phi = phi
         if theta0 is None:
-            self.init_vals['theta'] = np.zeros_like(phi(np.asarray([0])))
+            self.init_vals['theta'] = np.array([0])
         else:
             self.init_vals['theta'] = theta0    
             
@@ -125,13 +127,15 @@ class OffPolicyValueFunctionPredictor(ValueFunctionPredictor):
                 numpy array of shape (n_s, n_a)
                 *_pi(s,a) is the probability of taking action a in state s
         """
-        rho = target_pi[s0, a] / beh_pi[s0, a]
+        rho = target_pi.p(s0, a) / beh_pi.p(s0, a)
         kwargs["rho"] = rho
+        #print rho
         return self.update_V(s0, s1, r, theta=theta, **kwargs)
         
 
 class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
     """ Base class for GTD, GTD2 and TDC algorithm """
+
 
     def __init__(self, alpha, beta, **kwargs):
         """
@@ -148,6 +152,11 @@ class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         self.init_vals['beta'] = beta
 
         self.reset()
+
+    def clone(self):
+        o = self.__class__(self.init_vals['alpha'], self.init_vals['beta'], gamma=self.gamma, phi=self.phi)
+        return o
+
 
     def reset(self):
         LinearValueFunctionPredictor.reset(self)
@@ -431,6 +440,10 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         self.init_vals["C"] = np.eye(len(self.init_vals["theta"]))*eps
         self.reset()
 
+    def clone(self):
+        o = self.__class__(eps=self.eps, lam=self.lam, gamma=self.gamma, phi=self.phi)
+        return o
+
     def reset(self):
         self.reset_trace()   
         self.init_vals["C"] = np.eye(len(self.init_vals["theta"]))*self.eps
@@ -479,6 +492,10 @@ class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredict
         LambdaValueFunctionPredictor.__init__(self, **kwargs) 
         self.init_vals['alpha'] = alpha  
         self.reset()
+
+    def clone(self):
+        o = self.__class__(self.init_vals['alpha'], lam=self.lam, gamma=self.gamma, phi=self.phi)
+        return o
 
     def reset(self):
         LinearValueFunctionPredictor.reset(self)
@@ -552,6 +569,10 @@ class ResidualGradient(OffPolicyValueFunctionPredictor, LinearValueFunctionPredi
         self.init_vals['alpha'] = alpha  
         self.reset()
 
+    def clone(self):
+        o = self.__class__(alpha=self.init_vals['alpha'], gamma=self.gamma, phi=self.phi)
+        return o
+
     def reset(self):
         LinearValueFunctionPredictor.reset(self)
         self.alpha = self._assert_iterator(self.init_vals['alpha'])
@@ -589,6 +610,11 @@ class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         LinearValueFunctionPredictor.__init__(self, **kwargs)
         self.init_vals['alpha'] = alpha        
         self.reset()
+
+    def clone(self):
+        o = self.__class__(alpha=self.init_vals['alpha'], gamma=self.gamma, phi=self.phi)
+        return o
+
     def reset(self):
         LinearValueFunctionPredictor.reset(self)
         self.alpha = self._assert_iterator(self.init_vals['alpha'])

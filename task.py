@@ -13,7 +13,9 @@ from util.progressbar import ProgressBar
 import util
 from joblib import delayed, Parallel
 import matplotlib.pyplot as plt
-import copy
+import policies
+import features 
+
 class LinearValuePredictionTask(object):
     """ Base class for LQR and discrete case tasks """
     
@@ -68,8 +70,10 @@ class LinearValuePredictionTask(object):
             jobs = []
             for seed in range(n_indep):
                 kwargs['seed']=seed
+                curmethods = [m.clone() for m in methods]
+                kwargs["curmdp"] = self.mdp
                 if n_eps is None:
-                    jobs.append((LinearLQRValuePredictionTask.ergodic_error_traces,["", methods], kwargs))
+                    jobs.append((LinearLQRValuePredictionTask.ergodic_error_traces,["", curmethods], kwargs))
                     
                 else:
                     kwargs["n_eps"] = n_eps
@@ -105,22 +109,19 @@ class LinearValuePredictionTask(object):
                 param[j,i,:] = cur_theta
         return param
 
-    def ergodic_error_traces(self, methods, n_samples=1000, seed=None, criterion="MSE", error_every=1):
-
+    def ergodic_error_traces(self, methods, curmdp=None, n_samples=1000, seed=None, criterion="MSE", error_every=1):
+        if curmdp is None:
+            curmdp = self.mdp
         self._init_methods(methods)
         err_f = self._init_error_fun(criterion)
         errors = np.ones((int(np.ceil(n_samples/error_every)),len(methods)))*np.inf
         
         for m in methods: m.reset_trace()
         i=0
-        #s_trace = np.array([]).reshape(0,self.mdp.dim_S)
-        #a_trace = np.array([]).reshape(0,1)
-        for s, a, s_n, r in self.mdp.sample_transition(n_samples,
-                                                        policy=self.behavior_policy,
+        for s, a, s_n, r in curmdp.sample_transition(n_samples,
+                                                       policy=self.behavior_policy,
                                                        with_restart=False, 
                                                        seed=seed):
-            #s_trace = np.vstack((s_trace, s.reshape(1,self.mdp.dim_S)))
-            #a_trace = np.vstack((a_trace, a.reshape(1,1)))
                         
             for k, m in enumerate(methods):
                 if self.off_policy:
@@ -132,20 +133,9 @@ class LinearValuePredictionTask(object):
                 if i % error_every == 0:
                     errors[int(i/error_every),k] = err_f(cur_theta)
             i += 1
-        #self.mdp.animate_trace(s_trace, action_trace = a_trace)
-        
-#        plt.figure()
-#        ax1 = plt.subplot(2,1,1)        
-#        ax2 = plt.subplot(2,1,2)
-#        ax1.plot(s_trace[:,0], s_trace[:,1], "g-")
-#        ax1.set_xlabel("Pole Angle")
-#        ax1.set_ylabel("Pole Angle Velocity")
-#        ax2.plot(s_trace[:,2], s_trace[:,3], "r-")
-#        ax2.set_xlabel("Cart Position")
-#        ax2.set_ylabel("Cart Velocity")        
-#        print s_trace.shape
                
         return errors[:i,:].T
+
 
     def parameter_search(self, methods, n_eps=None, n_samples=1000, seed=None):
 
@@ -238,7 +228,7 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
         self.phi = phi
         self.theta0 = theta0
         if policy == "uniform":
-            policy = mdp.uniform_policy()
+            policy = policies.DiscreteUniform(len(self.mdp.states),len(self.mdp.actions))
         self.behavior_policy = policy 
 
         if target_policy is not None:
@@ -262,7 +252,7 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
             self.beh_mu = self.mdp.stationary_distrubution(seed=50, iterations=100000, policy=self.behavior_policy)
             return self.beh_mu
         elif name is "V_true":            
-            self.V_true = dynamic_prog.estimate(self.mdp, policy=self.target_policy, gamma=self.gamma)
+            self.V_true = dynamic_prog.estimate_V_discrete(self.mdp, policy=self.target_policy, gamma=self.gamma)
             return self.V_true
         elif name is "Phi":
             self.Phi = measures.Phi_matrix(self.mdp, self.phi)
@@ -322,23 +312,26 @@ class LinearLQRValuePredictionTask(LinearValuePredictionTask):
             self.target_policy =policy
             self.off_policy = False
         if normalize_phi:
-            self.phi = util.normalize_phi(phi, self.mu)
+            Phi = util.apply_rowise(phi, self.mu)
+            phi.normalization = np.std(Phi, axis=0)
+            phi.normalization[phi.normalization == 0] = 1.
+            
     def __getattr__(self, name):
         """
         some attribute such as state distribution or the true value function
         are very costly to compute, so they are only evaluated, if really needed
         """
         if name is "V_true":            
-            self.V_true = dynamic_prog.estimate_V_LQR(self.mdp, theta_policy=self.target_policy.theta, gamma=self.gamma)
+            self.V_true = dynamic_prog.estimate_V_LQR(self.mdp, policy=self.target_policy, gamma=self.gamma)
             return self.V_true
-        elif name is "normalized_V_true":
-            return self.V_true * np.std(self.mu_phi_full).reshape(self.mdp.dim_S, self.mdp.dim_S)
+#        elif name is "normalized_V_true":
+#            return self.V_true * np.std(self.mu_phi_full).reshape(self.mdp.dim_S, self.mdp.dim_S)
         elif name is "mu":
-            self.mu = self.mdp.state_samples(self.phi, n_iter=1000, n_restarts=5,
+            self.mu = self.mdp.state_samples(self.phi, n_iter=500, n_restarts=5,
                                         policy=self.target_policy, seed=self.seed,  verbose=False)
             return self.mu
         elif name is "mu_phi_full":
-            self.mu_phi_full = util.apply_rowise(self.mdp.full_phi, self.mu)
+            self.mu_phi_full = util.apply_rowise(features.squared_tri(), self.mu)
             return self.mu_phi_full
         elif name is "mu_phi":
             self.mu_phi = util.apply_rowise(self.phi, self.mu)

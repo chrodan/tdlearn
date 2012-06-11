@@ -9,24 +9,8 @@ Created on Fri Dec  9 19:01:41 2011
 import numpy as np
 import matplotlib.pyplot as plt
 from joblib import Parallel, delayed
-def _multinomial_sample(n, p):
-    """
-    draw n random samples of integers with probabilies p
-    """
-    if len(p.shape) < 2:
-        p.shape = (1, p.shape[0])
-    p_accum = np.add.accumulate(p, axis=1)
-    n_v, n_c = p_accum.shape
-    rnd = np.random.rand(n, n_v, 1)
-    m = rnd < p_accum.reshape(1, n_v, n_c)
-
-    m2 = np.zeros(m.shape, dtype='bool')
-    m2[:, :, 1:] = m[:, :, :-1]
-    np.logical_xor(m, m2, out=m)
-    ind_mat = np.arange(n_c, dtype='uint8').reshape(1, 1, n_c)
-    mask = np.multiply(ind_mat, m, dtype="uint8")
-    S = np.add.reduce(mask, 2, dtype='uint8').squeeze()
-    return S
+import policies
+from util import multinomial_sample
 
 def test_lqrmdp():
     A = np.eye(2)
@@ -43,7 +27,7 @@ def test_lqrmdp():
     plt.show()
     
 def test_pole_balancing():
-    """
+    r"""
     S = [\alpha, \dot \alpha, x, \dot x]
     A = [\ddot x]
     """
@@ -78,20 +62,22 @@ def test_pole_balancing():
     plt.plot(d[:,0], "r-")
     plt.show()
 
+_false = lambda x: False
+
 class LQRMDP(object):
     """
         Linear Quadratic MDP with continuous states and actions
         but time discrete transitions
         
     """
-    def __init__(self, A, B, Q, R, Sigma, terminal_f=lambda x: False, start_f="zero"):
+    def __init__(self, A, B, Q, R, Sigma, terminal_f=_false, start_f="zero"):
         """The MDP is defined by the state transition kernel:
                 s' ~ Normal(As + Ba, Sigma)
             and the reward
                 r(s,a) = s^T Q s + a^T R a
             terminal_f: python function S -> Bool that returns True exactly if
                 s is a terminal state
-            start_f: python generator that yields start states S0
+            start_f: start state as ndarray
         """
         
         self.dim_S = A.shape[0]
@@ -100,8 +86,6 @@ class LQRMDP(object):
         self.B = B
         self.Q = Q
         self.R = R
-        if start_f is "zero":
-            start_f = lambda: np.zeros((self.dim_S,))
         self.start_f = start_f
         self.terminal_f = terminal_f
         if isinstance(Sigma, (float, int, long)):
@@ -112,6 +96,7 @@ class LQRMDP(object):
         assert A.shape[1] == self.dim_S
         assert B.shape[0] == self.dim_S
         
+
     def samples(self, phi, n_iter=1000, n_restarts=100,
                                         policy="linear", seed=None,  verbose=False):
         states = np.empty((n_restarts * n_iter, self.dim_S))
@@ -165,9 +150,10 @@ class LQRMDP(object):
         if policy is "linear":
             policy = self.linear_policy()
 
+        rands = np.random.multivariate_normal(np.zeros(self.dim_S), self.Sigma, max_n)
         i=0
         while i < max_n:        
-            s0 = self.start_f()
+            s0 = self.start_f
             while i < max_n:  
                 if self.terminal_f(s0):
                     if with_restart: 
@@ -176,56 +162,20 @@ class LQRMDP(object):
                         return
                 a = policy(s0)
                 mean = np.dot(self.A,s0) + np.dot(self.B,a)
-
-                s1 = np.random.multivariate_normal(mean, self.Sigma)
+                s1 = mean + rands[i]
+              
+                #s1 = np.random.multivariate_normal(mean, self.Sigma)
                 #import ipdb; ipdb.set_trace()
                 r = np.dot(s0.T, np.dot(self.Q, s0)) + np.dot(a.T, np.dot(self.R, a))
                 yield (s0, a, s1, r)
                 i+=1
                 s0 = s1
 
-    def linear_policy(self, theta=None, noise=None):
-        if theta is None:
-            theta = np.zeros((self.dim_A,self.dim_S))
-        if noise is None:
-            noise = np.zeros((self.dim_A, self.dim_A))
-        a = lambda x: np.random.multivariate_normal(np.array(np.dot(theta, x)).flatten(), noise)
-        a.theta = theta
-        return a
+
                   
         
-    def linear_state_policy(self, theta):
-        assert(len(theta) == self.dim_S)
-        return lambda x: np.dot(theta, x)
         
-    def full_phi(self, state):
-        a = np.outer(state, state)
-        return a.flatten()
-        
-    full_phi.retransform = lambda x: x.reshape(int(np.sqrt(len(x))), int(np.sqrt(len(x))))
 
-    
-    def full_tri_phi(self, state):
-        iu1 = np.triu_indices(len(state))
-        a = np.outer(state, state)
-        a = a* (2-np.eye(len(state)))
-        return a[iu1]
-        
-    def k(p):
-        l = 1 if len(p) == 1 else (-1 + np.sqrt(1 + 8*len(p)))/2
-        iu = np.triu_indices(l)
-        il = np.tril_indices(l)
-        a = np.empty((l,l))
-        a[iu] = p
-        a[il] = a.T[il]
-        #a[np.eye(l)==0] *= .5
-        return a 
-    full_tri_phi.retransform = k
-    
-    def impoverished_phi(self, state):
-        return state * state
-
-    impoverished_phi.retransform = lambda x: np.diag(x)
     
 
 class MDP(object):
@@ -321,7 +271,18 @@ class MDP(object):
         policy = np.zeros((len(self.states), len(self.actions)))
         policy[self.valid_actions] = 1
         policy /= policy.sum(axis=1).reshape(-1, 1)
-        return policy
+        return self.make_policy_fun(policy)
+
+    def make_policy_fun(self, policy_table):
+        """
+        generates a python function for a policy given as a probability table
+                S x A -> R
+                numpy array of shape (n_s, n_a)
+                pi(s,a) is the probability of taking action a in state
+        """
+        o = lambda s: multinomial_sample(1, policy_table[s, :])
+        o.tab = policy_table
+        return o
 
 
     def stationary_distrubution(self, iterations=10000,
@@ -347,9 +308,7 @@ class MDP(object):
         
         Parameters
         -----------
-            policy pi: S x A -> R
-                numpy array of shape (n_s, n_a)
-                pi(s,a) is the probability of taking action a in state s
+            policy pi: policy python function
                 
             seed: optional seed for the random generator to generate
                 deterministic samples
@@ -366,8 +325,8 @@ class MDP(object):
         for s0 in self.states:
             if self.s_terminal[s0]:
                 break
-            a = _multinomial_sample(1, policy[s0, :])
-            s1 = _multinomial_sample(1, self.P[s0, a])
+            a = policy(s0)
+            s1 = multinomial_sample(1, self.P[s0, a])
             r = self.r[s0, a, s1]
             yield (s0, a, s1, r)
 
@@ -381,9 +340,7 @@ class MDP(object):
 
             max_n: maximum number of samples to draw
 
-            policy pi: S x A -> R
-                numpy array of shape (n_s, n_a)
-                pi(s,a) is the probability of taking action a in state s
+            policy pi: policy python function
                 
             seed: optional seed for the random generator to generate
                 deterministic samples
@@ -401,12 +358,12 @@ class MDP(object):
 
         i=0
         while i < max_n:        
-            s0 = _multinomial_sample(1, self.P0)
+            s0 = multinomial_sample(1, self.P0)
             while i < max_n:  
                 if self.s_terminal[s0]:
                         break
-                a = _multinomial_sample(1, policy[s0, :])
-                s1 = _multinomial_sample(1, self.P[s0, a])
+                a = policy(s0)
+                s1 = multinomial_sample(1, self.P[s0, a])
                 r = self.r[s0, a, s1]
                 yield (s0, a, s1, r)
                 i+=1
@@ -417,7 +374,7 @@ class MDP(object):
     def policy_P(self, policy="uniform"):
         if policy is "uniform":
             policy = self.uniform_policy()
-        T = self.P * policy[:, :, np.newaxis]
+        T = self.P * policy.tab[:, :, np.newaxis]
         T = np.sum(T, axis=1)
         return T
 
@@ -432,7 +389,7 @@ class MDP(object):
                 pi(s,a) is the probability of taking action a in state s
         """
         episodes = []
-        s0 = _multinomial_sample(n, self.P0)
+        s0 = multinomial_sample(n, self.P0)
 
         if policy is "uniform":
             policy = self.uniform_policy()
@@ -443,8 +400,8 @@ class MDP(object):
             for i in xrange(max_len):
                 if self.s_terminal[s]:
                     break
-                a = _multinomial_sample(1, policy[s, :])
-                s = _multinomial_sample(1, self.P[s, a])
+                a = policy(s)
+                s = multinomial_sample(1, self.P[s, a])
                 cur_eps[2 * i + 1:2 * i + 3] = a, s
 
             episodes.append(cur_eps[:2 * i + 1].copy())

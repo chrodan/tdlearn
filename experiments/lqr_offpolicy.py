@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import dynamic_prog as dp
 import util
 import features
+import policies
 from task import LinearLQRValuePredictionTask
 
 gamma=0.9
@@ -22,12 +23,14 @@ n_feat = len(phi(np.zeros(mdp.dim_S)))
 theta_p,_,_ = dp.solve_LQR(mdp, gamma=gamma)
 print theta_p
 theta_p = np.array(theta_p).flatten()
-policy = mdp.linear_policy(theta_p)
+theta_o = theta_p.copy()
+beh_policy = policies.LinearContinuous(theta=theta_o, noise=np.eye(1)*0.001)
+target_policy = policies.LinearContinuous(theta=theta_p, noise=np.eye(1)*0.0009)
 
 #theta0 =  10*np.ones(n_feat)
 theta0 =  0.*np.ones(n_feat)
 
-task = LinearLQRValuePredictionTask(mdp, gamma, phi, theta0, policy=policy, normalize_phi=True)
+task = LinearLQRValuePredictionTask(mdp, gamma, phi, theta0, policy=beh_policy, target_policy=target_policy, normalize_phi=True)
 task.seed=0
 #phi = task.phi
 print "V_true", task.V_true
@@ -41,7 +44,7 @@ methods = []
 #    for mu in [0.05, 0.1, 0.2, 0.01]:
 #alpha = 0.1
 alpha = 0.005
-mu = 0.1
+mu = 0.01
 gtd = td.GTD(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
@@ -49,7 +52,7 @@ methods.append(gtd)
 
 #for alpha in [.005,0.01,0.02]:
 #    for mu in [0.01, 0.1]:
-alpha, mu = 0.01, 0.1
+alpha, mu = 0.01, 0.01
 gtd = td.GTD2(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
@@ -88,20 +91,21 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
-l=200000
-error_every=2000
+l=50000
+error_every=500
 
 mean, std, raw = task.avg_error_traces(methods, n_indep=3,
     n_samples=l, error_every=error_every,
-    criterion="RMSBE",
-    verbose=True)
+    criterion="RMSPBE",
+    verbose=10, n_jobs=1)
 
 plt.figure(figsize=(18,12))
-plt.ylabel(r"$\sqrt{MSBE}$")
+plt.ylabel(r"$\sqrt{MSPBE}$")
 plt.xlabel("Timesteps")
 
 for i, m in enumerate(methods):
     #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=10000/error_every, label=m.name)
     plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], label=m.name)
 plt.legend()
+#plt.yscale("log")
 plt.show()
