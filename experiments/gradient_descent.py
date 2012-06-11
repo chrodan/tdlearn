@@ -82,7 +82,7 @@ plt.autoscale(tight=True)
 plt.colorbar().ax.set_ylabel(r"$\sqrt{MSE}$")
 
 plt.plot(param[:,0,0],param[:,0,1],'w', linewidth=2, label="TD(0)")
-plt.plot(param[:,1,0],param[:,1,1],'#aaffaa', linewidth=2, label="TDC")
+plt.plot(param[:,1,0],param[:,1,1],'#ff2277', linewidth=2, label="TDC")
 plt.plot(param[:,2,0],param[:,2,1],'m', linewidth=2, label="Grad. Desc.")
 lg = plt.legend(loc= "lower right")    
 lg.get_frame().set_facecolor('#cccccc')

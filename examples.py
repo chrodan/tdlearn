@@ -8,7 +8,11 @@ Created on Tue Dec 20 21:04:24 2011
 """
 import mdp
 import numpy as np
-import matplotlib.animation as animation
+try:
+    import matplotlib.animation as animation
+except:
+    # very dirty
+    import mdp as animation
 import matplotlib.pyplot as plt
 
 class MiniLQMDP(mdp.LQRMDP):

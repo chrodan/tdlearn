@@ -13,11 +13,11 @@ def estimate_V_discrete(mdp, n_iter=100000, policy="uniform", gamma=1.):
     if policy =="uniform":
         policy =mdp.uniform_policy()
         
-    P = mdp.P * policy.P[:,:,np.newaxis]
+    P = mdp.P * policy.tab[:,:,np.newaxis]
     P = P.sum(axis=1)
     P /= P.sum(axis=1)[:, np.newaxis]
 
-    r = mdp.r * policy.P[:,:,np.newaxis]
+    r = mdp.r * policy.tab[:,:,np.newaxis]
     r = r.sum(axis=1)
     V = np.zeros(len(mdp.states))
     for i in xrange(n_iter):
