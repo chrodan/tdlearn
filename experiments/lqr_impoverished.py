@@ -101,13 +101,15 @@ def run(alpha, mu):
     val = np.mean(mean)#[0, -400:])
     return val
 
-params = itertools.product(list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5], [0.01,0.01, 0.1, 0.5,1,2,4,8,16, 32, 64])
+alphas = list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5]
+mus = [0.01,0.01, 0.1, 0.5,1,2,4,8,16, 32, 64]
+params = list(itertools.product(alphas, mus))
 #params = [(0.001, 0.5)]
 k = (delayed(run)(*p) for p in params)
 res = Parallel(n_jobs=-1, verbose=11)(k)
 import pickle
-with open("data/impoverished_TDC_gs.pck") as f:
-    pickle.dump(dict(params=params, res=res), f)
+with open("data/impoverished_TDC_gs.pck", "w") as f:
+    pickle.dump(dict(params=params, alphas=alphas, mus=mus, res=res), f)
 print zip(params, res)
 #plt.plot(params, res, "*-")
 #plt.show()
