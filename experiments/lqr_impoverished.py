@@ -67,7 +67,7 @@ methods.append(td0)
 
 #for alpha in [0.005, 0.01, 0.02]:
 #    for mu in [0.01, 0.1]:
-for alpha, mu in [(.01,0.1)]:
+for alpha, mu in [(.01,0.01)]:
     tdc = td.TDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
     tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
     tdc.color = "b"
@@ -96,19 +96,20 @@ error_every=200
 
 def run(alpha, mu):
     np.seterr(all="ignore")
-    m = td.TDC(alpha=alpha, beta=mu*alpha, phi=task.phi, gamma=gamma)
-    mean, std, raw = task.avg_error_traces([m], n_indep=2, n_samples=l, error_every=error_every, criterion="RMSPBE", verbose=False)
+    m = td.GTD2(alpha=alpha, beta=mu*alpha, phi=task.phi, gamma=gamma)
+    mean, std, raw = task.avg_error_traces([m], n_indep=3, n_samples=l, error_every=error_every, criterion="RMSPBE", verbose=False)
     val = np.mean(mean)#[0, -400:])
     return val
 
-alphas = list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5]
-mus = [0.01,0.01, 0.1, 0.5,1,2,4,8,16, 32, 64]
+alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2]
+mus = [0.0001, 0.001, 0.01,0.01, 0.1, 0.5,1,2,4,8,16]
 params = list(itertools.product(alphas, mus))
 #params = [(0.001, 0.5)]
 k = (delayed(run)(*p) for p in params)
 res = Parallel(n_jobs=-1, verbose=11)(k)
 import pickle
-with open("data/impoverished_TDC_gs.pck", "w") as f:
+res = np.array(res).reshape(len(alphas), -1)
+with open("data/impoverished_GTD2_gs.pck", "w") as f:
     pickle.dump(dict(params=params, alphas=alphas, mus=mus, res=res), f)
 print zip(params, res)
 #plt.plot(params, res, "*-")
