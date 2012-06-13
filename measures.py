@@ -27,8 +27,10 @@ def prepare_MSBE(mu, mdp, phi, gamma, policy):
         return prepare_discrete_MSBE(mu, mdp, phi, gamma, policy)
     
 def prepare_LQR_MSE(mu_full, mdp, phi, V_true):
-    def a(theta): 
-        p = phi.retransform(theta).flatten()-V_true.flatten()
+    def a(theta):
+        p = features.squared_tri().param_forward(*phi.param_back(theta)) -\
+        features.squared_tri().param_forward(*V_true)
+        # p = phi.param_back(theta).flatten()-V_true.flatten()
         return np.mean((p * mu_full).sum(axis=1)**2)
     return a
     
@@ -230,11 +232,11 @@ def bellman_operator(mdp, gamma, policy="uniform"):
         policy = mdp.uniform_policy()    
     
 
-    R = mdp.P * mdp.r * policy[:, :, np.newaxis]
+    R = mdp.P * mdp.r * policy.tab[:, :, np.newaxis]
     R = np.sum(R, axis=1) # sum over all A
     R = np.sum(R, axis=1) # sum over all S'
     
-    P = mdp.P * policy[:, :, np.newaxis]
+    P = mdp.P * policy.tab[:, :, np.newaxis]
     P = np.sum(P, axis=1) # sum over all A => p(s' | s)
     
     return lambda V: R + gamma * np.dot(P, V)

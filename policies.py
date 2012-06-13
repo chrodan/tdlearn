@@ -30,8 +30,8 @@ class LinearContinuous(object):
         
     def p(self,s,a):
         s = np.array(s).flatten()
-        a = np.array(np.dot(self.theta, s)).flatten()
-        return np.exp(-0.5*np.dot(a, np.dot(self.precision, a)))*(2*np.pi)**(-self.dim_S / 2) * np.sqrt(np.trace(self.approx_noise))
+        m_a = np.array(np.dot(self.theta, s)).flatten() - a
+        return np.exp(-0.5*np.dot(m_a, np.dot(self.precision, m_a)))*(2*np.pi)**(-self.dim_S / 2) * np.sqrt(np.trace(self.approx_noise))
 
 class Discrete(object):
 

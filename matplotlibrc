@@ -6,4 +6,4 @@ backend 	: TkAgg
 #font.cursive       : Zapf Chancery
 #font.monospace     : Courier, Computer Modern Typewriter
 
-#text.usetex        : false
+#text.usetex        : true

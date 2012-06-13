@@ -43,8 +43,8 @@ methods = []
 #for alpha in [0.01, 0.005]:
 #    for mu in [0.05, 0.1, 0.2, 0.01]:
 #alpha = 0.1
-alpha = 0.005
-mu = 0.1
+alpha = 0.01
+mu = 0.1 #optimal
 gtd = td.GTD(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
@@ -52,11 +52,11 @@ methods.append(gtd)
 
 #for alpha in [.005,0.01,0.02]:
 #    for mu in [0.01, 0.1]:
-alpha, mu = 0.01, 0.1
+alpha, mu = 0.01, 0.5 #optimal
 gtd = td.GTD2(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
-#methods.append(gtd)
+methods.append(gtd)
 
 
 alpha = .005
@@ -67,11 +67,11 @@ methods.append(td0)
 
 #for alpha in [0.005, 0.01, 0.02]:
 #    for mu in [0.01, 0.1]:
-for alpha, mu in [(.01,0.01)]:
+for alpha, mu in [(.005,0.001)]: #optimal
     tdc = td.TDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
     tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
     tdc.color = "b"
-#    methods.append(tdc)
+    methods.append(tdc)
 
 #methods = []
 #for eps in np.power(10,np.arange(-1,4)):
@@ -90,10 +90,10 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
-l=20000
+l=16000
 error_every=200
 
-
+"""
 def run(alpha, mu):
     np.seterr(all="ignore")
     m = td.GTD2(alpha=alpha, beta=mu*alpha, phi=task.phi, gamma=gamma)
@@ -115,18 +115,18 @@ print zip(params, res)
 #plt.plot(params, res, "*-")
 #plt.show()
 """
-mean, std, raw = task.avg_error_traces(methods, n_indep=2,
+mean, std, raw = task.avg_error_traces(methods, n_indep=50,
     n_samples=l, error_every=error_every,
-    criterion="RMSPBE",
+    criterion="RMSBE",
     verbose=True)
 
-plt.figure(figsize=(18,12))
-plt.ylabel(r"$\sqrt{MSPBE}$")
+plt.figure(figsize=(15,10))
+plt.ylabel(r"$\sqrt{MSBE}$")
 plt.xlabel("Timesteps")
-plt.title("Impoverished LQR")
+plt.title("Impoverished Linearized Cart Pole Balancing")
 for i, m in enumerate(methods):
-    #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=10000/error_every, label=m.name)
-    plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], label=m.name)
+    plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/8, label=m.name)
+    #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], label=m.name)
 plt.legend()
 plt.show()
-"""
+

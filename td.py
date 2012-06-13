@@ -129,7 +129,9 @@ class OffPolicyValueFunctionPredictor(ValueFunctionPredictor):
         """
         rho = target_pi.p(s0, a) / beh_pi.p(s0, a)
         kwargs["rho"] = rho
-        #print rho
+        if not np.isfinite(rho):
+            import ipdb
+            ipdb.set_trace()
         return self.update_V(s0, s1, r, theta=theta, **kwargs)
         
 
@@ -470,6 +472,8 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         self.z = self.gamma * self.lam * rho * self.z + f1
         self.theta = theta
         self._toc()
+        print theta
+        print self.C
         return theta
 
 class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
