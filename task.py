@@ -43,11 +43,12 @@ class LinearValuePredictionTask(object):
                                                            seed=cur_seed):
                 for k, m in enumerate(methods):
                     if self.off_policy:
-                        cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
+                        m.update_V_offpolicy(s, s_n, r, a,
                                                               self.behavior_policy, 
                                                               self.target_policy)
                     else:
-                        cur_theta = m.update_V(s, s_n, r)
+                        m.update_V(s, s_n, r)
+                    cur_theta = m.theta
                     min_errors[k] = min(min_errors[k], err_f(cur_theta))
                
 
@@ -125,12 +126,13 @@ class LinearValuePredictionTask(object):
                         
             for k, m in enumerate(methods):
                 if self.off_policy:
-                    cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
+                    m.update_V_offpolicy(s, s_n, r, a,
                                                           self.behavior_policy, 
                                                           self.target_policy)
                 else:
-                    cur_theta = m.update_V(s, s_n, r)
+                    m.update_V(s, s_n, r)
                 if i % error_every == 0:
+                    cur_theta = m.theta
                     errors[int(i/error_every),k] = err_f(cur_theta)
             i += 1
                
@@ -152,12 +154,12 @@ class LinearValuePredictionTask(object):
                                                                seed=cur_seed):
                 for k, m in enumerate(methods):
                     if self.off_policy:
-                        cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
+                        m.update_V_offpolicy(s, s_n, r, a,
                                                                   self.behavior_policy, 
                                                                   self.target_policy)
                     else:
-                        cur_theta = m.update_V(s, s_n, r)
-                    param[k] = cur_theta
+                        m.update_V(s, s_n, r)
+                    param[k] = m.theta
                 
         return param 
     
@@ -178,12 +180,12 @@ class LinearValuePredictionTask(object):
                                                            seed=cur_seed):
                 for k, m in enumerate(methods):
                     if self.off_policy:
-                        cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
+                        m.update_V_offpolicy(s, s_n, r, a,
                                                               self.behavior_policy, 
                                                               self.target_policy)
                     else:
-                        cur_theta = m.update_V(s, s_n, r)
-                    param[i,k] = cur_theta
+                        m.update_V(s, s_n, r)
+                    param[i,k] = m.theta
                 i += 1
                     
                 if i >= n_samples: break
@@ -204,12 +206,13 @@ class LinearValuePredictionTask(object):
                                                            seed=cur_seed):
                 for k, m in enumerate(methods):
                     if self.off_policy:
-                        cur_theta = m.update_V_offpolicy(s, s_n, r, a, 
+                        m.update_V_offpolicy(s, s_n, r, a,
                                                               self.behavior_policy, 
                                                               self.target_pi)
                     else:
-                        cur_theta = m.update_V(s, s_n, r)
+                        m.update_V(s, s_n, r)
                     if i % error_every == 0:
+                        cur_theta = m.theta
                         errors[int(i / error_every),k] = err_f(cur_theta)
                
         return errors.T

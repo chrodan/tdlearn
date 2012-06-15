@@ -25,7 +25,7 @@ print theta_p
 theta_p = np.array(theta_p).flatten()
 theta_o = theta_p.copy()
 beh_policy = policies.LinearContinuous(theta=theta_o, noise=np.eye(1)*0.01)
-target_policy = policies.LinearContinuous(theta=theta_p, noise=np.eye(1)*0.001)
+target_policy = policies.LinearContinuous(theta=theta_p, noise=np.eye(1)*0.008)
 
 #theta0 =  10*np.ones(n_feat)
 theta0 =  0.*np.ones(n_feat)
@@ -67,7 +67,7 @@ methods.append(td0)
 
 #for alpha in [0.005, 0.01, 0.02]:
 #    for mu in [0.01, 0.1]:
-for alpha, mu in [(.005,0.001)]: #optimal
+for alpha, mu in [(.0051,0.001)]: #optimal
     tdc = td.TDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
     tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
     tdc.color = "b"
@@ -77,7 +77,7 @@ for alpha, mu in [(.005,0.001)]: #optimal
 #for eps in np.power(10,np.arange(-1,4)):
 eps=100
 lstd = td.LSTDLambda(lam=0, eps=eps, phi=phi, gamma=gamma)
-lstd.name = r"LSTD({}) $\epsilon$={}".format(0, eps)
+lstd.name = r"LSTD({}) $\epsilon$={}".format(0, eps, init_theta=True)
 lstd.color = "g"
 methods.append(lstd)
 #
@@ -90,10 +90,10 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
-l=500
-error_every=1
+l=10000
+error_every=100
 
-mean, std, raw = task.avg_error_traces(methods, n_indep=1,
+mean, std, raw = task.avg_error_traces(methods, n_indep=3,
     n_samples=l, error_every=error_every,
     criterion="RMSPBE",
     verbose=10, n_jobs=1)

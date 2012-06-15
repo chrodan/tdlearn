@@ -415,9 +415,75 @@ class GPTD(ValueFunctionPredictor):
 #        self._toc()
 #        return theta
 
-        
-
 class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
+    """
+        Implementation of Least Squared Temporal Difference Learning
+         LSTD(\lambda) with linear function approximation, also works in the
+         off-policy case and uses eligibility traces
+
+        for details see ﻿Yu, H. (2010). Least Squares Temporal Difference Methods :
+         An Analysis Under General Conditions. (8)+(9)+(10)
+    """
+
+    def __init__(self, init_theta=0., **kwargs):
+        """
+            lam: lambda in [0, 1] specifying the tradeoff between bootstrapping
+                    and MC sampling
+            gamma:  discount factor
+        """
+        LinearValueFunctionPredictor.__init__(self, **kwargs)
+        OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
+        LambdaValueFunctionPredictor.__init__(self, **kwargs)
+        self.init_theta=init_theta
+        #import ipdb; ipdb.set_trace()
+        #self.init_vals["C"] = np.zeros(len(self.init_vals["theta"]))
+        self.reset()
+
+    def clone(self):
+        o = self.__class__(lam=self.lam, gamma=self.gamma, phi=self.phi)
+        return o
+
+    def reset(self):
+        self.reset_trace()
+
+        self.init_vals["C"] = self.init_theta * np.eye(len(self.init_vals["theta"]))
+        self.init_vals["b"] = -self.init_vals["theta"] * self.init_theta
+        for k,v in self.init_vals.items():
+            if k is "theta":
+                continue
+            self.__setattr__(k,copy.copy(v))
+        self.t = 0
+
+
+    @property
+    def theta(self):
+        return -np.dot(np.linalg.pinv(self.C),self.b)
+
+    @theta.setter
+    def theta_set(self, val):
+        pass
+
+    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        f0 = self.phi(s0)
+        f1 = self.phi(s1)
+        self._tic()
+        if theta is None: theta=self.theta
+        if not hasattr(self, "z"):
+            self.z = np.zeros_like(f0)
+        self.z = self.gamma * self.lam * rho * self.z + f0
+        alpha = 1. / (1+self.t+1)
+        self.t += 1
+        self.b = (1-alpha)*self.b + alpha * self.z * rho * r
+        self.C = (1-alpha)*self.C + alpha * np.outer(self.z, self.gamma * rho * f1 - f0)
+
+        self._toc()
+        #print self.C
+        #print self.b
+
+class RecursiveLSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
     """
         recursive Implementation of Least Squared Temporal Difference Learning
          LSTD(\lambda) with linear function approximation, also works in the
@@ -472,9 +538,6 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         self.z = self.gamma * self.lam * rho * self.z + f1
         self.theta = theta
         self._toc()
-        print theta
-        print self.C
-        return theta
 
 class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
     """
