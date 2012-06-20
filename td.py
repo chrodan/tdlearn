@@ -415,6 +415,7 @@ class GPTD(ValueFunctionPredictor):
 #        self._toc()
 #        return theta
 
+
 class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
     """
         Implementation of Least Squared Temporal Difference Learning
@@ -482,6 +483,39 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         self._toc()
         #print self.C
         #print self.b
+
+class LSTDLambdaJP(LSTDLambda):
+    """
+        Implementation of Least Squared Temporal Difference Learning
+         LSTD(\lambda) with linear function approximation, also works in the
+         off-policy case and uses eligibility traces
+
+        for details see ﻿Yu, H. (2010). Least Squares Temporal Difference Methods :
+         An Analysis Under General Conditions. (8)+(9)
+         Important difference: The update of C is different!
+    """
+
+
+    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        f0 = self.phi(s0)
+        f1 = self.phi(s1)
+        self._tic()
+        if theta is None: theta = self.theta
+        if not hasattr(self, "z"):
+            self.z = np.zeros_like(f0)
+        self.z = self.gamma * self.lam * rho * self.z + f0
+        alpha = 1. / (1 + self.t + 1)
+        self.t += 1
+        self.b = (1 - alpha) * self.b + alpha * self.z * rho * r
+        self.C = (1 - alpha) * self.C + alpha * rho * np.outer(self.z, self.gamma * f1 - f0)
+
+        self._toc()
+        #print self.C
+        #print self.b
+
 
 class RecursiveLSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
     """

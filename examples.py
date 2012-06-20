@@ -39,6 +39,37 @@ class MiniLQMDP(mdp.LQRMDP):
         mdp.LQRMDP.__init__(self, A, B, Q, R, sigma, terminal_f=terminal_f, 
                             start_f=lambda : np.array([0.0001, 0]))
 
+
+class NLinkPendulumMDP(mdp.LQRMDP):
+    """
+
+    a 2D Pendulum with n links each link has an actuated joint. The pendulum is
+    linearized around the balance point.
+
+    """
+
+    def __init__(self, masses, lengths, dt=.01, sigma=0.01, penalty=0.01, action_penalty=0.):
+        self.lengths = lengths
+        self.dt = dt
+        self.masses=masses
+        self.n = len(masses)
+        n = self.n
+        m = np.cumsum(self.masses[::-1])[::-1]
+        Upp = -9.81 * self.lengths * m
+        self.M = np.diag(self.masses * self.lengths * self.lengths) \
+                 - np.outer(self.lengths, self.lengths) * np.maximum(m[:,None], m)
+        Minv = np.linalg.pinv(self.M)
+        A = np.eye(2 * n)
+        A[:n, n:] += np.eye(n) * self.dt
+        A[n:, :n] -= self.dt*Minv*Upp[None,:]
+        B = np.zeros((2*n, n))
+        B[n:,:]+= Minv * self.dt
+        Q = np.zeros((2*n, 2*n))
+        Q[:n, :n] += np.eye(n)*penalty
+        R = np.eye(n)*action_penalty
+        mdp.LQRMDP.__init__(self, A, B, Q, R, sigma,
+            start_f=np.zeros(2*n))
+
 class PoleBalancingMDP(mdp.LQRMDP):
     """
     Linear Quadratic MDP which models the pole balancing task 

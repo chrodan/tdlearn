@@ -6,32 +6,34 @@ import dynamic_prog as dp
 import util
 import features
 import policies
+from joblib import Parallel, delayed
 from task import LinearLQRValuePredictionTask
+import itertools
 
 gamma=0.9
-sigma = np.zeros((4,4))
-sigma[-1,-1] = 0.01
 
 dt = 0.1
-#mdp = examples.MiniLQMDP(dt=dt)
-mdp = examples.PoleBalancingMDP(sigma=sigma, dt=dt)
+dim = 5
+sigma = np.zeros((2*dim,2*dim))
+sigma[:dim,:dim] = 0.01
 
-phi = features.squared_diag()
+#mdp = examples.MiniLQMDP(dt=dt)
+mdp = examples.NLinkPendulumMDP(np.ones(dim), np.ones(dim)*5, sigma=sigma, dt=dt)
+
+phi = features.squared_tri()
 
 
 n_feat = len(phi(np.zeros(mdp.dim_S)))
 theta_p,_,_ = dp.solve_LQR(mdp, gamma=gamma)
 print theta_p
 theta_p = np.array(theta_p).flatten()
-theta_o = theta_p.copy()
-beh_policy = policies.LinearContinuous(theta=theta_o, noise=np.eye(1)*0.01)
-target_policy = policies.LinearContinuous(theta=theta_p, noise=np.eye(1)*0.001)
 
+policy = policies.LinearContinuous(theta=theta_p, noise=np.zeros((1,1)))
 #theta0 =  10*np.ones(n_feat)
 theta0 =  0.*np.ones(n_feat)
 
-task = LinearLQRValuePredictionTask(mdp, gamma, phi, theta0, policy=beh_policy, target_policy=target_policy,  normalize_phi=True)
-
+task = LinearLQRValuePredictionTask(mdp, gamma, phi, theta0, policy=policy, normalize_phi=True)
+task.seed=0
 #phi = task.phi
 print "V_true", task.V_true
 print "theta_true"
@@ -67,7 +69,7 @@ methods.append(td0)
 
 #for alpha in [0.005, 0.01, 0.02]:
 #    for mu in [0.01, 0.1]:
-for alpha, mu in [(.0051,0.001)]: #optimal
+for alpha, mu in [(.005,0.001)]: #optimal
     tdc = td.TDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
     tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
     tdc.color = "b"
@@ -77,7 +79,7 @@ for alpha, mu in [(.0051,0.001)]: #optimal
 #for eps in np.power(10,np.arange(-1,4)):
 eps=100
 lstd = td.LSTDLambda(lam=0, eps=eps, phi=phi, gamma=gamma)
-lstd.name = r"LSTD({}) $\epsilon$={}".format(0, eps, init_theta=True)
+lstd.name = r"LSTD({}) $\epsilon$={}".format(0, eps)
 lstd.color = "g"
 methods.append(lstd)
 #
@@ -90,27 +92,43 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
+l=16000
+error_every=200
 
-lstd = td.LSTDLambdaJP(lam=0, eps=eps, phi=phi, gamma=gamma)
-lstd.name = r"LSTD-JP({})".format(0)
-lstd.color = "g"
-methods.append(lstd)
+"""
+def run(alpha, mu):
+    np.seterr(all="ignore")
+    m = td.GTD2(alpha=alpha, beta=mu*alpha, phi=task.phi, gamma=gamma)
+    mean, std, raw = task.avg_error_traces([m], n_indep=3, n_samples=l, error_every=error_every, criterion="RMSPBE", verbose=False)
+    val = np.mean(mean)#[0, -400:])
+    return val
 
-l=10000
-error_every=100
-
-mean, std, raw = task.avg_error_traces(methods, n_indep=10,
+alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2]
+mus = [0.0001, 0.001, 0.01,0.01, 0.1, 0.5,1,2,4,8,16]
+params = list(itertools.product(alphas, mus))
+#params = [(0.001, 0.5)]
+k = (delayed(run)(*p) for p in params)
+res = Parallel(n_jobs=-1, verbose=11)(k)
+import pickle
+res = np.array(res).reshape(len(alphas), -1)
+with open("data/impoverished_GTD2_gs.pck", "w") as f:
+    pickle.dump(dict(params=params, alphas=alphas, mus=mus, res=res), f)
+print zip(params, res)
+#plt.plot(params, res, "*-")
+#plt.show()
+"""
+mean, std, raw = task.avg_error_traces(methods, n_indep=1,
     n_samples=l, error_every=error_every,
-    criterion="RMSPBE",
-    verbose=10, n_jobs=1)
+    criterion="RMSBE",
+    verbose=True)
 
-plt.figure(figsize=(18,12))
-plt.ylabel(r"$\sqrt{MSPBE}$")
+plt.figure(figsize=(15,10))
+plt.ylabel(r"$\sqrt{MSBE}$")
 plt.xlabel("Timesteps")
-
+plt.title("Impoverished Linearized Cart Pole Balancing")
 for i, m in enumerate(methods):
-    #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=10000/error_every, label=m.name)
-    plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/10, label=m.name)
+    plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/8, label=m.name)
+    #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], label=m.name)
 plt.legend()
-#plt.yscale("log")
 plt.show()
+
