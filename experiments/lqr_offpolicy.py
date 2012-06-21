@@ -43,8 +43,8 @@ methods = []
 #for alpha in [0.01, 0.005]:
 #    for mu in [0.05, 0.1, 0.2, 0.01]:
 #alpha = 0.1
-alpha = 0.01
-mu = 0.1 #optimal
+alpha = 0.05
+mu = 0.5 #optimal
 gtd = td.GTD(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
@@ -52,14 +52,14 @@ methods.append(gtd)
 
 #for alpha in [.005,0.01,0.02]:
 #    for mu in [0.01, 0.1]:
-alpha, mu = 0.01, 0.5 #optimal
+alpha, mu = 0.2, 0.01 #optimal
 gtd = td.GTD2(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
 
-alpha = .005
+alpha = .03
 td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
 td0.name = r"TD(0) $\alpha$={}".format(alpha)
 td0.color = "k"
@@ -67,19 +67,19 @@ methods.append(td0)
 
 #for alpha in [0.005, 0.01, 0.02]:
 #    for mu in [0.01, 0.1]:
-for alpha, mu in [(.0051,0.001)]: #optimal
+for alpha, mu in [(.03,0.001)]: #optimal
     tdc = td.TDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
     tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
     tdc.color = "b"
     methods.append(tdc)
 
-for alpha, mu in [(.0051,0.001)]: #optimal
+for alpha, mu in [(.06,0.001)]: #optimal
     tdc = td.GeriTDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
     tdc.name = r"GeriTDC $\alpha$={} $\mu$={}".format(alpha, mu)
     tdc.color = "b"
     methods.append(tdc)
 
-lstd = td.LSTDLambda(lam=0, eps=eps, phi=phi, gamma=gamma)
+lstd = td.LSTDLambda(lam=0, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({})".format(0)
 lstd.color = "g"
 methods.append(lstd)
@@ -94,7 +94,7 @@ rg.color = "brown"
 methods.append(rg)
 
 
-lstd = td.LSTDLambdaJP(lam=0, eps=eps, phi=phi, gamma=gamma)
+lstd = td.LSTDLambdaJP(lam=0, phi=phi, gamma=gamma)
 lstd.name = r"LSTD-JP({})".format(0)
 lstd.color = "g"
 methods.append(lstd)
