@@ -73,11 +73,14 @@ for alpha, mu in [(.0051,0.001)]: #optimal
     tdc.color = "b"
     methods.append(tdc)
 
-#methods = []
-#for eps in np.power(10,np.arange(-1,4)):
-eps=100
+for alpha, mu in [(.0051,0.001)]: #optimal
+    tdc = td.GeriTDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
+    tdc.name = r"GeriTDC $\alpha$={} $\mu$={}".format(alpha, mu)
+    tdc.color = "b"
+    methods.append(tdc)
+
 lstd = td.LSTDLambda(lam=0, eps=eps, phi=phi, gamma=gamma)
-lstd.name = r"LSTD({}) $\epsilon$={}".format(0, eps, init_theta=True)
+lstd.name = r"LSTD({})".format(0)
 lstd.color = "g"
 methods.append(lstd)
 #
@@ -96,15 +99,15 @@ lstd.name = r"LSTD-JP({})".format(0)
 lstd.color = "g"
 methods.append(lstd)
 
-l=10000
-error_every=100
+l=20000
+error_every=200
 
 mean, std, raw = task.avg_error_traces(methods, n_indep=10,
     n_samples=l, error_every=error_every,
     criterion="RMSPBE",
     verbose=10, n_jobs=1)
 
-plt.figure(figsize=(18,12))
+#plt.figure(figsize=(18,12))
 plt.ylabel(r"$\sqrt{MSPBE}$")
 plt.xlabel("Timesteps")
 
@@ -114,3 +117,4 @@ for i, m in enumerate(methods):
 plt.legend()
 #plt.yscale("log")
 plt.show()
+
