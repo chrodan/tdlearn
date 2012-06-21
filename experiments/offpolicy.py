@@ -29,7 +29,8 @@ methods = []
 
 
 task = LinearValuePredictionTask(mdp, 0.99, mdp.phi, 
-                                       np.asarray(n * [1] + [10, 1]),
+                                       np.asarray(n * [1] + [10, 1],
+                                                  dtype='float32'),
                                        policy=beh_pi, target_policy=target_pi)
 
 for alpha, mu, color in [(0.01, 10, "red"), (0.04, 0.5, "orange")]:
