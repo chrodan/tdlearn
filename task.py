@@ -347,7 +347,20 @@ class LinearLQRValuePredictionTask(LinearValuePredictionTask):
         else:
             raise AttributeError(name)
             
-            
+    def kl_policy(self):
+        """ computes the KL Divergence between the behavioral and target policy
+        while assuming that the steady state distribution is the state distribution of the
+        behavioral policy!
+        """
+        r = .5 * (np.trace(np.dot(self.behavior_policy.precision, self.target_policy.noise)) \
+            - self.behavior_policy.dim_A - np.log(np.linalg.det(self.target_policy.noise) / np.linalg.det(self.behavior_policy.noise)))
+
+        dtheta = (self.behavior_policy.theta - self.target_policy.theta)
+        da = np.dot(dtheta, self.mu.T)
+        m = float(np.sum(da * np.dot(self.target_policy.precision, da))) / self.mu.shape[0]
+        #import ipdb; ipdb.set_trace()
+        r += .5 * m
+        return r
 
 
     def _init_error_fun(self, criterion):
