@@ -62,7 +62,7 @@ methods.append(gtd)
 alpha = .03
 td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
 td0.name = r"TD(0) $\alpha$={}".format(alpha)
-td0.color = "k"
+td0.color = "m"
 methods.append(td0)
 
 #for alpha in [0.005, 0.01, 0.02]:
@@ -76,7 +76,7 @@ for alpha, mu in [(.03,0.001)]: #optimal
 for alpha, mu in [(.06,0.001)]: #optimal
     tdc = td.GeriTDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
     tdc.name = r"GeriTDC $\alpha$={} $\mu$={}".format(alpha, mu)
-    tdc.color = "b"
+    tdc.color = "c"
     methods.append(tdc)
 
 lstd = td.LSTDLambda(lam=0, phi=phi, gamma=gamma)
@@ -87,7 +87,7 @@ methods.append(lstd)
 #methods = []
 #for alpha in [0.01, 0.02, 0.03]:
 #alpha = .2
-alpha=.04
+alpha=.3
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
@@ -96,7 +96,7 @@ methods.append(rg)
 
 lstd = td.LSTDLambdaJP(lam=0, phi=phi, gamma=gamma)
 lstd.name = r"LSTD-JP({})".format(0)
-lstd.color = "g"
+lstd.color = "k"
 methods.append(lstd)
 
 l=20000
@@ -108,12 +108,13 @@ mean, std, raw = task.avg_error_traces(methods, n_indep=10,
     verbose=10, n_jobs=1)
 
 #plt.figure(figsize=(18,12))
+plt.title("Cart-Pole Off-Policy")
 plt.ylabel(r"$\sqrt{MSPBE}$")
 plt.xlabel("Timesteps")
 
 for i, m in enumerate(methods):
     #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=10000/error_every, label=m.name)
-    plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/10, label=m.name)
+    plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/10, color=m.color, label=m.name)
 plt.legend()
 #plt.yscale("log")
 plt.show()

@@ -115,7 +115,7 @@ class LinearValuePredictionTask(object):
             curmdp = self.mdp
         self._init_methods(methods)
         err_f = self._init_error_fun(criterion)
-        errors = np.ones((int(np.ceil(n_samples/error_every)),len(methods)))*np.inf
+        errors = np.ones((int(np.ceil(float(n_samples)/error_every)),len(methods)))*np.inf
         
         for m in methods: m.reset_trace()
         i=0
