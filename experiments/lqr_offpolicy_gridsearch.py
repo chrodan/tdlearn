@@ -82,7 +82,7 @@ def gridsearch_2d():
     params = list(itertools.product(alphas, mus))
 
     for m in methods:
-        k = (delayed(run_2d)(*(p+[m])) for p in params)
+        k = (delayed(run_2d)(*(list(p)+[m])) for p in params)
         res = Parallel(n_jobs=-1, verbose=11)(k)
 
         res = np.array(res).reshape(len(alphas), -1)
