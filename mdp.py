@@ -125,9 +125,35 @@ class LQRMDP(object):
                 result[k,:] = phi(s)
                 k+=1
         return result
-            
-        
-        
+
+
+    def sample_step(self, s0 , policy=None, seed=None, with_restart = False):
+        """
+        generator that samples from the MDP
+        be aware that this chains can be infinitely long
+        the chain is restarted if the policy changes
+
+            max_n: maximum number of samples to draw
+
+            policy: python function S -> A that gets the current state and
+                returns the action to take
+
+            seed: optional seed for the random generator to generate
+                deterministic samples
+
+            returns a transition tuple (X_n, A, X_n+1, R)
+        """
+
+        if seed is not None:
+            np.random.seed(seed)
+
+        rands = np.random.multivariate_normal(np.zeros(self.dim_S), self.Sigma, 1)
+        a = policy(s0)
+        mean = np.dot(self.A,s0) + np.dot(self.B,a)
+        s1 = mean + rands[0]
+        r = np.dot(s0.T, np.dot(self.Q, s0)) + np.dot(a.T, np.dot(self.R, a))
+        return (s0, a, s1, r)
+
     def sample_transition(self, max_n, policy="linear", seed=None, with_restart = False):
         """
         generator that samples from the MDP
@@ -285,7 +311,7 @@ class MDP(object):
         return o
 
 
-    def stationary_distrubution(self, iterations=10000,
+    def stationary_distribution(self, iterations=10000,
                                 seed=None, avoid0=False, policy="uniform"):
         """
         computes the stationary distribution by sampling 

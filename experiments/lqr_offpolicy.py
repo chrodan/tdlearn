@@ -100,12 +100,12 @@ lstd.color = "k"
 methods.append(lstd)
 
 l=20000
-error_every=200
+error_every=2000
 
-mean, std, raw = task.avg_error_traces(methods, n_indep=10,
+mean, std, raw = task.avg_error_traces(methods, n_indep=3,
     n_samples=l, error_every=error_every,
     criterion="RMSPBE",
-    verbose=10, n_jobs=1)
+    verbose=10, n_jobs=1, stationary=True)
 
 #plt.figure(figsize=(18,12))
 plt.title("Cart-Pole Off-Policy")

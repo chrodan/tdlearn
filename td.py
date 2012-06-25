@@ -448,6 +448,8 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         self.reset_trace()
 
         self.init_vals["C"] = self.init_theta * np.eye(len(self.init_vals["theta"]))
+        self.init_vals["k2"] = self.init_theta * np.eye(len(self.init_vals["theta"]))
+        self.init_vals["k1"] = self.init_theta * np.eye(len(self.init_vals["theta"]))
         self.init_vals["b"] = -self.init_vals["theta"] * self.init_theta
         for k,v in self.init_vals.items():
             if k is "theta":
@@ -479,7 +481,8 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         self.t += 1
         self.b = (1-alpha)*self.b + alpha * self.z * rho * r
         self.C = (1-alpha)*self.C + alpha * np.outer(self.z, self.gamma * rho * f1 - f0)
-
+        self.k1 = (1-alpha)*self.k1 + alpha * np.outer(f0, rho * f0)
+        self.k2 = (1-alpha)*self.k2 + alpha * np.outer(f0, f0)
         self._toc()
         #print self.C
         #print self.b
@@ -511,6 +514,7 @@ class LSTDLambdaJP(LSTDLambda):
         self.t += 1
         self.b = (1 - alpha) * self.b + alpha * self.z * rho * r
         self.C = (1 - alpha) * self.C + alpha * rho * np.outer(self.z, self.gamma * f1 - f0)
+
 
         self._toc()
         #print self.C

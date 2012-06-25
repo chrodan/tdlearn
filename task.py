@@ -54,7 +54,7 @@ class LinearValuePredictionTask(object):
 
         return min_errors
 
-    def avg_error_traces(self, methods, n_indep, n_eps=None, verbose=False, n_jobs=1, **kwargs):
+    def avg_error_traces(self, methods, n_indep, n_eps=None, verbose=False, n_jobs=1, stationary=False, **kwargs):
 
         res = []
         if n_jobs==1:
@@ -63,7 +63,9 @@ class LinearValuePredictionTask(object):
                 for seed in range(n_indep):
                     p.update(seed, n_indep, "{} of {} seeds".format(seed, n_indep))
                     kwargs['seed']=seed
-                    if n_eps is None:
+                    if stationary:
+                        res.append(self.stationary_error_traces(methods, **kwargs))
+                    elif n_eps is None:
                         res.append(self.ergodic_error_traces(methods, **kwargs))
                     else:
                         res.append(self.episodic_error_traces(methods, n_eps=n_eps, **kwargs))
@@ -110,6 +112,30 @@ class LinearValuePredictionTask(object):
                 param[j,i,:] = cur_theta
         return param
 
+
+    def stationary_error_traces(self, methods, n_samples=1000, seed=None, criterion="MSE", error_every=1):
+        self._init_methods(methods)
+        err_f = self._init_error_fun(criterion)
+        errors = np.ones((int(np.ceil(float(n_samples)/error_every)),len(methods)))*np.inf
+        mu = self.mu
+        rands = np.random.randint(mu.shape[0], size=n_samples)
+        for i in xrange(n_samples):
+
+            s,a,s_n, r = self.mdp.sample_step(mu[rands[i], :], policy=self.behavior_policy)
+            for k, m in enumerate(methods):
+                m.reset_trace()
+                if self.off_policy:
+                    m.update_V_offpolicy(s, s_n, r, a,
+                        self.behavior_policy,
+                        self.target_policy)
+                else:
+                    m.update_V(s, s_n, r)
+                if i % error_every == 0:
+                    cur_theta = m.theta
+                    errors[int(i/error_every),k] = err_f(cur_theta)
+
+
+        return errors[:i,:].T
     def ergodic_error_traces(self, methods, curmdp=None, n_samples=1000, seed=None, criterion="MSE", error_every=1):
         if curmdp is None:
             curmdp = self.mdp
