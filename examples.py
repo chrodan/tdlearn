@@ -56,8 +56,7 @@ class NLinkPendulumMDP(mdp.LQRMDP):
         n = self.n
         m = np.cumsum(self.masses[::-1])[::-1]
         Upp = -9.81 * self.lengths * m
-        self.M = np.diag(self.masses * self.lengths * self.lengths) \
-                 - np.outer(self.lengths, self.lengths) * np.maximum(m[:,None], m)
+        self.M = np.outer(self.lengths, self.lengths) * np.minimum(m[:,None], m)
         Minv = np.linalg.pinv(self.M)
         A = np.eye(2 * n)
         A[:n, n:] += np.eye(n) * self.dt

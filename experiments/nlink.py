@@ -18,17 +18,16 @@ sigma = np.zeros((2*dim,2*dim))
 sigma[:dim,:dim] = 0.01
 
 #mdp = examples.MiniLQMDP(dt=dt)
-mdp = examples.NLinkPendulumMDP(np.ones(dim), np.ones(dim)*5, sigma=sigma, dt=dt)
-
-phi = features.squared_tri()
+mdp = examples.NLinkPendulumMDP(np.ones(dim), np.ones(dim)*30, sigma=sigma, dt=dt)
+phi = features.squared_diag()
 
 
 n_feat = len(phi(np.zeros(mdp.dim_S)))
 theta_p,_,_ = dp.solve_LQR(mdp, gamma=gamma)
 print theta_p
-theta_p = np.array(theta_p).flatten()
+theta_p = np.array(theta_p)
 
-policy = policies.LinearContinuous(theta=theta_p, noise=np.zeros((1,1)))
+policy = policies.LinearContinuous(theta=theta_p, noise=np.eye(dim)*0.01)
 #theta0 =  10*np.ones(n_feat)
 theta0 =  0.*np.ones(n_feat)
 
@@ -60,8 +59,8 @@ gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
-
-alpha = .005
+methods = []
+alpha = .0005
 td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
 td0.name = r"TD(0) $\alpha$={}".format(alpha)
 td0.color = "k"
@@ -73,9 +72,9 @@ for alpha, mu in [(.005,0.001)]: #optimal
     tdc = td.TDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
     tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
     tdc.color = "b"
-    methods.append(tdc)
+    #methods.append(tdc)
 
-#methods = []
+
 #for eps in np.power(10,np.arange(-1,4)):
 eps=100
 lstd = td.LSTDLambda(lam=0, eps=eps, phi=phi, gamma=gamma)
@@ -90,7 +89,7 @@ alpha=.04
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
-methods.append(rg)
+#methods.append(rg)
 
 l=16000
 error_every=200
@@ -117,7 +116,7 @@ print zip(params, res)
 #plt.plot(params, res, "*-")
 #plt.show()
 """
-mean, std, raw = task.avg_error_traces(methods, n_indep=1,
+mean, std, raw = task.avg_error_traces(methods, n_indep=3,
     n_samples=l, error_every=error_every,
     criterion="RMSBE",
     verbose=True)
