@@ -61,7 +61,7 @@ def run_lambda_2d(lam, alpha, cls):
 
 def run_lambda_3d(lam, alpha, mu, cls):
     np.seterr(all="ignore")
-    m = cls(lam=lam, alpha=alpha, mu=mu, phi=task.phi, gamma=gamma)
+    m = cls(lam=lam, alpha=alpha, beta=mu*alpha, phi=task.phi, gamma=gamma)
     mean, std, raw = task.avg_error_traces([m], n_indep=3, n_samples=l, error_every=error_every, criterion="RMSPBE", verbose=False)
     val = np.mean(mean)
     return val
@@ -90,7 +90,7 @@ def gridsearch_lambda():
     lambdas = np.linspace(0., 1., 10)
     params = lambdas
 
-    for m in methods:
+    """for m in methods:
         k = (delayed(run_lambda_1d)(p,m) for p in params)
         res = Parallel(n_jobs=-1, verbose=11)(k)
 
@@ -110,7 +110,7 @@ def gridsearch_lambda():
         res = np.array(res).reshape(len(lambdas), -1)
         with open("data/{}_{}_gs_lam.pck".format(name, m.__name__), "w") as f:
             pickle.dump(dict(params=params, alphas=alphas, lambdas=lambdas, res=res), f)
-
+    """
     methods = [td.TDCLambda]
     params = list(itertools.product(lambdas, alphas, mus))
 
@@ -137,6 +137,6 @@ def gridsearch_1d():
             pickle.dump(dict(params=params, alphas=alphas, res=res), f)
 
 if __name__ == "__main__":
-    gridsearch_1d()
-    gridsearch_2d()
+    #gridsearch_1d()
+    #gridsearch_2d()
     gridsearch_lambda()

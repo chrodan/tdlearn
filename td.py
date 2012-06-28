@@ -336,7 +336,7 @@ class TDCLambda(GTDBase, LambdaValueFunctionPredictor):
         if not hasattr(self, "z"):
             self.z = np.zeros_like(f0)
         self._tic()
-        self.z = rho * (f0 + self.gamma * self.lam * z)
+        self.z = rho * (f0 + self.gamma * self.lam * self.z)
 
         delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
         a = np.dot(f0, w)
