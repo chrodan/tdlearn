@@ -305,6 +305,51 @@ class TDC(GTDBase):
         self.w = w_d
         return self.theta
 
+class TDCLambda(GTDBase, LambdaValueFunctionPredictor):
+    """
+    TDC algorithm with linear function approximation
+    for details see
+
+    Maei, H. R. (2011). Gradient Temporal-Difference Learning Algorithms.
+    (p. 74)
+    """
+
+    def __init__(self, **kwargs):
+
+        GTDBase.__init__(self, **kwargs)
+        LambdaValueFunctionPredictor.__init__(self, **kwargs)
+
+        self.reset()
+
+
+    def update_V(self, s0, s1, r, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        w = self.w
+        if theta is None:
+            theta = self.theta
+
+        f0 = self.phi(s0)
+        f1 = self.phi(s1)
+
+        if not hasattr(self, "z"):
+            self.z = np.zeros_like(f0)
+        self._tic()
+        self.z = rho * (f0 + self.gamma * self.lam * z)
+
+        delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
+        a = np.dot(f0, w)
+
+
+        theta += self.alpha.next() * (delta * self.z - self.gamma * (1 - self.lam) * np.dot(self.z, w) * f1)
+        w += self.beta.next() * (delta * self.z - a * f0)
+        self.w = w
+        self.theta = theta
+        self._toc()
+        return theta
+
+
 class GeriTDC(TDC):
     """
     the TDC algorithm except that the pseudo-stationary guess for off-policy estimation is computed differently

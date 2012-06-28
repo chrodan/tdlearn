@@ -101,21 +101,23 @@ methods.append(lstd)
 
 l=20000
 error_every=100
+name="cartpole_off"
 
-mean, std, raw = task.avg_error_traces(methods, n_indep=50,
-    n_samples=l, error_every=error_every,
-    criterion="RMSPBE",
-    verbose=10, n_jobs=1, stationary=True)
+if __name__ == "__main__":
+    mean, std, raw = task.avg_error_traces(methods, n_indep=50,
+        n_samples=l, error_every=error_every,
+        criterion="RMSPBE",
+        verbose=10, n_jobs=1, stationary=True)
 
-#plt.figure(figsize=(18,12))
-plt.title("Cart-Pole Off-Policy")
-plt.ylabel(r"$\sqrt{MSPBE}$")
-plt.xlabel("Timesteps")
+    #plt.figure(figsize=(18,12))
+    plt.title("Cart-Pole Off-Policy")
+    plt.ylabel(r"$\sqrt{MSPBE}$")
+    plt.xlabel("Timesteps")
 
-for i, m in enumerate(methods):
-    #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=10000/error_every, label=m.name)
-    plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/10, color=m.color, label=m.name)
-plt.legend()
-#plt.yscale("log")
-plt.show()
+    for i, m in enumerate(methods):
+        #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=10000/error_every, label=m.name)
+        plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/10, color=m.color, label=m.name)
+    plt.legend()
+    #plt.yscale("log")
+    plt.show()
 

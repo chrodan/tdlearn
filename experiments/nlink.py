@@ -14,11 +14,11 @@ gamma=0.9
 
 dt = 0.1
 dim = 5
-sigma = np.zeros((2*dim,2*dim))
-sigma[:dim,:dim] = 0.01
+#sigma = np.zeros((2*dim,2*dim))
+sigma = np.eye(2*dim)*0.01
 
 #mdp = examples.MiniLQMDP(dt=dt)
-mdp = examples.NLinkPendulumMDP(np.ones(dim), np.ones(dim)*30, sigma=sigma, dt=dt)
+mdp = examples.NLinkPendulumMDP(np.ones(dim), np.ones(dim)*5, sigma=sigma, dt=dt)
 phi = features.squared_diag()
 
 
@@ -27,7 +27,7 @@ theta_p,_,_ = dp.solve_LQR(mdp, gamma=gamma)
 print theta_p
 theta_p = np.array(theta_p)
 
-policy = policies.LinearContinuous(theta=theta_p, noise=np.eye(dim)*0.01)
+policy = policies.LinearContinuous(theta=theta_p, noise=np.eye(dim)*0.1)
 #theta0 =  10*np.ones(n_feat)
 theta0 =  0.*np.ones(n_feat)
 
@@ -118,11 +118,11 @@ print zip(params, res)
 """
 mean, std, raw = task.avg_error_traces(methods, n_indep=3,
     n_samples=l, error_every=error_every,
-    criterion="RMSBE",
+    criterion="RMSPBE",
     verbose=True)
 
 plt.figure(figsize=(15,10))
-plt.ylabel(r"$\sqrt{MSBE}$")
+plt.ylabel(r"$\sqrt{MSPBE}$")
 plt.xlabel("Timesteps")
 plt.title("Impoverished Linearized Cart Pole Balancing")
 for i, m in enumerate(methods):
