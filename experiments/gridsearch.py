@@ -11,7 +11,7 @@ from task import LinearLQRValuePredictionTask
 from joblib import Parallel, delayed
 from matplotlib.colors import LogNorm
 import pickle
-from lqr_offpolicy import *
+from nlink import *
 
 
 def plot_2d_error_grid_file(fn, maxerr=5):
@@ -90,7 +90,7 @@ def gridsearch_lambda():
     lambdas = np.linspace(0., 1., 10)
     params = lambdas
 
-    """for m in methods:
+    for m in methods:
         k = (delayed(run_lambda_1d)(p,m) for p in params)
         res = Parallel(n_jobs=-1, verbose=11)(k)
 
@@ -110,8 +110,9 @@ def gridsearch_lambda():
         res = np.array(res).reshape(len(lambdas), -1)
         with open("data/{}_{}_gs_lam.pck".format(name, m.__name__), "w") as f:
             pickle.dump(dict(params=params, alphas=alphas, lambdas=lambdas, res=res), f)
-    """
+
     methods = [td.TDCLambda]
+    lambdas = np.linspace(0., 1., 6)
     params = list(itertools.product(lambdas, alphas, mus))
 
     for m in methods:
@@ -137,6 +138,6 @@ def gridsearch_1d():
             pickle.dump(dict(params=params, alphas=alphas, res=res), f)
 
 if __name__ == "__main__":
-    #gridsearch_1d()
-    #gridsearch_2d()
+    gridsearch_1d()
+    gridsearch_2d()
     gridsearch_lambda()
