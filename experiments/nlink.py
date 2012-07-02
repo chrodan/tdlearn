@@ -17,7 +17,7 @@ dim = 20
 #sigma = np.zeros((2*dim,2*dim))
 sigma = np.eye(2*dim)*0.01
 
-#mdp = examples.MiniLQMDP(dt=dt)
+
 mdp = examples.NLinkPendulumMDP(np.ones(dim), np.ones(dim)*5, sigma=sigma, dt=dt)
 phi = features.squared_diag()
 
@@ -32,64 +32,52 @@ policy = policies.LinearContinuous(theta=theta_p, noise=np.eye(dim)*0.1)
 theta0 =  0.*np.ones(n_feat)
 
 task = LinearLQRValuePredictionTask(mdp, gamma, phi, theta0, policy=policy, normalize_phi=True)
-task.seed=0
+#task.seed=0
 #phi = task.phi
-print "V_true", task.V_true
-print "theta_true"
-theta_true = phi.param_forward(*task.V_true)
-print theta_true
+#print "V_true", task.V_true
+#print "theta_true"
+#theta_true = phi.param_forward(*task.V_true)
+#print theta_true
 #task.theta0 = theta_true
+
 methods = []
 
-#for alpha in [0.01, 0.005]:
-#    for mu in [0.05, 0.1, 0.2, 0.01]:
-#alpha = 0.1
-alpha = 0.01
-mu = 0.1 #optimal
+alpha = 0.0005
+mu = 2 #optimal
 gtd = td.GTD(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
 methods.append(gtd)
 
-#for alpha in [.005,0.01,0.02]:
-#    for mu in [0.01, 0.1]:
-alpha, mu = 0.01, 0.5 #optimal
+
+alpha, mu = 0.0005, 2 #optimal
 gtd = td.GTD2(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
-methods = []
 alpha = .0005
 td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
 td0.name = r"TD(0) $\alpha$={}".format(alpha)
 td0.color = "k"
 methods.append(td0)
 
-#for alpha in [0.005, 0.01, 0.02]:
-#    for mu in [0.01, 0.1]:
-for alpha, mu in [(.005,0.001)]: #optimal
-    tdc = td.TDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
-    tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
-    tdc.color = "b"
-    #methods.append(tdc)
+alpha, mu = (.001,0.5)
+tdc = td.TDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
+tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
+tdc.color = "b"
+methods.append(tdc)
 
-
-#for eps in np.power(10,np.arange(-1,4)):
-eps=100
-lstd = td.LSTDLambda(lam=0, eps=eps, phi=phi, gamma=gamma)
-lstd.name = r"LSTD({}) $\epsilon$={}".format(0, eps)
+lstd = td.LSTDLambda(lam=0, phi=phi, gamma=gamma)
+lstd.name = r"LSTD({})".format(0)
 lstd.color = "g"
 methods.append(lstd)
-#
-#methods = []
-#for alpha in [0.01, 0.02, 0.03]:
-#alpha = .2
-alpha=.04
+
+alpha=.008
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
-#methods.append(rg)
+methods.append(rg)
 
 l=20000
 error_every=200
@@ -104,7 +92,7 @@ if __name__ =="__main__":
     plt.figure(figsize=(15,10))
     plt.ylabel(r"$\sqrt{MSPBE}$")
     plt.xlabel("Timesteps")
-    plt.title("Impoverished Linearized Cart Pole Balancing")
+    plt.title("Impoverished 20-Link Pole Balancing Onpolicy")
     for i, m in enumerate(methods):
         plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/8, label=m.name)
         #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], label=m.name)

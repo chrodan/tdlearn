@@ -377,6 +377,75 @@ class GeriTDC(TDC):
         self._toc()
         return theta
 
+class KTD(LinearValueFunctionPredictor):
+
+    def __init__(self, kappa=0.1, theta_noise= 0.001, eta=None, P_init=10, reward_noise=0.001, **kwargs):
+        LinearValueFunctionPredictor.__init__(self, **kwargs)
+        self.kappa = kappa
+        self.P_init = P_init
+        self.reward_noise = reward_noise
+        self.eta = eta
+        if eta is not None and theta_noise is not None:
+            print "Warning, eta and theta_noise are complementary"
+        self.theta_noise = theta_noise
+        self.reset()
+
+    def reset(self):
+        LinearValueFunctionPredictor.reset(self)
+        self.p = len(self.theta)
+        if self.theta_noise is not None:
+            self.P_vi = np.eye(self.p)*self.theta_noise
+        self.P = np.eye(self.p+2)*self.P_init
+        self.x = np.zeros(self.p+2)
+        self.x[:self.p] = self.theta
+        self.F = np.eye(self.p+2)
+        self.F[-2:, -2:] = np.array([[0., 0.], [1., 0.]])
+
+
+    def sample_sigma_points(self, mean, variance):
+        n = len(mean)
+        X = np.empty((2*n + 1, n))
+        X[:,:] = mean[None,:]
+        C = np.linalg.cholesky((self.kappa+n)*variance)
+        for j in range(n):
+            X[j+1,:]+=C[:,j]
+            X[j+n+1,:]-= C[:,j]
+        W = np.ones(2*n+1)* (1. / 2 / (self.kappa + n))
+        W[0] = (self.kappa / (self.kappa + n))
+        return X,W
+
+
+    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
+        f0 = self.phi(s0)
+        f1 = self.phi(s1)
+        self._tic()
+        if theta is not None: print "Warning, setting theta by hand is not valid"
+        #import ipdb
+        #ipdb.set_trace()
+        # Prediction Step
+        xn = np.dot(self.F, self.x)
+        Pn = np.dot(self.F,np.dot(self.P, self.F.T))
+        if self.eta is not None:
+            self.P_vi = self.eta * self.P[:-2, :-2]
+        Pn[:-2, :-2] += self.P_vi
+        Pn[-2:, -2:] += np.array([[1., -self.gamma], [-self.gamma, self.gamma**2 ]]) * self.reward_noise
+
+        # Compute Sigma Points
+        X,W = self.sample_sigma_points(xn, Pn)
+        R = (np.dot(f0, X[:, :-2].T) - self.gamma * np.dot(f1, X[:, :-2].T) + X[:,-1].T).flatten()
+
+        # Compute statistics of interest
+        rhat = (W*R).sum()
+        Pxr = ((W*(R - rhat))[:, None]*(X-xn)).sum(axis=0)
+        Pr = (W*(R - rhat)*(R- rhat)).sum()
+
+        # Correction Step
+        K = Pxr* (1./Pr)
+        self.x = xn + K*(r - rhat)
+        self.P = Pn - np.outer(K, K)* Pr
+        self.theta = self.x[:-2]
+        self._toc()
+
 class GPTD(ValueFunctionPredictor):
     """
         Gaussian Process Temporal Difference Learning implementation

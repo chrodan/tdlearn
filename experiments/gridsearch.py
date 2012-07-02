@@ -17,7 +17,7 @@ from nlink import *
 def plot_2d_error_grid_file(fn, maxerr=5):
     with open(fn) as f:
         d = pickle.load(f)
-    plot_error_grid(d["res"],d["alphas"], d["mus"], maxerr=maxerr)
+    plot_2d_error_grid(d["res"],d["alphas"], d["mus"], maxerr=maxerr)
 
 def plot_2d_error_grid(val, alphas, mus, maxerr=5):
     ferr = val.copy()

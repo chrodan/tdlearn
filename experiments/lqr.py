@@ -5,7 +5,10 @@ import matplotlib.pyplot as plt
 import dynamic_prog as dp
 import util
 import features
+import policies
+from joblib import Parallel, delayed
 from task import LinearLQRValuePredictionTask
+import itertools
 
 gamma=0.9
 sigma = np.zeros((4,4))
@@ -22,8 +25,8 @@ n_feat = len(phi(np.zeros(mdp.dim_S)))
 theta_p,_,_ = dp.solve_LQR(mdp, gamma=gamma)
 print theta_p
 theta_p = np.array(theta_p).flatten()
-policy = mdp.linear_policy(theta_p)
 
+policy = policies.LinearContinuous(theta=theta_p, noise=np.zeros((1,1)))
 #theta0 =  10*np.ones(n_feat)
 theta0 =  0.*np.ones(n_feat)
 
@@ -88,16 +91,20 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
-l=200000
+ktd = td.KTD(phi=phi, gamma=gamma, theta_noise=None, eta=0.001, reward_noise=1e-6)
+ktd.name = r"KTD"
+methods.append(ktd)
+
+l=50000
 error_every=2000
 
 mean, std, raw = task.avg_error_traces(methods, n_indep=3,
     n_samples=l, error_every=error_every,
-    criterion="RMSBE",
+    criterion="RMSPBE",
     verbose=True)
 
 plt.figure(figsize=(18,12))
-plt.ylabel(r"$\sqrt{MSBE}$")
+plt.ylabel(r"$\sqrt{MSPBE}$")
 plt.xlabel("Timesteps")
 
 for i, m in enumerate(methods):

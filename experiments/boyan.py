@@ -15,8 +15,8 @@ import matplotlib.pyplot as plt
 
 n = 14
 n_feat = 4
-n_iter = 100
-n_indep = 200
+n_iter = 200
+n_indep = 20
 mdp = examples.BoyanChain(n, n_feat)
 phi=mdp.phi
 task = LinearDiscreteValuePredictionTask(mdp, 1, phi, np.zeros(n_feat))
@@ -39,7 +39,7 @@ mu = 0.01
 gtd = td.GTD(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "#6E086D"
-methods.append(gtd)
+#methods.append(gtd)
 
 #for alpha in [0.5,0.9, 1]:
 #    for mu in [0.5, 0.3]:
@@ -47,7 +47,7 @@ alpha, mu = 0.9, 0.3
 gtd = td.GTD2(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "#6E086D"
-methods.append(gtd)
+#methods.append(gtd)
 
 
 for alpha in [0.3]:
@@ -78,12 +78,31 @@ alpha = 0.9
 rg = td.ResidualGradient(alpha=alpha, phi=phi)
 rg.name = r"RG $\alpha$={}".format(alpha)    
 rg.color = "brown"
-methods.append(rg)    
+methods.append(rg)
+
+eta = 0.001
+reward_noise=0.001
+P_init=1.
+ktd = td.KTD(phi=phi, gamma=1., P_init=P_init,theta_noise=None, eta=eta, reward_noise=reward_noise)
+ktd.name = r"KTD $\eta$={}, $\sigma^2$={}".format(eta, reward_noise)
+methods.append(ktd)
+
+eta = 0.01
+
+ktd = td.KTD(phi=phi, gamma=1., P_init=P_init,theta_noise=None, eta=eta, reward_noise=reward_noise)
+ktd.name = r"KTD $\eta$={}, $\sigma^2$={}".format(eta, reward_noise)
+methods.append(ktd)
+
+eta = 0.001
+reward_noise=0.000001
+ktd = td.KTD(phi=phi, gamma=1., P_init=P_init,theta_noise=None, eta=eta, reward_noise=reward_noise)
+ktd.name = r"KTD $\eta$={}, $\sigma^2$={}".format(eta, reward_noise)
+methods.append(ktd)
     
-mean, std, raw = task.avg_error_traces(methods, n_indep, n_eps=n_iter, criterion="RMSPBE")
+mean, std, raw = task.avg_error_traces(methods, n_indep, n_eps=n_iter, criterion="RMSE", verbose=True)
 
 plt.figure()
-plt.ylabel(r"$\sqrt{MSPBE}$")
+plt.ylabel(r"$\sqrt{MSE}$")
 plt.xlabel("Episodes")    
 plt.ylim(0,3)
 

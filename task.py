@@ -275,10 +275,10 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
         are very costly to compute, so they are only evaluated, if really needed
         """
         if name is "mu":        
-            self.mu = self.mdp.stationary_distrubution(seed=50, iterations=100000, policy=self.target_policy)
+            self.mu = self.mdp.stationary_distribution(seed=50, iterations=100000, policy=self.target_policy)
             return self.mu
         elif name is "beh_mu":        
-            self.beh_mu = self.mdp.stationary_distrubution(seed=50, iterations=100000, policy=self.behavior_policy)
+            self.beh_mu = self.mdp.stationary_distribution(seed=50, iterations=100000, policy=self.behavior_policy)
             return self.beh_mu
         elif name is "V_true":            
             self.V_true = dynamic_prog.estimate_V_discrete(self.mdp, policy=self.target_policy, gamma=self.gamma)
