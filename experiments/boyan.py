@@ -15,8 +15,6 @@ import matplotlib.pyplot as plt
 
 n = 14
 n_feat = 4
-n_iter = 200
-n_indep = 20
 mdp = examples.BoyanChain(n, n_feat)
 phi=mdp.phi
 task = LinearDiscreteValuePredictionTask(mdp, 1, phi, np.zeros(n_feat))
@@ -84,31 +82,35 @@ eta = 0.001
 reward_noise=0.001
 P_init=1.
 ktd = td.KTD(phi=phi, gamma=1., P_init=P_init,theta_noise=None, eta=eta, reward_noise=reward_noise)
-ktd.name = r"KTD $\eta$={}, $\sigma^2$={}".format(eta, reward_noise)
+ktd.name = r"KTD $\eta$={}, $\sigma^2$={} $P_0$={}".format(eta, reward_noise, P_init)
 methods.append(ktd)
 
-eta = 0.01
+nu=0.0001
+sigma0=1.
+gptd = td.GPTD(phi=phi, nu=nu, sigma0=sigma0)
+gptd.name =r"GPTD $\nu$={}, $\sigma_0$={}".format(nu, sigma0)
+methods.append(gptd)
 
-ktd = td.KTD(phi=phi, gamma=1., P_init=P_init,theta_noise=None, eta=eta, reward_noise=reward_noise)
-ktd.name = r"KTD $\eta$={}, $\sigma^2$={}".format(eta, reward_noise)
-methods.append(ktd)
+nu=0.1
+sigma0=1.
+gptd = td.GPTD(phi=phi, nu=nu, sigma0=sigma0)
+gptd.name =r"GPTD $\nu$={}, $\sigma_0$={}".format(nu, sigma0)
+methods.append(gptd)
 
-eta = 0.001
-reward_noise=0.000001
-ktd = td.KTD(phi=phi, gamma=1., P_init=P_init,theta_noise=None, eta=eta, reward_noise=reward_noise)
-ktd.name = r"KTD $\eta$={}, $\sigma^2$={}".format(eta, reward_noise)
-methods.append(ktd)
-    
-mean, std, raw = task.avg_error_traces(methods, n_indep, n_eps=n_iter, criterion="RMSE", verbose=True)
+
+n_iter = 300
+n_indep = 10
+mean, std, raw = task.avg_error_traces(methods, n_indep, n_eps=n_iter, criterion="RMSBE", verbose=True)
 
 plt.figure()
-plt.ylabel(r"$\sqrt{MSE}$")
+plt.title("{}-State Boyan Chain ({} trials)".format(n, n_indep))
+plt.ylabel(r"$\sqrt{MSBE}$")
 plt.xlabel("Episodes")    
 plt.ylim(0,3)
 
 for i, m in enumerate(methods):
 # be aware that the errorevery keyword is currently not supported in Matplotlib.
 # There is an open pull request, so it will hopefully be included in MPL soon.
-    plt.errorbar(range(len(mean[i,:])), mean[i,:], yerr=std[i,:], errorevery=10, label=m.name)
+    plt.errorbar(range(len(mean[i,:])), mean[i,:], yerr=std[i,:], errorevery=int(n_iter/10.), label=m.name)
 plt.legend()
 plt.show()

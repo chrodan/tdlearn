@@ -7,6 +7,7 @@ Created on Wed Feb 22 18:39:00 2012
 
 
 import measures
+import td
 import dynamic_prog
 import numpy as np
 from util.progressbar import ProgressBar
@@ -141,6 +142,7 @@ class LinearValuePredictionTask(object):
             curmdp = self.mdp
         self._init_methods(methods)
         err_f = self._init_error_fun(criterion)
+        err_f_gen = self._init_error_fun(criterion, general=True)
         errors = np.ones((int(np.ceil(float(n_samples)/error_every)),len(methods)))*np.inf
         
         for m in methods: m.reset_trace()
@@ -158,8 +160,11 @@ class LinearValuePredictionTask(object):
                 else:
                     m.update_V(s, s_n, r)
                 if i % error_every == 0:
-                    cur_theta = m.theta
-                    errors[int(i/error_every),k] = err_f(cur_theta)
+                    if isinstance(m, td.LinearValueFunctionPredictor):
+                        cur_theta = m.theta
+                        errors[int(i/error_every),k] = err_f(cur_theta)
+                    else:
+                        errors[int(i/error_every),k] = err_f_gen(m.V)
             i += 1
                
         return errors[:i,:].T
@@ -222,7 +227,8 @@ class LinearValuePredictionTask(object):
         self._init_methods(methods)
         err_f = self._init_error_fun(criterion)
         errors = np.ones((int(np.ceil(n_samples/error_every)),len(methods)))*np.inf
-        
+        err_f_gen = self._init_error_fun(criterion, general=True)
+
         for i in xrange(n_eps):
             for m in methods: m.reset_trace()
             cur_seed = i+n_samples*seed if seed is not None else None
@@ -238,8 +244,11 @@ class LinearValuePredictionTask(object):
                     else:
                         m.update_V(s, s_n, r)
                     if i % error_every == 0:
-                        cur_theta = m.theta
-                        errors[int(i / error_every),k] = err_f(cur_theta)
+                        if isinstance(m, td.LinearValueFunctionPredictor):
+                            cur_theta = m.theta
+                            errors[int(i/error_every),k] = err_f(cur_theta)
+                        else:
+                            errors[int(i/error_every),k] = err_f_gen(m.V)
                
         return errors.T
         
@@ -290,7 +299,7 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
             raise AttributeError(name)
             
             
-    def _init_error_fun(self, criterion):
+    def _init_error_fun(self, criterion, general=False):
         if criterion is "MSE":
             err_f = measures.prepare_MSE(self.mu, self.mdp, self.phi, self.V_true)    
         elif criterion is "RMSE":
@@ -299,7 +308,11 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
         elif criterion is "MSPBE":
             err_f = measures.prepare_MSPBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
         elif criterion is "RMSPBE":
-            err_o = measures.prepare_MSPBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
+            if not general:
+                err_o = measures.prepare_MSBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
+            else:
+                err_o = measures.prepare_discrete_MSBE_gen(self.mu, self.mdp, self.gamma, self.target_policy)
+            #err_o = measures.prepare_MSPBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
             err_f = lambda x: np.sqrt(err_o(x))
         elif criterion is "SMSPBE":
             err_f = measures.prepare_SMSPBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
@@ -309,7 +322,10 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
         elif criterion is "MSBE":
             err_f = measures.prepare_MSBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
         elif criterion is "RMSBE":
-            err_o = measures.prepare_MSBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
+            if not general:
+                err_o = measures.prepare_MSBE(self.mu, self.mdp, self.phi, self.gamma, self.target_policy)
+            else:
+                err_o = measures.prepare_discrete_MSBE_gen(self.mu, self.mdp, self.gamma, self.target_policy)
             err_f = lambda x: np.sqrt(err_o(x))
         return err_f
 
@@ -389,7 +405,7 @@ class LinearLQRValuePredictionTask(LinearValuePredictionTask):
         return r
 
 
-    def _init_error_fun(self, criterion):
+    def _init_error_fun(self, criterion, general=False):
         if criterion is "MSE":
             err_f = measures.prepare_MSE(self.mu_phi_full, self.mdp, self.phi, self.V_true)    
         elif criterion is "RMSE":

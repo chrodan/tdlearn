@@ -98,7 +98,21 @@ def prepare_LQR_MSBE(mu_samples, mdp, phi, gamma=1, policy="uniform"):
         return np.mean((V-V2)**2)
     
     return _MSBE
-    
+
+def prepare_discrete_MSBE_gen(mu, mdp, gamma=1, policy="uniform"):
+
+
+    T = bellman_operator(mdp, gamma, policy)
+
+    def _MSBE(f):
+        V = np.array([f(s) for s in mdp.states])
+        #V = (theta * np.asarray(Phi)).sum(axis=1)
+        #import ipdb; ipdb.set_trace()
+        v = np.asarray(V - T(V))
+        return np.sum(v**2 * mu)
+
+    return _MSBE
+
 def prepare_discrete_MSBE(mu, mdp, phi, gamma=1, policy="uniform"):
     
     Phi = Phi_matrix(mdp, phi)

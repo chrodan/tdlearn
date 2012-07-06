@@ -12,6 +12,7 @@ import itertools
 import logging
 import copy
 import time
+import util
 
 #logging.basicConfig(level=logging.DEBUG)
 
@@ -195,7 +196,7 @@ class GTD(GTDBase):
         f1 = self.phi(s1)
 
         self._tic()
-        # TODO check if rho is used correctly
+
         delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
         a = np.dot(f0, w)
 
@@ -378,8 +379,14 @@ class GeriTDC(TDC):
         return theta
 
 class KTD(LinearValueFunctionPredictor):
+    """ Kalman Temporal Difference Learning
 
-    def __init__(self, kappa=0.1, theta_noise= 0.001, eta=None, P_init=10, reward_noise=0.001, **kwargs):
+        for details see ﻿Geist, M. (2010).
+            Kalman temporal differences. Journal of artificial intelligence research, 39, 483-532.
+            Retrieved from http://www.aaai.org/Papers/JAIR/Vol39/JAIR-3911.pdf
+            Algorithm 5 (XKTD-V)
+    """
+    def __init__(self, kappa=1., theta_noise= 0.001, eta=None, P_init=10, reward_noise=0.001, **kwargs):
         LinearValueFunctionPredictor.__init__(self, **kwargs)
         self.kappa = kappa
         self.P_init = P_init
@@ -420,8 +427,7 @@ class KTD(LinearValueFunctionPredictor):
         f1 = self.phi(s1)
         self._tic()
         if theta is not None: print "Warning, setting theta by hand is not valid"
-        #import ipdb
-        #ipdb.set_trace()
+
         # Prediction Step
         xn = np.dot(self.F, self.x)
         Pn = np.dot(self.F,np.dot(self.P, self.F.T))
@@ -437,12 +443,19 @@ class KTD(LinearValueFunctionPredictor):
         # Compute statistics of interest
         rhat = (W*R).sum()
         Pxr = ((W*(R - rhat))[:, None]*(X-xn)).sum(axis=0)
-        Pr = (W*(R - rhat)*(R- rhat)).sum()
+        Pr = max((W*(R - rhat)*(R- rhat)).sum(),10e-5) # ensure a minimum amount of noise to avoid numberical instabilities
 
         # Correction Step
         K = Pxr* (1./Pr)
-        self.x = xn + K*(r - rhat)
+        #try:
+        #    np.linalg.cholesky(Pn - np.outer(K,K)*Pr)
+        #except Exception:
+        #    import ipdb
+        #    ipdb.set_trace()
+
         self.P = Pn - np.outer(K, K)* Pr
+
+        self.x = xn + K*(r - rhat)
         self.theta = self.x[:-2]
         self._toc()
 
@@ -450,13 +463,15 @@ class GPTD(ValueFunctionPredictor):
     """
         Gaussian Process Temporal Difference Learning implementation
         with online sparsification
-        for details see Engel, Y., Mannor, S., & Meir, R. (ICML 2003). 
-            Bayes Meets Bellman: The Gaussian Process Approach To 
-            Temporal Difference Learning.
-            Table 1
+        for details see
+        ﻿Engel, Y., Mannor, S., & Meir, R. (2005). Reinforcement learning with Gaussian processes.
+         Proceedings of the 22nd international conference on Machine learning - ICML  ’05,
+         201-208. New York, New York, USA: ACM Press. doi:10.1145/1102351.1102377
+         Table 1
+         and Engel's PhD thesis.
     """
 
-    def __init__(self, kernel, nu=1, sigma0=0.05, **kwargs):
+    def __init__(self, phi, nu=1, sigma0=0.05, **kwargs):
         """
             kernel: a mercer kernel function as a python function
                 that takes 2 arguments, i.e. gauss kernel
@@ -465,69 +480,92 @@ class GPTD(ValueFunctionPredictor):
         ValueFunctionPredictor.__init__(self, **kwargs)
         self.nu = nu
         self.sigma0 = sigma0
-        self.kernel = np.frompyfunc(kernel,2,1)
+        self.kernel = np.frompyfunc(lambda x,y: np.dot(phi(x),phi(y)),2,1)
         self.init_vals["D"] = []
-        self.init_vals["C"] = 0
-        self.init_vals["theta"] = 0
-        self.init_vals["Kinv"] = np.empty(())
+        self.init_vals["C"] = util.GrowingMat((0,1), (100, 100))
+        self.init_vals["c"] = util.GrowingVector(0)
+        self.init_vals["alpha"] = util.GrowingVector(0)
+        self.init_vals["d"] = 0
+        self.init_vals["sinv"] = 0
+        self.init_vals["Kinv"] = util.GrowingMat((0,1), (100, 100))
         self.reset()
 
+    def V(self, x):
+        return float(np.inner(self.kernel(self.D,x),self.alpha.view))
 
-#    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
-#        """
-#            rho: weight for this sample in case of off-policy learning
-#        """
-#        
-#
-#        self._tic()        
-#        # first observation?
-#        if len(self.D) == 0:
-#            first=True
-#            self.D.append(s0)
-#            self.Kinv = np.matrix([[1./ self.kernel(s0, s0)]])
-#            self.K = np.matrix([[self.kernel(s0, s0)]])
-#            self.Hbar = None
-#            self.A = None            
-#        else:
-#            first=False
-#        if theta is None: theta=self.theta
-#        k = self.kernel(self.D,s1)
-#        a = self.Kinv * k
-#        
-#        
-#        eta = self.kernel(s1, s1) - float(k.T * a)
-#
-#        if first:
-#
-#
-#
-#        # sparsification test        
-#        elif eta > self.nu:
-#            self.D.append(s1)
-#            
-#            # update K^-1
-#            Kinv = np.matrix(np.ones((self.Kinv.shape[0]+1,self.Kinv.shape[1]+1)))
-#            Kinv[:-1, :-1] = self.Kinv * eta + a*a.T
-#            Kinv[-1,:-1] = -a.T
-#            Kinv[:-1,-1] = -a
-#            self.Kinv = Kinv / eta
-#                         
-#            print "inverted Kernel matrix:", self.Kinv
-#            
-#            theta 
-#        else:
-#            da = self.Kinv * self.kernel(self.D, s0) - self.gamma * a
-#            da = da.reshape(1, -1)
-#            self.Hbar =np.vstack(self.Hbar, da)   
-#            self.A = np.vstack(self.A, a)  
-#            
-#            dk = self.kernel(D,s0) - self.gamma * self.kernel(D, s1)
-#            h  = self.Kinv * self.kernel(self.D, s0) - self.gamma * a            
-#            c =  - h
-#            theta += c / s * (dk * theta - r)
-#        self.theta = theta
-#        self._toc()
-#        return theta
+    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+
+
+        self._tic()
+        # first observation?
+        if len(self.D) == 0:
+            self.D.append(s0)
+            self.Kinv.expand(rows = np.array([[1./ self.kernel(s0, s0)]]))
+            self.C.expand(rows=np.array(0))
+            self.a = np.array(1)
+            self.c.expand(rows=np.array(0))
+            self.alpha.expand(rows=np.array(0))
+
+        k = self.kernel(self.D,s1)
+        a = np.array(np.dot(self.Kinv.view,k)).flatten()
+        ktt = float(self.kernel(s1, s1))
+        dk = self.kernel(self.D,s0) - self.gamma * self.kernel(self.D, s1)
+        delta = ktt - float(np.inner(k.T, a))
+        self.d = self.d * self.sinv *self.gamma * self.sigma0**2 + r - float(np.inner(dk, self.alpha.view.flatten()))
+        # sparsification test
+        if delta > self.nu:
+            #import ipdb; ipdb.set_trace()
+            dk2 = np.array((self.kernel(self.D,s0) - 2 * self.gamma * self.kernel(self.D, s1))).flatten()
+            self.D.append(s1)
+            # update K^-1
+            self.Kinv.view = delta * self.Kinv.view + np.outer(a,a)
+            self.Kinv.expand(cols=-a.reshape(-1,1), rows=-a.reshape(1, -1), block=np.array([[1]]))
+            self.Kinv.view /= delta
+            #print "inverted Kernel matrix:", self.Kinv.view
+
+            a = np.zeros(self.Kinv.shape[0])
+            a[-1] = 1
+
+            hbar = np.zeros_like(a)
+            hbar[:-1] = self.a
+            hbar[-1] = - self.gamma
+
+            dktt = float(np.inner(self.a, dk2)) + self.gamma**2 * ktt
+
+            cm1 = self.c.view.copy().flatten()
+            self.c.view = self.c.view.flatten() *self.sinv *self.gamma * self.sigma0**2 +  self.a - np.dot(self.C.view, dk)
+            self.c.expand(rows=np.array(- self.gamma))
+
+
+
+            s = (1 + self.gamma**2)* self.sigma0**2 - self.sinv * self.gamma**2 * self.sigma0**4 + dktt - \
+                     np.dot(dk, np.dot(self.C.view, dk)) + 2 * self.sinv * self.gamma * self.sigma0**2 * np.dot(cm1, dk)
+
+            self.alpha.expand(rows=np.array([[0]]))
+
+            self.C.expand(rows=np.zeros((1,self.C.shape[1])), cols=np.zeros((self.C.shape[0],1)))
+
+
+        else:
+            self.hbar = self.a - self.gamma * a
+            #dktt = np.dot(hbar, dk)
+
+            cm1 = self.c.view.copy()
+
+            self.c.view =self.c.view.flatten() * self.sinv *self.gamma * self.sigma0**2 +  self.hbar - np.dot(self.C.view, dk)
+
+            s = (1 + self.gamma**2)* self.sigma0**2 - self.sinv * self.gamma**2 * self.sigma0**4 + \
+                     np.dot(dk, self.c.view + self.gamma * self.sigma0**2 * self.sinv * cm1)
+
+        self.sinv = 1/ s
+        self.alpha.view += self.sinv * self.d * self.c.view
+        self.C.view += self.sinv * np.outer(self.c.view, self.c.view)
+        self.a = a
+
+        self._toc()
 
 
 class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
