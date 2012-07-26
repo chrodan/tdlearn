@@ -8,11 +8,9 @@ Created on Tue Dec 20 21:04:24 2011
 """
 import mdp
 import numpy as np
-try:
-    import matplotlib.animation as animation
-except:
-    # very dirty
-    import mdp as animation
+import scipy.integrate
+import matplotlib.animation as animation
+
 import matplotlib.pyplot as plt
 
 class MiniLQMDP(mdp.LQRMDP):
@@ -102,8 +100,7 @@ class PoleBalancingMDP(mdp.LQRMDP):
         
         R = np.ones((1,1))*(-0.1)
 
-        mdp.LQRMDP.__init__(self, A, B, Q, R, sigma, 
-                            start_f=np.array([0.0001, 0, 0, 0]))
+        mdp.LQRMDP.__init__(self, A, B, Q, R, np.array([0.0001, 0, 0, 0]), sigma)
                             
     def animate_trace(self, state_trace, action_trace=None):
         fig = plt.figure()
@@ -145,8 +142,9 @@ class PoleBalancingMDP(mdp.LQRMDP):
 
         ani = animation.FuncAnimation(fig, anim, np.arange(state_trace.shape[0]),
                                       interval=1000.*self.dt*10, blit=True, init_func=init)
-        plt.show()
-                                      
+        return ani
+
+
 class RandomMDP(mdp.MDP):
     """ 
     Random MDP with uniformly distributed transition probabilities and
@@ -175,6 +173,101 @@ class RandomMDP(mdp.MDP):
         mdp.MDP.__init__(self, states, actions, r, P, d0)
 
 
+class PendulumSwingUpCartPole(mdp.ContinuousMDP):
+    """
+    Simulation of a Pendulum mounted on a cart that can move along a line. This is a standard benchmark
+    in Reinforcement Learning. The task is to find a policy that swings up the pendulum. The only actuation is
+    the Force on the cart.
+
+    The task has the following parameters:
+    M: Mass of the cart [kg]
+    m: Mass of the pendulum [kg]
+    l: Length of the pendulum [m]
+    dt:Time step [s]
+    b: Friction coefficient between cart and ground [N/m/s]
+
+    The state is 4 dimensional:
+        position of the cart
+        velocity of the cart
+        angular velocity of the pendulum
+        angular position of the pendulum  (in [-pi, +pi[)
+
+    """
+    def __init__(self, M=0.5, l=0.6, m=0.5 ,dt=0.15, b=0.1):
+        self.l = l
+        self.M = M
+        self.m = m
+        self.dt = dt
+        self.b = b
+        def ode(s,t,a):
+            g = 9.81
+            ds = np.zeros(4)
+            ds[0] = s[1]
+            ds[1] = (2*m*l*s[2]**2 * np.sin(s[3]) + 3*m*g*np.sin(s[3])*np.cos(s[3])+ 4*a-4*b*s[1]) \
+                    / (4*(M+m)-3*m*np.cos(s[3])**2)
+            ds[2] = (-3*m*l*s[2]**2*np.sin(s[3])*np.cos(s[3])-6*(M+m)*g*np.sin(s[3])-6*(a-b*s[1])*np.cos(s[3])) \
+                    / (4*l*(m+M)-3*m*l*np.cos(s[3])**2)
+            ds[3] = s[2]
+            return ds
+
+        def statefun(s, a):
+            #import ipdb
+            #ipdb.set_trace(),
+            s1 = scipy.integrate.odeint(ode,s,[0., dt], args=(a,), printmessg=False)
+            s1 = s1[-1,:].flatten()
+            s1[-1] = ((s1[-1] + np.pi) % (2*np.pi)) - np.pi
+            return s1
+
+        def rewardfun(s, a):
+            return -np.cos(s[-1])*l - 1e-5 *np.abs(s[0])
+
+
+
+        mdp.ContinuousMDP.__init__(self, statefun, rewardfun, 4, 1, np.array([0.,0., 0., 0.]), Sigma=0.01)
+        
+    def animate_trace(self, state_trace, action_trace=None):
+        fig = plt.figure()
+        off = np.max(np.abs(state_trace[:,0])) + self.l
+        ax = fig.add_subplot(111, autoscale_on=False, aspect='equal', 
+                             xlim=(-off, off), ylim=(-self.l *2, self.l *2))
+        ax.grid()
+        line, = ax.plot([], [], 'o-', lw=2)
+        time_template = 'time = %.1fs'
+        time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)    
+        
+        psi_template = r'$\psi$ = %.2g'
+        psi_text = ax.text(0.05, 0.8, '', transform=ax.transAxes)
+        if action_trace is not None:
+            line_a, = ax.plot([], [], 'r-*', lw=2)
+        
+        def init():
+            line.set_data([], [])
+            time_text.set_text('')
+            psi_text.set_text('')
+            
+            if action_trace is not None:
+                line_a.set_data([], [])
+                return line, line_a, time_text, psi_text
+            return line, time_text, psi_text
+
+        def anim(i):
+            thisx = [state_trace[i,0],state_trace[i,0] + self.l * np.sin(state_trace[i,3])]
+            thisy = [0,- self.l * np.cos(state_trace[i,3])]
+
+            line.set_data(thisx, thisy)
+            time_text.set_text(time_template%(i*self.dt))
+            
+            psi_text.set_text(psi_template%(state_trace[i,3]))
+            if action_trace is not None:
+                line_a.set_data([0., action_trace[i,0]/np.max(np.abs(action_trace))], [-0.9, -0.9])
+                return line, line_a, time_text, psi_text
+            return line, time_text, psi_text    
+        
+
+        ani = animation.FuncAnimation(fig, anim, np.arange(state_trace.shape[0]),
+                                      interval=1000.*self.dt, blit=True, init_func=init)
+        return ani
+
 class RandomWalkChain(mdp.MDP):
     """ Random Walk chain example MDP """
     # TODO: explain + reference
@@ -201,8 +294,6 @@ class RandomWalkChain(mdp.MDP):
 
         mdp.MDP.__init__(self, states, actions, r, P, d0)
 
-
-        
     def dependent_phi(self, state):
         """
         feature function that produces linear dependent features
@@ -225,7 +316,8 @@ class RandomWalkChain(mdp.MDP):
         r = 1 - abs((state + 1 - np.linspace(1,n,self.n_feat)) / a)
         r[r < 0] = 0
         return r
-        
+
+
 class BoyanChain(mdp.MDP):
     """
     Boyan Chain example. All states form a chain with ongoing arcs and a

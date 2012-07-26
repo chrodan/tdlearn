@@ -9,10 +9,9 @@ import policies
 from joblib import Parallel, delayed
 from task import LinearLQRValuePredictionTask
 import itertools
-
+import task as t
 gamma=0.9
-sigma = np.zeros((4,4))
-sigma[-1,-1] = 0.01
+sigma = np.array([0.]*3 + [0.01])
 
 dt = 0.1
 #mdp = examples.MiniLQMDP(dt=dt)
@@ -22,7 +21,7 @@ phi = features.squared_diag()
 
 
 n_feat = len(phi(np.zeros(mdp.dim_S)))
-theta_p,_,_ = dp.solve_LQR(mdp, gamma=gamma)
+theta_p,_,_ = dp.solve_LQR(mdp,  gamma=gamma)
 print theta_p
 theta_p = np.array(theta_p).flatten()
 
@@ -106,7 +105,7 @@ methods.append(ktd)
 l=16000
 error_every=200
 
-
+#task.MSPBE = lambda x: t.LinearContinuousValuePredictionTask.MSPBE(task,x)
 mean, std, raw = task.avg_error_traces(methods, n_indep=3,
     n_samples=l, error_every=error_every,
     criterion="RMSPBE",

@@ -37,7 +37,7 @@ mu = 0.01
 gtd = td.GTD(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "#6E086D"
-#methods.append(gtd)
+methods.append(gtd)
 
 #for alpha in [0.5,0.9, 1]:
 #    for mu in [0.5, 0.3]:
@@ -45,7 +45,7 @@ alpha, mu = 0.9, 0.3
 gtd = td.GTD2(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "#6E086D"
-#methods.append(gtd)
+methods.append(gtd)
 
 
 for alpha in [0.3]:
@@ -64,10 +64,15 @@ for alpha, mu in[( 0.7, 0.01)]:
 
 #methods = []
 #for eps in np.power(10,np.arange(-1,4)):
-eps=100
-lstd = td.LSTDLambda(lam=0, eps=eps, phi=phi)
-lstd.name = r"LSTD({}) $\epsilon$={}".format(0, eps)    
+
+lstd = td.LSTDLambda(lam=0, phi=phi)
+lstd.name = r"LSTD({})".format(0)
 lstd.color = "b"        
+methods.append(lstd)
+
+lstd = td.LSTDLambda(lam=1, phi=phi)
+lstd.name = r"LSTD({})".format(1)
+lstd.color = "b"
 methods.append(lstd)
 
 #methods = []    
@@ -89,17 +94,31 @@ nu=0.0001
 sigma0=1.
 gptd = td.GPTD(phi=phi, nu=nu, sigma0=sigma0)
 gptd.name =r"GPTD $\nu$={}, $\sigma_0$={}".format(nu, sigma0)
-methods.append(gptd)
+#methods.append(gptd)
 
-nu=0.1
+
+
+nu=0.
 sigma0=1.
 gptd = td.GPTD(phi=phi, nu=nu, sigma0=sigma0)
 gptd.name =r"GPTD $\nu$={}, $\sigma_0$={}".format(nu, sigma0)
-methods.append(gptd)
+#methods.append(gptd)
+
+sigma=.5
+gptdp = td.GPTDP(phi=phi, sigma=sigma)
+gptdp.name =r"GPTDP $\sigma$={}".format(sigma)
+#methods.append(gptdp)
 
 
-n_iter = 300
-n_indep = 10
+sigma=1.
+gptdp = td.GPTDP(phi=phi, sigma=sigma)
+gptdp.name =r"GPTDP $\sigma$={}".format(sigma)
+methods.append(gptdp)
+
+
+
+n_iter = 500
+n_indep = 5
 mean, std, raw = task.avg_error_traces(methods, n_indep, n_eps=n_iter, criterion="RMSBE", verbose=True)
 
 plt.figure()

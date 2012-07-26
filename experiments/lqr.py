@@ -9,11 +9,11 @@ import policies
 from joblib import Parallel, delayed
 from task import LinearLQRValuePredictionTask
 import itertools
+import task as t
 
 gamma=0.9
-sigma = np.zeros((4,4))
-sigma[-1,-1] = 0.01
-
+sigma = np.array([0.]*3 + [0.01])
+#sigma = 0.
 dt = 0.1
 #mdp = examples.MiniLQMDP(dt=dt)
 mdp = examples.PoleBalancingMDP(sigma=sigma, dt=dt)
@@ -91,14 +91,14 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
-ktd = td.KTD(phi=phi, gamma=gamma, theta_noise=None, eta=0.001, reward_noise=1e-6)
+ktd = td.KTD(phi=phi, gamma=gamma, theta_noise=None, eta=0.001, reward_noise=1e-3)
 ktd.name = r"KTD"
 methods.append(ktd)
 
 l=50000
 error_every=2000
-
-mean, std, raw = task.avg_error_traces(methods, n_indep=3,
+#task.MSPBE = lambda x: t.LinearContinuousValuePredictionTask.MSPBE(task,x)
+mean, std, raw = task.avg_error_traces(methods, n_indep=10,
     n_samples=l, error_every=error_every,
     criterion="RMSPBE",
     verbose=True)

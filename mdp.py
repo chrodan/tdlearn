@@ -64,59 +64,51 @@ def test_pole_balancing():
 
 _false = lambda x: False
 
-class LQRMDP(object):
-    """
-        Linear Quadratic MDP with continuous states and actions
-        but time discrete transitions
-        
-    """
-    def __init__(self, A, B, Q, R, Sigma, terminal_f=_false, start_f="zero"):
-        """The MDP is defined by the state transition kernel:
-                s' ~ Normal(As + Ba, Sigma)
-            and the reward
-                r(s,a) = s^T Q s + a^T R a
-            terminal_f: python function S -> Bool that returns True exactly if
-                s is a terminal state
-            start_f: start state as ndarray
-        """
-        
-        self.dim_S = A.shape[0]
-        self.dim_A = B.shape[1]
-        self.A = A
-        self.B = B
-        self.Q = Q
-        self.R = R
-        self.start_f = start_f
-        self.terminal_f = terminal_f
-        if isinstance(Sigma, (float, int, long)):
-            self.Sigma = np.eye(self.dim_S) * float(Sigma)
-        else:
-            assert Sigma.shape == (self.dim_S, self.dim_S)
-            self.Sigma = Sigma
-        assert A.shape[1] == self.dim_S
-        assert B.shape[0] == self.dim_S
-        
 
-    def samples(self, phi, n_iter=1000, n_restarts=100,
-                                        policy="linear", seed=None,  verbose=False):
+class ContinuousMDP(object):
+
+    def __init__(self, sf, rf, dim_S, dim_A, start, terminal_f = None, Sigma=0.):
+        self.sf = sf
+        self.rf = rf
+        self.dim_S = dim_S
+        self.dim_A = dim_A
+        if terminal_f is None:
+            terminal_f = lambda x: False
+        self.terminal_f = terminal_f
+        if not hasattr(start, '__call__'):
+            startf = lambda: start.copy()
+        else:
+            startf = start
+        self.start = startf
+        if isinstance(Sigma, (float, int, long)):
+            self.Sigma = Sigma*np.ones(self.dim_S)
+        else:
+            assert Sigma.shape == (self.dim_S,)
+            self.Sigma = Sigma
+
+    def samples(self, n_iter=1000, n_restarts=100,
+                    policy="linear", no_next_noise=False):
         states = np.empty((n_restarts * n_iter, self.dim_S))
+        states_next = np.empty((n_restarts * n_iter, self.dim_S))
         actions = np.empty((n_restarts * n_iter, self.dim_A))
         rewards = np.empty((n_restarts * n_iter))
         k=0
         for i in xrange(n_restarts):
-            for s,a,s_n, r in self.sample_transition(n_iter, policy, with_restart=False):
+            for s,a,s_n, r in self.sample_transition(n_iter, policy, with_restart=False, no_next_noise=no_next_noise):
                 states[k,:] = s
+                states_next[k,:] = s_n
                 rewards[k] = r
                 actions[k,:] = a
                 k+=1
-        return states[:k,:],actions[:k,:], rewards[:k]
+
+        return states[:k,:],actions[:k,:], rewards[:k], states_next[:k,:]
 
     def state_samples(self, phi, n_iter=1000, n_restarts=100,
-                policy="linear", seed=None,  verbose=False):
+                      policy="linear", seed=None,  verbose=False):
         return self.samples(phi, n_iter, n_restarts, policy, seed, verbose)[0]
 
-    def stationary_feature_distribution(self, phi, n_iter=1000, n_restarts=100, 
-                                        policy="linear", seed=None,  verbose=False):
+    def stationary_feature_distribution(self, phi, n_iter=1000, n_restarts=100,
+                                        policy="linear"):
         n_feat = len(phi(np.zeros(self.dim_S)))
         result = np.empty((n_restarts * n_iter, n_feat))
         k=0
@@ -126,8 +118,7 @@ class LQRMDP(object):
                 k+=1
         return result
 
-
-    def sample_step(self, s0 , policy=None, seed=None, with_restart = False):
+    def sample_transition(self, max_n, policy, seed=None, with_restart = False, no_next_noise=False):
         """
         generator that samples from the MDP
         be aware that this chains can be infinitely long
@@ -147,62 +138,87 @@ class LQRMDP(object):
         if seed is not None:
             np.random.seed(seed)
 
-        rands = np.random.multivariate_normal(np.zeros(self.dim_S), self.Sigma, 1)
-        a = policy(s0)
-        mean = np.dot(self.A,s0) + np.dot(self.B,a)
-        s1 = mean + rands[0]
-        r = np.dot(s0.T, np.dot(self.Q, s0)) + np.dot(a.T, np.dot(self.R, a))
-        return (s0, a, s1, r)
-
-    def sample_transition(self, max_n, policy="linear", seed=None, with_restart = False):
-        """
-        generator that samples from the MDP
-        be aware that this chains can be infinitely long
-        the chain is restarted if the policy changes
-
-            max_n: maximum number of samples to draw
-
-            policy: python function S -> A that gets the current state and 
-                returns the action to take
-                
-            seed: optional seed for the random generator to generate
-                deterministic samples
-                
-            returns a transition tuple (X_n, A, X_n+1, R)
-        """
-
-        if seed is not None:
-            np.random.seed(seed)
-        if policy is "linear":
-            policy = self.linear_policy()
-
-        rands = np.random.multivariate_normal(np.zeros(self.dim_S), self.Sigma, max_n)
+        rands = np.random.multivariate_normal(np.zeros(self.dim_S), np.diag(self.Sigma), max_n)
         i=0
-        while i < max_n:        
-            s0 = self.start_f
-            while i < max_n:  
+        while i < max_n:
+            s0 = self.start()
+            while i < max_n:
                 if self.terminal_f(s0):
-                    if with_restart: 
+                    if with_restart:
                         break
                     else:
                         return
                 a = policy(s0)
-                mean = np.dot(self.A,s0) + np.dot(self.B,a)
+                mean = self.sf(s0, a)
                 s1 = mean + rands[i]
-              
-                #s1 = np.random.multivariate_normal(mean, self.Sigma)
-                #import ipdb; ipdb.set_trace()
-                r = np.dot(s0.T, np.dot(self.Q, s0)) + np.dot(a.T, np.dot(self.R, a))
-                yield (s0, a, s1, r)
+
+                r = self.rf(s0, a)
+                if no_next_noise:
+                    yield (s0, a, np.array(mean).flatten(), r)
+                else:
+                    yield (s0, a, s1, r)
                 i+=1
                 s0 = s1
 
+    def sample_step(self, s0 , policy=None, seed=None, no_next_noise=False):
+        """
+        samples one step from the MDP
+        returns a transition tuple (X_n, A, X_n+1, R)
+        """
 
-                  
-        
-        
+        if seed is not None:
+            np.random.seed(seed)
 
-    
+        rands = np.random.multivariate_normal(np.zeros(self.dim_S), np.diag(self.Sigma), 1)
+        a = policy(s0)
+        mean = self.sf(s0, a)
+        if not no_next_noise:    
+            s1 = mean + rands[0]
+        else:
+            s1 = mean
+        r = self.rf(s0, a)
+        return (s0, a, s1, r)
+
+
+class LQRMDP(ContinuousMDP):
+    """
+        Linear Quadratic MDP with continuous states and actions
+        but time discrete transitions
+        
+    """
+    def __init__(self, A, B, Q, R, start, Sigma, terminal_f=_false):
+        """The MDP is defined by the state transition kernel:
+                s' ~ Normal(As + Ba, Sigma)
+            and the reward
+                r(s,a) = s^T Q s + a^T R a
+            terminal_f: python function S -> Bool that returns True exactly if
+                s is a terminal state
+            start_f: start state as ndarray
+        """
+        
+        self.dim_S = A.shape[0]
+        self.dim_A = B.shape[1]
+        self.A = A
+        self.B = B
+        self.Q = Q
+        self.R = R
+        self.terminal_f = terminal_f
+        if isinstance(Sigma, (float, int, long)):
+            self.Sigma = np.ones(self.dim_S)*Sigma
+            #self.Sigma = np.eye(self.dim_S) * float(Sigma)
+        else:
+            assert Sigma.shape == (self.dim_S,)
+            self.Sigma = Sigma
+        if not hasattr(start, '__call__'):
+            startf = lambda: start.copy()
+        else:
+            startf = start
+        self.start = startf
+        assert A.shape[1] == self.dim_S
+        assert B.shape[0] == self.dim_S
+        self.sf =  lambda s0, a: np.dot(self.A,s0) + np.dot(self.B,a)
+        self.rf = lambda s0, a: np.dot(s0.T, np.dot(self.Q, s0)) + np.dot(a.T, np.dot(self.R, a))
+
 
 class MDP(object):
     """

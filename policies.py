@@ -20,7 +20,7 @@ class LinearContinuous(object):
         else:
             self.noise = noise
         if np.all(self.noise == 0):
-            self.approx_noise = np.eye(self.dim_S)*10e-50
+            self.approx_noise = np.eye(self.dim_A)*10e-50
         else:
             self.approx_noise = self.noise
         self.precision = np.linalg.pinv(self.approx_noise)

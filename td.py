@@ -459,6 +459,48 @@ class KTD(LinearValueFunctionPredictor):
         self.theta = self.x[:-2]
         self._toc()
 
+
+class GPTDP(LinearValueFunctionPredictor):
+    """
+    Parametric GPTD
+    for details see
+     ﻿Engel, Y. (2005). Algorithms and Representations for Reinforcement Learning. Hebrew University.
+    Algorithm 18
+    """
+    def __init__(self, sigma=0.05, **kwargs):
+        LinearValueFunctionPredictor.__init__(self, **kwargs)
+        self.sigma = sigma
+        self.init_vals["sinv"] = 0
+        self.init_vals["d"] = 0
+
+        self.reset()
+
+    def reset(self):
+        LinearValueFunctionPredictor.reset(self)
+        n = len(self.theta)
+        self.p = np.zeros(n)
+        self.P = np.eye(n)
+
+    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
+        f0 = self.phi(s0)
+        f1 = self.phi(s1)
+        self._tic()
+        if theta is not None: print "Warning, setting theta by hand is not valid"
+
+        df = f0 - self.gamma * f1
+        c = self.gamma * self.sinv * self.sigma**2
+        a = c * self.p
+        self.p = a + np.dot(self.P,  df)
+        self.d = c * self.d + r  - np.inner(df, self.theta)
+        s = self.sigma**2 + self.gamma**2 * self.sigma**2 - self.sigma * self.gamma * c + \
+            np.inner(a+ self.p,df)
+        self.sinv = 1./s
+        self.theta += self.sinv * self.d * self.p
+        self.P -= self.sinv * np.outer(self.p, self.p)
+        self._toc()
+
+
+
 class GPTD(ValueFunctionPredictor):
     """
         Gaussian Process Temporal Difference Learning implementation
@@ -468,7 +510,7 @@ class GPTD(ValueFunctionPredictor):
          Proceedings of the 22nd international conference on Machine learning - ICML  ’05,
          201-208. New York, New York, USA: ACM Press. doi:10.1145/1102351.1102377
          Table 1
-         and Engel's PhD thesis.
+         and Engel's PhD thesis
     """
 
     def __init__(self, phi, nu=1, sigma0=0.05, **kwargs):

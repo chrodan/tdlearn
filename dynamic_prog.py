@@ -7,7 +7,6 @@ Created on Sun Jan 22 00:51:55 2012
 """
 import numpy as np
 import logging
-from measures import bellman_operator_LQR
 import policies
 def estimate_V_discrete(mdp, n_iter=100000, policy="uniform", gamma=1.):
     if policy =="uniform":
@@ -29,7 +28,7 @@ def estimate_V_discrete(mdp, n_iter=100000, policy="uniform", gamma=1.):
         V = V_n
     return V
     
-def estimate_V_LQR(lqmdp, policy, n_iter=100000, gamma=1., eps=1e-14):
+def estimate_V_LQR(lqmdp, bellman_op, n_iter=100000, gamma=1., eps=1e-14):
     """ Evaluate the value function exactly fora given Linear-quadratic MDP
         the value function has the form
         V = s^T P s
@@ -38,7 +37,7 @@ def estimate_V_LQR(lqmdp, policy, n_iter=100000, gamma=1., eps=1e-14):
         
         as_fun: returns V as a python function instead of P"""
         
-    T = bellman_operator_LQR(lqmdp, gamma, policy)
+    T = bellman_op
     P = np.matrix(np.zeros((lqmdp.dim_S,lqmdp.dim_S)))
     b = 0.
     for i in xrange(n_iter):
@@ -49,14 +48,38 @@ def estimate_V_LQR(lqmdp, policy, n_iter=100000, gamma=1., eps=1e-14):
         P = P_n
         b = b_n
     return np.array(P), b
-        
+
+def bellman_operator(mdp, P, b, theta, noise=0., gamma=1.):
+    """
+    the bellman operator for the behavioral policy
+    as a python function which takes the value function s^T P s + b represented as a numpy
+    squared array P
+        T(P,b) = R + theta_p^T Q theta_p + gamma * (A + B theta_p)^T P (A + B theta_p), gamma * (b + tr(P * Sigma))
+
+    """
+    Q = np.matrix(mdp.Q)
+    R = np.matrix(mdp.R)
+    A = np.matrix(mdp.A)
+    B = np.matrix(mdp.B)
+    Sigma = np.matrix(np.diag(mdp.Sigma))
+    theta = np.matrix(theta)
+    if noise == 0.:
+        noise = np.zeros((theta.shape[0], theta.shape[0]))
+    S = A+ B * theta
+    C = Q + theta.T * R * theta
+
+    Pn = C + gamma * (S.T * np.matrix(P) * S)
+    bn = gamma * (b + np.trace(np.matrix(P)*np.matrix(Sigma) ))\
+    + np.trace((R + gamma * B.T * np.matrix(P)*B)* np.matrix(noise))
+    return Pn, bn
+
 def solve_LQR(lqmdp, n_iter=100000, gamma=1., eps=1e-14):
     """ Solves exactly the Linear-quadratic MDP with 
         the value function has the form
         V* = s^T P* s and policy a = theta* s
         
         returns (theta*, P*)"""
-        
+
     P = np.matrix(np.zeros((lqmdp.dim_S,lqmdp.dim_S)))
     Q = np.matrix(lqmdp.Q)
     R = np.matrix(lqmdp.R)
@@ -65,9 +88,8 @@ def solve_LQR(lqmdp, n_iter=100000, gamma=1., eps=1e-14):
     A = np.matrix(lqmdp.A)
     B = np.matrix(lqmdp.B)
     for i in xrange(n_iter):
-        theta_n = - gamma * np.linalg.pinv(R + gamma * B.T * P * B) * B.T * P * A 
-        T = bellman_operator_LQR(lqmdp, gamma, policies.LinearContinuous(theta=theta_n))
-        P_n, b_n = T(P,b) #Q + theta.T * R * theta + gamma * (A+ B * theta).T * P * (A + B * theta)     
+        theta_n = - gamma * np.linalg.pinv(R + gamma * B.T * P * B) * B.T * P * A
+        P_n, b_n = bellman_operator(lqmdp,P,b, theta, gamma=gamma) #Q + theta.T * R * theta + gamma * (A+ B * theta).T * P * (A + B * theta)
         if np.linalg.norm(P - P_n) < eps and np.abs(b - b_n) < eps and np.linalg.norm(theta - theta_n) < eps:
             print "Converged estimating V after ",i,"iterations"
             break
