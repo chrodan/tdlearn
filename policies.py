@@ -52,3 +52,36 @@ class DiscreteUniform(Discrete):
         self.dim_S, self.dim_A = dim_S, dim_A
 
 
+class MarcsPolicy(object):
+    
+    def __init__(self, filename="./mlab_cartpole/policy.mat", noise=None, dim_A=1):
+        self.dim_A = dim_A
+        
+        if noise is None:
+            self.noise = np.zeros((self.dim_A, self.dim_A))
+        else:
+            self.noise = noise
+        if np.all(self.noise == 0):
+            self.approx_noise = np.eye(self.dim_A)*10e-50
+        else:
+            self.approx_noise = self.noise
+        self.precision = np.linalg.pinv(self.approx_noise)
+        from mlabwrap import mlab
+        self.mlab = mlab
+        self.mlab.addpath("./mlab_cartpole")
+        self.mlab.load(filename)
+        
+    def mean(self, s):
+        lst = [str(a) for a in s[:-1]]+ [str(np.sin(s[-1])), str(np.cos(s[-1]))]
+        strrep = ",".join(lst)
+        r = self.mlab._do("policy.fcn(policy,["+strrep+"]', zeros(5,5))")
+        return np.ones(1)*float(r)
+        
+    def __call__(self, s):
+        
+        return np.random.multivariate_normal(self.mean(s), self.noise)
+        
+    def p(self,s,a):
+        m_a = self.mean(s) - a
+        return np.exp(-0.5*np.dot(m_a, np.dot(self.precision, m_a)))/ ((2*np.pi)**(float(self.dim_A) / 2)) / np.sqrt(np.trace(self.approx_noise))
+

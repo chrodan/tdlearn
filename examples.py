@@ -223,7 +223,7 @@ class PendulumSwingUpCartPole(mdp.ContinuousMDP):
 
 
 
-        mdp.ContinuousMDP.__init__(self, statefun, rewardfun, 4, 1, np.array([0.,0., 0., 0.]), Sigma=0.01)
+        mdp.ContinuousMDP.__init__(self, statefun, rewardfun, 4, 1, np.array([0.,0., 0., 0.]), Sigma=0.)
         
     def animate_trace(self, state_trace, action_trace=None):
         fig = plt.figure()

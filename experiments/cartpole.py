@@ -8,14 +8,13 @@ import features
 import policies
 from joblib import Parallel, delayed
 from task import LinearContinuousValuePredictionTask
-import itertools
 
 gamma=0.9
 dt = 0.1
 
 mdp = examples.PendulumSwingUpCartPole(dt = dt)
-s = slice(-4., 5., 2.)
-s2 = slice(-1., 1.1, 0.3)
+s = slice(-4., 5., 4.)
+s2 = slice(-1., 1.1, 0.5)
 means = np.mgrid[s,s,s2,s2].reshape(4,-1).T
 #means = np.zeros((5**4, 4), dtype="float")
 sigmas = np.ones(means.shape[0])
@@ -23,10 +22,10 @@ phi = features.gaussians(means,sigmas)
 
 
 n_feat = len(phi(np.zeros(mdp.dim_S)))
-
+print n_feat
 theta_p = np.array([-0.1, 0., 0., 0.])
 
-policy = policies.LinearContinuous(theta=theta_p, noise=np.eye(1)*0.1)
+policy = policies.MarcsPolicy()
 #theta0 =  10*np.ones(n_feat)
 theta0 =  0.*np.ones(n_feat)
 
@@ -68,7 +67,7 @@ tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
 tdc.color = "b"
 #methods.append(tdc)
 
-lstd = td.LSTDLambda(lam=0, phi=phi, gamma=gamma)
+lstd = td.RecursiveLSTDLambda(lam=0, eps=1000, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({})".format(0)
 lstd.color = "g"
 methods.append(lstd)
@@ -79,7 +78,7 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 #methods.append(rg)
 
-l=1000
+l=100
 error_every=1
 name="swingup"
 
@@ -101,7 +100,8 @@ if __name__ =="__main__":
     plt.plot(range(0,l,error_every), rewards)
     plt.subplot(313)
     for i in range(4):
-        plt.plot(range(0,l,error_every), states[:,i])  
+        plt.plot(range(0,l,error_every), states[:,i])
+    plt.legend()
     plt.show()
 """
 if __name__ =="__main__":
