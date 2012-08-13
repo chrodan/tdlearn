@@ -29,7 +29,7 @@ policy = policies.MarcsPolicy()
 #theta0 =  10*np.ones(n_feat)
 theta0 =  0.*np.ones(n_feat)
 
-task = LinearContinuousValuePredictionTask(mdp, gamma, phi, theta0, policy=policy, normalize_phi=True)
+task = LinearContinuousValuePredictionTask(mdp, gamma, phi, theta0, policy=policy, normalize_phi=True, mu_iter=10)
 #print task.mu_phi
 #task.seed=0
 #phi = task.phi

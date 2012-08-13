@@ -157,14 +157,16 @@ class LinearValuePredictionTask(object):
                                                        policy=self.behavior_policy,
                                                        with_restart=False, 
                                                        seed=seed):
-                        
+            f0 = self.phi(s)
+            f1 = self.phi(s_n)
             for k, m in enumerate(methods):
                 if self.off_policy:
                     m.update_V_offpolicy(s, s_n, r, a,
                                                           self.behavior_policy, 
-                                                          self.target_policy)
+                                                          self.target_policy,
+                                                    f0=f0, f1=f1)
                 else:
-                    m.update_V(s, s_n, r)
+                    m.update_V(s, s_n, r, f0=f0, f1=f1)
                 if i % error_every == 0:
                     if isinstance(m, td.LinearValueFunctionPredictor):
                         cur_theta = m.theta
@@ -194,13 +196,16 @@ class LinearValuePredictionTask(object):
             for s, a, s_n, r in self.mdp.sample_transition(n_samples, policy=self.behavior_policy,
                                                                with_restart=False, 
                                                                seed=cur_seed):
+                f0 = self.phi(s)
+                f1 = self.phi(s_n)
                 for k, m in enumerate(methods):
                     if self.off_policy:
                         m.update_V_offpolicy(s, s_n, r, a,
-                                                                  self.behavior_policy, 
-                                                                  self.target_policy)
+                            self.behavior_policy,
+                            self.target_policy,
+                            f0=f0, f1=f1)
                     else:
-                        m.update_V(s, s_n, r)
+                        m.update_V(s, s_n, r, f0=f0, f1=f1)
                     param[k] = m.theta
                 
         return param 
@@ -220,13 +225,16 @@ class LinearValuePredictionTask(object):
             for s, a, s_n, r in self.mdp.sample_transition(n_samples, policy=self.behavior_policy,
                                                            with_restart=False, 
                                                            seed=cur_seed):
+                f0 = self.phi(s)
+                f1 = self.phi(s_n)
                 for k, m in enumerate(methods):
                     if self.off_policy:
                         m.update_V_offpolicy(s, s_n, r, a,
-                                                              self.behavior_policy, 
-                                                              self.target_policy)
+                            self.behavior_policy,
+                            self.target_policy,
+                            f0=f0, f1=f1)
                     else:
-                        m.update_V(s, s_n, r)
+                        m.update_V(s, s_n, r, f0=f0, f1=f1)
                     param[i,k] = m.theta
                 i += 1
                     
@@ -247,13 +255,16 @@ class LinearValuePredictionTask(object):
                                                            policy=self.behavior_policy,
                                                            with_restart=False, 
                                                            seed=cur_seed):
+                f0 = self.phi(s)
+                f1 = self.phi(s_n)
                 for k, m in enumerate(methods):
                     if self.off_policy:
                         m.update_V_offpolicy(s, s_n, r, a,
-                                                              self.behavior_policy, 
-                                                              self.target_pi)
+                            self.behavior_policy,
+                            self.target_policy,
+                            f0=f0, f1=f1)
                     else:
-                        m.update_V(s, s_n, r)
+                        m.update_V(s, s_n, r, f0=f0, f1=f1)
                     if i % error_every == 0:
                         if isinstance(m, td.LinearValueFunctionPredictor):
                             cur_theta = m.theta
@@ -262,6 +273,25 @@ class LinearValuePredictionTask(object):
                             errors[int(i/error_every),k] = err_f_gen(m.V)
                
         return errors.T
+
+    def save_traces(self, filename, n_eps, n_samples, seed=None):
+        _n_eps = n_eps if n_eps is not None else 1
+        for s, a, s_n, r in self.mdp.sample_transition(n_samples,
+                                    policy=self.behavior_policy,
+                                    with_restart=False):
+            f0 = self.phi(s)
+            n_feat = len(f0)
+            break
+        states = np.zeros((_n_eps, n_samples, n_feat))
+
+        for i in xrange(_n_eps):
+            cur_seed = i+n_samples*seed if seed is not None else None
+            for s, a, s_n, r in self.mdp.sample_transition(n_samples,
+                                                            policy=self.behavior_policy,
+                                                            with_restart=False,
+                                                            seed=cur_seed):
+                f0 = self.phi(s)
+                f1 = self.phi(s_n)
 
     def _init_error_fun(self, criterion, general=False):
         if criterion is "MSE":
@@ -409,8 +439,12 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
     methods to evaluate different algorithms on the same problem setting.
     """
 
-    def __init__(self, mdp, gamma, phi, theta0, policy, target_policy=None, normalize_phi=False):
+    def __init__(self, mdp, gamma, phi, theta0, policy, target_policy=None, normalize_phi=False, mu_iter=5,
+                 mu_restarts=1000, mu_seed=5):
         self.mdp = mdp
+        self.mu_iter = mu_iter
+        self.mu_seed = mu_seed
+        self.mu_restarts = mu_restarts
         self.gamma = gamma
         self.phi = phi
         self.seed = None
@@ -455,19 +489,15 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         some attribute such as state distribution or the true value function
         are very costly to compute, so they are only evaluated, if really needed
         """
-        if name is "mu" or name is "mu_next" or name is "mu_r":
-            self.mu,_, self.mu_r, self.mu_next  = self.mdp.samples( n_iter=1000, n_restarts=5,
-                policy=self.target_policy, no_next_noise=True)
+        if name is "mu" or name is "mu_next" or name is "mu_r" or name is "mu_phi" or name is "mu_phi_next":
+            self.mu,_, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next  = self.mdp.samples_featured(policy=self.target_policy,
+                phi=self.phi,
+                n_iter=self.mu_iter,
+                n_restarts=self.mu_restarts,
+                no_next_noise=True,
+                seed=self.mu_seed)
             return self.__dict__[name]
-        elif name is "mu_phi_full":
-            self.mu_phi_full = util.apply_rowise(features.squared_tri(), self.mu)
-            return self.mu_phi_full
-        elif name is "mu_phi":
-            self.mu_phi = util.apply_rowise(self.phi, self.mu)
-            return self.mu_phi
-        elif name is "mu_phi_next":
-            self.mu_phi_next = util.apply_rowise(lambda x: self.phi.expectation(x, self.mdp.Sigma), self.mu_next)
-            return self.mu_phi_next
+
         else:
             raise AttributeError(name)
 
@@ -499,6 +529,9 @@ class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
             self.V_true = dynamic_prog.estimate_V_LQR(self.mdp, lambda x,y: self.bellman_operator(x,y, policy="target"),
                                                                                         gamma=self.gamma)
             return self.V_true
+        elif name is "mu_phi_full":
+            self.mu_phi_full = util.apply_rowise(features.squared_tri(), self.mu)
+            return self.mu_phi_full
         else:
             return LinearContinuousValuePredictionTask.__getattr__(self,name)
 

@@ -4,6 +4,9 @@ import numpy as np
 
 class gaussians(object):
 
+    def __repr__(self):
+        return "gaussians("+repr(self.means)+","+repr(self.sigmasq)+")"
+
     def expectation(self, x, Sigma):
         
         sig = Sigma + self.sigmasq[:, None]

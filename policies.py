@@ -68,9 +68,27 @@ class MarcsPolicy(object):
         self.precision = np.linalg.pinv(self.approx_noise)
         from mlabwrap import mlab
         self.mlab = mlab
+        self.mlab._autosync_dirs = False
         self.mlab.addpath("./mlab_cartpole")
         self.mlab.load(filename)
-        
+        self.filename = filename
+
+    def __repr__(self):
+        return "MarcsPolicy (fn="+self.filename+",noise="+repr(self.noise)+")"
+
+    def __getstate__(self):
+        res = self.__dict__.copy()
+        del res["mlab"]
+        return res
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        from mlabwrap import mlab
+        self.mlab = mlab
+        self.mlab.addpath("./mlab_cartpole")
+        self.mlab.load(self.filename)
+        self.mlab._autosync_dirs = False
+
     def mean(self, s):
         lst = [str(a) for a in s[:-1]]+ [str(np.sin(s[-1])), str(np.cos(s[-1]))]
         strrep = ",".join(lst)
