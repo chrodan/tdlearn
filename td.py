@@ -117,7 +117,7 @@ class OffPolicyValueFunctionPredictor(ValueFunctionPredictor):
         behaviour policy
     """
     
-    def update_V_offpolicy(self, s0, s1, r, a, beh_pi, target_pi, theta=None, 
+    def update_V_offpolicy(self, s0, s1, r, a, beh_pi, target_pi, f0=None, f1=None, theta=None,
                                                                     **kwargs):
         """
         off policy training version for transition (s0, a, s1) with reward r
@@ -133,7 +133,7 @@ class OffPolicyValueFunctionPredictor(ValueFunctionPredictor):
         if not np.isfinite(rho):
             import ipdb
             ipdb.set_trace()
-        return self.update_V(s0, s1, r, theta=theta, **kwargs)
+        return self.update_V(s0, s1, r, f0=f0, f1=f1, theta=theta, **kwargs)
         
 
 class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
@@ -184,16 +184,16 @@ class GTD(GTDBase):
     Maei, H. R. (2011). Gradient Temporal-Difference Learning Algorithms.
     (p. 36)
     """
-    def update_V(self, s0, s1, r, rho=1, theta=None, **kwargs):
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
         """
             rho: weight for this sample in case of off-policy learning
         """
         w = self.w
         if theta is None:
             theta = self.theta
-        
-        f0 = self.phi(s0)
-        f1 = self.phi(s1)
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
 
         self._tic()
 
@@ -229,15 +229,16 @@ class GTD2(GTDBase):
     (p. 38)
     """
 
-    def update_V(self, s0, s1, r, rho=1, theta=None, **kwargs):
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
         """
             rho: weight for this sample in case of off-policy learning
         """
         w = self.w
         if theta is None:
             theta = self.theta
-        f0 = self.phi(s0)
-        f1 = self.phi(s1)
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
 
         self._tic()
 
@@ -272,16 +273,16 @@ class TDC(GTDBase):
     (p. 38)
     """
 
-    def update_V(self, s0, s1, r, rho=1, theta=None, **kwargs):
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
         """
             rho: weight for this sample in case of off-policy learning
         """
         w = self.w
         if theta is None:
             theta = self.theta
-
-        f0 = self.phi(s0)
-        f1 = self.phi(s1)
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
 
         self._tic()
         delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
@@ -323,7 +324,7 @@ class TDCLambda(GTDBase, LambdaValueFunctionPredictor):
         self.reset()
 
 
-    def update_V(self, s0, s1, r, rho=1, theta=None, **kwargs):
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
         """
             rho: weight for this sample in case of off-policy learning
         """
@@ -331,8 +332,9 @@ class TDCLambda(GTDBase, LambdaValueFunctionPredictor):
         if theta is None:
             theta = self.theta
 
-        f0 = self.phi(s0)
-        f1 = self.phi(s1)
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
 
         if not hasattr(self, "z"):
             self.z = np.zeros_like(f0)
@@ -356,7 +358,7 @@ class GeriTDC(TDC):
     the TDC algorithm except that the pseudo-stationary guess for off-policy estimation is computed differently
     """
 
-    def update_V(self, s0, s1, r, rho=1, theta=None, **kwargs):
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
         """
             rho: weight for this sample in case of off-policy learning
         """
@@ -364,8 +366,9 @@ class GeriTDC(TDC):
         if theta is None:
             theta = self.theta
 
-        f0 = self.phi(s0)
-        f1 = self.phi(s1)
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
 
         self._tic()
         delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
@@ -422,9 +425,10 @@ class KTD(LinearValueFunctionPredictor):
         return X,W
 
 
-    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
-        f0 = self.phi(s0)
-        f1 = self.phi(s1)
+    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
         self._tic()
         if theta is not None: print "Warning, setting theta by hand is not valid"
 
@@ -481,9 +485,10 @@ class GPTDP(LinearValueFunctionPredictor):
         self.p = np.zeros(n)
         self.P = np.eye(n)
 
-    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
-        f0 = self.phi(s0)
-        f1 = self.phi(s1)
+    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
         self._tic()
         if theta is not None: print "Warning, setting theta by hand is not valid"
 
@@ -535,7 +540,7 @@ class GPTD(ValueFunctionPredictor):
     def V(self, x):
         return float(np.inner(self.kernel(self.D,x),self.alpha.view))
 
-    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
+    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
         """
             rho: weight for this sample in case of off-policy learning
         """
@@ -660,12 +665,13 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
     def theta_set(self, val):
         pass
 
-    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
+    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
         """
             rho: weight for this sample in case of off-policy learning
         """
-        f0 = self.phi(s0)
-        f1 = self.phi(s1)
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
         self._tic()
         if theta is None: theta=self.theta
         if not hasattr(self, "z"):
@@ -693,12 +699,13 @@ class LSTDLambdaJP(LSTDLambda):
     """
 
 
-    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
+    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
         """
             rho: weight for this sample in case of off-policy learning
         """
-        f0 = self.phi(s0)
-        f1 = self.phi(s1)
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
         self._tic()
         if theta is None: theta = self.theta
         if not hasattr(self, "z"):
@@ -750,12 +757,13 @@ class RecursiveLSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
         for k,v in self.init_vals.items():
             self.__setattr__(k,copy.copy(v))
 
-    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
+    def update_V(self, s0, s1, r, f0=None, f1=None,  theta=None, rho=1, **kwargs):
         """
             rho: weight for this sample in case of off-policy learning
         """
-        f0 = self.phi(s0)
-        f1 = self.phi(s1)
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
         self._tic()
         if theta is None: theta=self.theta
         if not hasattr(self, "z"):
@@ -806,10 +814,11 @@ class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredict
         assert self.lam == 0
         F, Cmat, self.b = self._compute_detTD_updates(task)
         self.A = np.array(F - Cmat)
-    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
+    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
 
-        f0 = self.phi(s0)
-        f1 = self.phi(s1)
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
         if theta is None: theta=self.theta
         if not hasattr(self, "z"):
             self.z = f0
@@ -876,10 +885,11 @@ class ResidualGradient(OffPolicyValueFunctionPredictor, LinearValueFunctionPredi
         LinearValueFunctionPredictor.reset(self)
         self.alpha = self._assert_iterator(self.init_vals['alpha'])
 
-    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
+    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
 
-        f0 = self.phi(s0)
-        f1 = self.phi(s1)
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
         if theta is None: theta=self.theta
 
         self._tic()
@@ -920,7 +930,7 @@ class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
 
 
 
-    def update_V(self, s0, s1, r, theta=None, rho=1, **kwargs):
+    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
         """
         adapt the current parameters theta given the current transition
         (s0 -> s1) with reward r and (a weight of rho)
@@ -928,9 +938,10 @@ class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         """
         if theta is None:
             theta = self.theta
-            
-        f0 = self.phi(s0)
-        f1 = self.phi(s1)
+
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
         self._tic()
         delta = r + self.gamma * np.dot(theta, f1) \
                                - np.dot(theta, f0)
