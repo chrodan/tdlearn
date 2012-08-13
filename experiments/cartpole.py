@@ -12,7 +12,7 @@ from task import LinearContinuousValuePredictionTask
 gamma=0.9
 dt = 0.1
 
-mdp = examples.PendulumSwingUpCartPole(dt = dt)
+mdp = examples.PendulumSwingUpCartPole(dt = dt, Sigma=0.01)
 s = slice(-4., 5., 4.)
 s2 = slice(-1., 1.1, 0.5)
 means = np.mgrid[s,s,s2,s2].reshape(4,-1).T

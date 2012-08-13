@@ -193,7 +193,7 @@ class PendulumSwingUpCartPole(mdp.ContinuousMDP):
         angular position of the pendulum  (in [-pi, +pi[)
 
     """
-    def __init__(self, M=0.5, l=0.6, m=0.5 ,dt=0.15, b=0.1):
+    def __init__(self, M=0.5, l=0.6, m=0.5 ,dt=0.15, b=0.1, Sigma=0.):
         self.l = l
         self.M = M
         self.m = m
@@ -223,7 +223,7 @@ class PendulumSwingUpCartPole(mdp.ContinuousMDP):
 
 
 
-        mdp.ContinuousMDP.__init__(self, statefun, rewardfun, 4, 1, np.array([0.,0., 0., 0.]), Sigma=0.)
+        mdp.ContinuousMDP.__init__(self, statefun, rewardfun, 4, 1, np.array([0.,0., 0., 0.]), Sigma=Sigma)
         
     def animate_trace(self, state_trace, action_trace=None):
         fig = plt.figure()
