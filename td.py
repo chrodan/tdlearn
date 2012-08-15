@@ -460,7 +460,7 @@ class KTD(LinearValueFunctionPredictor):
         # Compute statistics of interest
         rhat = (W*R).sum()
         Pxr = ((W*(R - rhat))[:, None]*(X-xn)).sum(axis=0)
-        Pr = max((W*(R - rhat)*(R- rhat)).sum(),10e-5) # ensure a minimum amount of noise to avoid numberical instabilities
+        Pr = max((W*(R - rhat)*(R- rhat)).sum(),10e-5) # ensure a minimum amount of noise to avoid numerical instabilities
 
         # Correction Step
         K = Pxr* (1./Pr)

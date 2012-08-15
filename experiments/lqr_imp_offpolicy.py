@@ -104,7 +104,7 @@ error_every=100
 name="cartpole_off"
 
 if __name__ == "__main__":
-    mean, std, raw = task.avg_error_traces(methods, n_indep=4,
+    mean, std, raw = task.avg_error_traces(methods, n_indep=5,
         n_samples=l, error_every=error_every,
         criterion="RMSPBE",
         verbose=20, n_jobs=1)
