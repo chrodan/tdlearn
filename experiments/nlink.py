@@ -15,7 +15,7 @@ gamma=0.9
 dt = 0.1
 dim = 20
 #sigma = np.zeros((2*dim,2*dim))
-sigma = np.eye(2*dim)*0.01
+sigma = np.ones(2*dim)*0.01
 
 
 mdp = examples.NLinkPendulumMDP(np.ones(dim), np.ones(dim)*5, sigma=sigma, dt=dt)
@@ -24,7 +24,7 @@ phi = features.squared_diag()
 
 n_feat = len(phi(np.zeros(mdp.dim_S)))
 theta_p,_,_ = dp.solve_LQR(mdp, gamma=gamma)
-print theta_p
+#print theta_p
 theta_p = np.array(theta_p)
 
 policy = policies.LinearContinuous(theta=theta_p, noise=np.eye(dim)*0.1)
@@ -68,7 +68,7 @@ tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
 tdc.color = "b"
 methods.append(tdc)
 
-lstd = td.LSTDLambda(lam=0, phi=phi, gamma=gamma)
+lstd = td.RecursiveLSTDLambda(lam=0, phi=phi, gamma=gamma, eps=100)
 lstd.name = r"LSTD({})".format(0)
 lstd.color = "g"
 methods.append(lstd)

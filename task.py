@@ -6,7 +6,7 @@ Created on Wed Feb 22 18:39:00 2012
 """
 
 
-import measures
+
 import td
 import dynamic_prog
 import numpy as np
@@ -56,7 +56,7 @@ class LinearValuePredictionTask(object):
 
         return min_errors
 
-    def avg_error_traces(self, methods, n_indep, n_eps=None, verbose=False, n_jobs=1, stationary=False, **kwargs):
+    def avg_error_traces(self, methods, n_indep, n_eps=None, verbose=False, n_jobs=1, **kwargs):
 
         res = []
         if n_jobs==1:
@@ -65,9 +65,8 @@ class LinearValuePredictionTask(object):
                 for seed in range(n_indep):
                     p.update(seed, n_indep, "{} of {} seeds".format(seed, n_indep))
                     kwargs['seed']=seed
-                    if stationary:
-                        res.append(self.stationary_error_traces(methods, **kwargs))
-                    elif n_eps is None:
+
+                    if n_eps is None:
                         res.append(self.ergodic_error_traces(methods, **kwargs))
                     else:
                         res.append(self.episodic_error_traces(methods, n_eps=n_eps, **kwargs))
@@ -76,7 +75,6 @@ class LinearValuePredictionTask(object):
             for seed in range(n_indep):
                 kwargs['seed']=seed
                 curmethods = [m.clone() for m in methods]
-                kwargs["curmdp"] = self.mdp
                 if n_eps is None:
                     jobs.append((LinearLQRValuePredictionTask.ergodic_error_traces,["", curmethods], kwargs))
                     
@@ -115,70 +113,44 @@ class LinearValuePredictionTask(object):
         return param
 
 
-    def stationary_error_traces(self, methods, n_samples=1000, seed=None, criterion="MSE", error_every=1):
-        self._init_methods(methods)
-        err_f = self._init_error_fun(criterion)
-        errors = np.ones((int(np.ceil(float(n_samples)/error_every)),len(methods)))*np.inf
-        mu = self.mu
-        rands = np.random.randint(mu.shape[0], size=n_samples)
-        for i in xrange(n_samples):
 
-            s,a,s_n, r = self.mdp.sample_step(mu[rands[i], :], policy=self.behavior_policy)
-            for k, m in enumerate(methods):
-                m.reset_trace()
-                if self.off_policy:
-                    m.update_V_offpolicy(s, s_n, r, a,
-                        self.behavior_policy,
-                        self.target_policy)
-                else:
-                    m.update_V(s, s_n, r)
-                if i % error_every == 0:
-                    cur_theta = m.theta
-                    errors[int(i/error_every),k] = err_f(cur_theta)
 
 
         return errors[:i,:].T
         
-    def ergodic_error_traces(self, methods, curmdp=None, n_samples=1000, 
-                             seed=None, criterion="MSE", error_every=1, with_trace=False):
-        if curmdp is None:
-            curmdp = self.mdp
+    def ergodic_error_traces(self, methods, n_samples=1000, 
+                             seed=1, criterion="MSE", error_every=1, with_trace=False):
+
         self._init_methods(methods)
         err_f = self._init_error_fun(criterion)
         err_f_gen = self._init_error_fun(criterion, general=True)
         errors = np.ones((int(np.ceil(float(n_samples)/error_every)),len(methods)))*np.inf
-        if with_trace:
-            states = np.zeros((int(np.ceil(float(n_samples)/error_every)),curmdp.dim_S))
-            rewards = np.zeros(int(np.ceil(float(n_samples)/error_every)))
         
         for m in methods: m.reset_trace()
-        i = 0
-        for s, a, s_n, r in curmdp.sample_transition(n_samples,
-                                                       policy=self.behavior_policy,
-                                                       with_restart=False, 
-                                                       seed=seed):
-            f0 = self.phi(s)
-            f1 = self.phi(s_n)
+
+        s, a, r, s_n, restarts, f0, f1 = self.mdp.samples_featured(phi=self.phi, n_iter=n_samples, 
+                                                        n_restarts=1, 
+                                                        policy=self.behavior_policy, 
+                                                        seed=seed)
+        for i in xrange(n_samples):
             for k, m in enumerate(methods):
                 if self.off_policy:
-                    m.update_V_offpolicy(s, s_n, r, a,
+                    m.update_V_offpolicy(s[i], s_n[i], r[i], a[i],
                                                           self.behavior_policy, 
                                                           self.target_policy,
-                                                    f0=f0, f1=f1)
+                                                    f0=f0[i], f1=f1[i])
                 else:
-                    m.update_V(s, s_n, r, f0=f0, f1=f1)
+                    m.update_V(s[i], s_n[i], r[i], f0=f0[i], f1=f1[i])
                 if i % error_every == 0:
                     if isinstance(m, td.LinearValueFunctionPredictor):
                         cur_theta = m.theta
                         errors[int(i/error_every),k] = err_f(cur_theta)
                     else:
                         errors[int(i/error_every),k] = err_f_gen(m.V)
-            if i % error_every == 0 and with_trace:
-                rewards[int(i/error_every)] = r
-                states[int(i/error_every),:] = s
+
             i += 1
         if with_trace:
-            return errors[:i,:], rewards[:i], states[:i]
+            return errors[:i,:], r, s
         else:
             return errors[:i,:].T
 
@@ -490,7 +462,7 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         are very costly to compute, so they are only evaluated, if really needed
         """
         if name is "mu" or name is "mu_next" or name is "mu_r" or name is "mu_phi" or name is "mu_phi_next":
-            self.mu,_, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next  = self.mdp.samples_featured(policy=self.target_policy,
+            self.mu,_, self.mu_r, self.mu_next, _, self.mu_phi, self.mu_phi_next  = self.mdp.samples_featured(policy=self.target_policy,
                 phi=self.phi,
                 n_iter=self.mu_iter,
                 n_restarts=self.mu_restarts,

@@ -31,11 +31,10 @@ class MiniLQMDP(mdp.LQRMDP):
         Q = np.diag([-1., 0.])
         #terminal_f = lambda x: np.abs(x[0]) > 10
         
-        terminal_f = lambda x: False
         R = np.ones((1,1))*(-1)
 
-        mdp.LQRMDP.__init__(self, A, B, Q, R, sigma, terminal_f=terminal_f, 
-                            start_f=lambda : np.array([0.0001, 0]))
+        mdp.LQRMDP.__init__(self, A, B, Q, R, sigma, 
+                            start=np.array([0.0001, 0]))
 
 
 class NLinkPendulumMDP(mdp.LQRMDP):
@@ -64,8 +63,8 @@ class NLinkPendulumMDP(mdp.LQRMDP):
         Q = np.zeros((2*n, 2*n))
         Q[:n, :n] += np.eye(n)*penalty
         R = np.eye(n)*action_penalty
-        mdp.LQRMDP.__init__(self, A, B, Q, R, sigma,
-            start_f=np.zeros(2*n))
+        mdp.LQRMDP.__init__(self, A, B, Q, R, Sigma=sigma,
+            start=np.zeros(2*n))
 
 class PoleBalancingMDP(mdp.LQRMDP):
     """

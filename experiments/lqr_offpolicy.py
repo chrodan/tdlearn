@@ -9,8 +9,8 @@ import policies
 from task import LinearLQRValuePredictionTask
 
 gamma=0.9
-sigma = np.zeros((4,4))
-sigma[-1,-1] = 0.01
+sigma = np.zeros(4)
+sigma[-1] = 0.01
 
 dt = 0.1
 #mdp = examples.MiniLQMDP(dt=dt)
@@ -104,10 +104,10 @@ error_every=100
 name="cartpole_off"
 
 if __name__ == "__main__":
-    mean, std, raw = task.avg_error_traces(methods, n_indep=50,
+    mean, std, raw = task.avg_error_traces(methods, n_indep=4,
         n_samples=l, error_every=error_every,
         criterion="RMSPBE",
-        verbose=10, n_jobs=1, stationary=True)
+        verbose=20, n_jobs=2)
 
     #plt.figure(figsize=(18,12))
     plt.title("Cart-Pole Off-Policy")
@@ -116,7 +116,9 @@ if __name__ == "__main__":
 
     for i, m in enumerate(methods):
         #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=10000/error_every, label=m.name)
-        plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/10, color=m.color, label=m.name)
+        #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/10, color=m.color, label=m.name)
+        plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], color=m.color, label=m.name)
+    
     plt.legend()
     #plt.yscale("log")
     plt.show()

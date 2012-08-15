@@ -41,7 +41,8 @@ class ContinuousMDP(object):
         else:
             assert Sigma.shape == (self.dim_S,)
             self.Sigma = Sigma
-        self.samples_featured = memory.cache(self.samples_featured)
+        self.__setstate__(self.__dict__)
+
     def __getstate__(self):
         res = self.__dict__.copy()
         if "start_state" in res:
@@ -52,7 +53,8 @@ class ContinuousMDP(object):
         self.__dict__ = state
         if "start" not in state:
             self.start = lambda: self.start_state.copy()
-        self.samples_featured = memory.cache(self.samples_featured)
+        self.samples_featured = memory.cache(self.samples_featured)        
+        self.samples_cached = memory.cache(self.samples_cached)
 
     def samples(self, policy,n_iter=1000, n_restarts=100,
                      no_next_noise=False, seed=None):
@@ -72,42 +74,45 @@ class ContinuousMDP(object):
 
         return states[:k,:],actions[:k,:], rewards[:k], states_next[:k,:]
 
-    def samples_featured(self, phi, policy, n_iter=1000, n_restarts=100,
-                     no_next_noise=False, seed=None, flat=True):
-        n_feat = len(phi(np.zeros(self.dim_S)))
-        preshape = [1,n_restarts * n_iter] if flat else [n_restarts, n_iter]
-        states = np.empty(preshape + [self.dim_S])
-        states_next = np.empty(preshape + [self.dim_S])
-        actions = np.empty(preshape + [self.dim_A])
-        rewards = np.empty(preshape)
-        feats = np.empty(preshape + [ n_feat])
-        feats_next = np.empty(preshape + [ n_feat])
+    def samples_cached(self, policy, n_iter=1000, n_restarts=100,
+                     no_next_noise=False, seed=1):
+        assert(seed is not None)
+        states = np.empty([n_restarts * n_iter, self.dim_S])
+        states_next = np.empty([n_restarts * n_iter, self.dim_S])
+        actions = np.empty([n_restarts * n_iter, self.dim_A])
+        rewards = np.empty(n_restarts * n_iter)
+       
+        restarts = np.zeros(n_restarts * n_iter, dtype="bool")
         k=0
-        for i in xrange(n_restarts):
-            if not flat:
-                k=0
-                j=i
-            else:
-                j=0
-            for s,a,s_n, r in self.sample_transition(n_iter, policy, with_restart=False, no_next_noise=no_next_noise, seed=seed):
-                states[j,k,:] = s
-                states_next[j,k,:] = s_n
-                rewards[j,k] = r
-                actions[j,k,:] = a
-                feats[j,k,:] = phi(s)
-                feats_next[j,k,:] = phi(s_n)
+        while k < n_restarts * n_iter:
+            restarts[k] = True
+            for s,a,s_n, r in self.sample_transition(n_iter, policy, with_restart=False, 
+                                                     no_next_noise=no_next_noise, seed=seed):
+                states[k,:] = s
+                states_next[k,:] = s_n
+                rewards[k] = r
+                actions[k,:] = a
+
                 k+=1
-        if flat:
-            return states.squeeze() ,actions.squeeze(), rewards.squeeze(), states_next.squeeze(), feats.squeeze(), feats_next.squeeze()
-        else:
-            return states,actions, rewards, states_next, feats, feats_next
-
-
-
-    def state_samples(self, phi, n_iter=1000, n_restarts=100,
-                      policy="linear", seed=None,  verbose=False):
-        return self.samples(phi, n_iter, n_restarts, policy, seed, verbose)[0]
-
+                if k >= n_restarts * n_iter:
+                    break
+        return states ,actions, rewards, states_next, restarts
+       
+    def samples_featured(self, phi, policy, n_iter=1000, n_restarts=100,
+                     no_next_noise=False, seed=1):
+        assert(seed is not None)
+        s,a,r,sn,restarts = self.samples_cached(policy, n_iter, n_restarts, no_next_noise, seed)        
+             
+        n_feat = len(phi(np.zeros(self.dim_S)))
+        feats = np.empty([n_restarts * n_iter, n_feat])
+        feats_next = np.empty([n_restarts * n_iter,n_feat])  
+        
+        for k in xrange(n_iter * n_restarts):
+                
+            feats[k,:] = phi(s[k])
+            feats_next[k,:] = phi(sn[k])
+                
+        return s ,a, r, sn, restarts, feats, feats_next
 
 
     def sample_transition(self, max_n, policy, seed=None, with_restart = False, no_next_noise=False):
@@ -201,16 +206,40 @@ class LQRMDP(ContinuousMDP):
         else:
             assert Sigma.shape == (self.dim_S,)
             self.Sigma = Sigma
+            
         if not hasattr(start, '__call__'):
-            startf = lambda: start.copy()
+            self.start_state=start
+            startf = lambda: self.start_state.copy()
         else:
+            self.start_state=None
             startf = start
         self.start = startf
         assert A.shape[1] == self.dim_S
         assert B.shape[0] == self.dim_S
-        self.sf =  lambda s0, a: np.dot(self.A,s0) + np.dot(self.B,a)
-        self.rf = lambda s0, a: np.dot(s0.T, np.dot(self.Q, s0)) + np.dot(a.T, np.dot(self.R, a))
+        self.__setstate__(self.__dict__)
 
+    def statefun(self, s0, a):
+        return np.dot(self.A,s0) + np.dot(self.B,a)
+    
+    def rewardfun(self, s0, a):
+        return np.dot(s0.T, np.dot(self.Q, s0)) + np.dot(a.T, np.dot(self.R, a))
+        
+    def __getstate__(self):
+        res = self.__dict__.copy()
+        if "start_state" in res:
+            del res["start"]
+        del res["rf"]
+        del res["sf"]
+        return res
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        if "start" not in state:
+            self.start = lambda: self.start_state.copy()
+        self.sf = self.statefun 
+        self.rf = self.rewardfun
+        self.samples_featured = memory.cache(self.samples_featured)        
+        self.samples_cached = memory.cache(self.samples_cached)
 
 class MDP(object):
     """

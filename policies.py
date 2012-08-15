@@ -5,6 +5,9 @@ import numpy as np
 import util
 class LinearContinuous(object):
     
+    def __repr__(self):
+        return "LinearContinuous("+repr(self.theta)+","+repr(self.noise)+")"
+        
     def __init__(self, theta=None, noise=None, dim_S=None, dim_A=None):
         if theta is None:
             self.dim_S = dim_S
@@ -34,7 +37,8 @@ class LinearContinuous(object):
         return np.exp(-0.5*np.dot(m_a, np.dot(self.precision, m_a)))/ ((2*np.pi)**(float(self.dim_A) / 2)) / np.sqrt(np.trace(self.approx_noise))
 
 class Discrete(object):
-
+    def __repr__(self):
+        return "Discrete("+repr(self.prop_table)+")"
     def __init__(self, prop_table):
         self.tab = prop_table
         self.dim_S, self.dim_A = self.tab.shape
