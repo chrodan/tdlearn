@@ -116,7 +116,7 @@ if __name__ =="__main__":
 
     np.savez_compressed("data/{name}/results.npz".format(name=name), mean=mean, std=std, raw=raw)
 
-    
+
 
     plt.figure(figsize=(15,10))
     plt.ylabel(r"$\sqrt{MSPBE}$")

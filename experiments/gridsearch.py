@@ -150,16 +150,17 @@ def gridsearch_1d():
 def gridsearch_ktd():
     #theta_noises= [None, 0.0001, 0.001, 0.01, 0.1, 1]
     reward_noises = np.power(10,np.arange(-5.,0,1))
-    P_init = [0.1, 1., 10., 100.]
-
-    params = list(itertools.product(P_init, reward_noises))
-    names=["P_init", "reward_noise"]
-    k = (delayed(run)(td.KTD, dict(zip(names, list(p)))) for p in params)
+    P_init = [1., 10., 100.]
+    eta = [None, 1e-5, 1e-3]
+    params = list(itertools.product(P_init, reward_noises, eta))
+    names=["P_init", "reward_noise", "eta"]
+    m=td.KTD
+    k = (delayed(run)(m, dict(zip(names, list(p)))) for p in params)
     res = Parallel(n_jobs=-1, verbose=11)(k)
 
-    res = np.array(res).reshape(len(reward_noises), -1)
-    with open("data/{}_{}_gs.pck".format(name, m.__name__), "w") as f:
-        pickle.dump(dict(params=params, P_init=P_init, reward_noises=reward_noises, res=res), f)
+    res = np.array(res).reshape(len(reward_noises), len(P_init), -1)
+    with open("data/{}/{}_gs.pck".format(name, m.__name__), "w") as f:
+        pickle.dump(dict(params=params, P_init=P_init, reward_noises=reward_noises, eta=eta, res=res), f)
 
 def gridsearch_gptdp():
     #theta_noises= [None, 0.0001, 0.001, 0.01, 0.1, 1]
@@ -170,7 +171,7 @@ def gridsearch_gptdp():
     res = Parallel(n_jobs=-1, verbose=11)(k)
 
     res = np.array(res).reshape(len(sigma), -1)
-    with open("data/{}_{}_gs.pck".format(name, m.__name__), "w") as f:
+    with open("data/{}/{}_gs.pck".format(name, m.__name__), "w") as f:
         pickle.dump(dict(params=params, sigma=sigma, res=res), f)
 
 if __name__ == "__main__":
