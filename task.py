@@ -136,6 +136,7 @@ class LinearValuePredictionTask(object):
                                                         n_restarts=1, 
                                                         policy=self.behavior_policy, 
                                                         seed=seed)
+        #import ipdb; ipdb.set_trace()
         for i in xrange(n_samples):
             if restarts[i]: 
                 for m in methods: m.reset_trace() 
@@ -419,15 +420,14 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
     methods to evaluate different algorithms on the same problem setting.
     """
 
-    def __init__(self, mdp, gamma, phi, theta0, policy, target_policy=None, normalize_phi=False, mu_iter=5,
-                 mu_restarts=1000, mu_seed=5):
+    def __init__(self, mdp, gamma, phi, theta0, policy, target_policy=None, normalize_phi=False, mu_iter=1000,
+                 mu_restarts=5, mu_seed=1000):
         self.mdp = mdp
         self.mu_iter = mu_iter
         self.mu_seed = mu_seed
         self.mu_restarts = mu_restarts
         self.gamma = gamma
         self.phi = phi
-        self.seed = None
         self.theta0 = theta0
         self.behavior_policy = policy
 
@@ -438,7 +438,12 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
             self.target_policy =policy
             self.off_policy = False
         if normalize_phi:
-            Phi = util.apply_rowise(phi, self.mu)
+            mu,_,_,_,_ = self.mdp.samples_cached(policy=self.target_policy,
+                n_iter=self.mu_iter,
+                n_restarts=self.mu_restarts,
+                no_next_noise=True,
+                seed=self.mu_seed)
+            Phi = util.apply_rowise(phi, mu)
             phi.normalization = np.std(Phi, axis=0)
             phi.normalization[phi.normalization == 0] = 1.
 

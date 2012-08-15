@@ -13,7 +13,7 @@ import policies
 from util import multinomial_sample
 from joblib import Memory
 
-memory = Memory(cachedir=".", verbose=20)
+memory = Memory(cachedir=".", verbose=2)
 
 
 def _false(x):
@@ -79,10 +79,10 @@ class ContinuousMDP(object):
     def samples_cached(self, policy, n_iter=1000, n_restarts=100,
                      no_next_noise=False, seed=1):
         assert(seed is not None)
-        states = np.empty([n_restarts * n_iter, self.dim_S])
-        states_next = np.empty([n_restarts * n_iter, self.dim_S])
-        actions = np.empty([n_restarts * n_iter, self.dim_A])
-        rewards = np.empty(n_restarts * n_iter)
+        states = np.ones([n_restarts * n_iter, self.dim_S])
+        states_next = np.ones([n_restarts * n_iter, self.dim_S])
+        actions = np.ones([n_restarts * n_iter, self.dim_A])
+        rewards = np.ones(n_restarts * n_iter)
        
         restarts = np.zeros(n_restarts * n_iter, dtype="bool")
         k=0

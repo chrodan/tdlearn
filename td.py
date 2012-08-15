@@ -746,7 +746,7 @@ class RecursiveLSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
             Algorithm 1
     """
 
-    def __init__(self, eps=1, **kwargs):
+    def __init__(self, eps=100, **kwargs):
         """
             lam: lambda in [0, 1] specifying the tradeoff between bootstrapping
                     and MC sampling
@@ -986,7 +986,9 @@ class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         self._tic()
         delta = r + self.gamma * np.dot(theta, f1) \
                                - np.dot(theta, f0)
-        #import ipdb; ipdb.set_trace()
+        if np.isnan(delta):
+            import ipdb; ipdb.set_trace()
+        #print delta
         logging.debug("TD Learning Delta {}".format(delta))
         #print theta
         #print f0, f1

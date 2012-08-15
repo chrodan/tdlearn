@@ -11,7 +11,10 @@ from task import LinearLQRValuePredictionTask
 from joblib import Parallel, delayed
 from matplotlib.colors import LogNorm
 import pickle
-from nlink import *
+
+
+
+from lqr_full import *
 
 
 def plot_2d_error_grid_file(fn, maxerr=5):
@@ -41,6 +44,13 @@ def run_2d(alpha, mu, cls):
 def run_1d(alpha, cls):
     np.seterr(all="ignore")
     m = cls(alpha=alpha, phi=task.phi, gamma=gamma)
+    mean, std, raw = task.avg_error_traces([m], n_indep=3, n_samples=l, error_every=error_every, criterion="RMSPBE", verbose=False)
+    val = np.mean(mean)
+    return val
+
+def run(cls, param):
+    np.seterr(all="ignore")
+    m = cls(phi=task.phi, gamma=gamma, **param)
     mean, std, raw = task.avg_error_traces([m], n_indep=3, n_samples=l, error_every=error_every, criterion="RMSPBE", verbose=False)
     val = np.mean(mean)
     return val
@@ -83,7 +93,7 @@ def gridsearch_2d():
             pickle.dump(dict(params=params, alphas=alphas, mus=mus, res=res), f)
 
 def gridsearch_lambda():
-    methods = [td.LSTDLambda, td.LSTDLambdaJP]
+    methods = [td.RecursiveLSTDLambda, td.LSTDLambdaJP]
 
     alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5]
     mus = [0.0001, 0.001, 0.01,0.01, 0.1, 0.5,1,2,4,8,16]
@@ -136,6 +146,32 @@ def gridsearch_1d():
         res = np.array(res).reshape(len(alphas), -1)
         with open("data/{}_{}_gs.pck".format(name, m.__name__), "w") as f:
             pickle.dump(dict(params=params, alphas=alphas, res=res), f)
+
+def gridsearch_ktd():
+    #theta_noises= [None, 0.0001, 0.001, 0.01, 0.1, 1]
+    reward_noises = np.power(10,np.arange(-5.,0,1))
+    P_init = [0.1, 1., 10., 100.]
+
+    params = list(itertools.product(P_init, reward_noises))
+    names=["P_init", "reward_noise"]
+    k = (delayed(run)(td.KTD, dict(zip(names, list(p)))) for p in params)
+    res = Parallel(n_jobs=-1, verbose=11)(k)
+
+    res = np.array(res).reshape(len(reward_noises), -1)
+    with open("data/{}_{}_gs.pck".format(name, m.__name__), "w") as f:
+        pickle.dump(dict(params=params, P_init=P_init, reward_noises=reward_noises, res=res), f)
+
+def gridsearch_gptdp():
+    #theta_noises= [None, 0.0001, 0.001, 0.01, 0.1, 1]
+    sigma = np.power(10,np.arange(-5.,0,1))
+    params=sigma
+    m = td.GPTDP
+    k = (delayed(run)(m, dict(sigma=p)) for p in params)
+    res = Parallel(n_jobs=-1, verbose=11)(k)
+
+    res = np.array(res).reshape(len(sigma), -1)
+    with open("data/{}_{}_gs.pck".format(name, m.__name__), "w") as f:
+        pickle.dump(dict(params=params, sigma=sigma, res=res), f)
 
 if __name__ == "__main__":
     gridsearch_1d()
