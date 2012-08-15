@@ -18,6 +18,9 @@ import policies
 import features
 from util import cached_property
 
+def tmp(cl, *args, **kwargs): 
+    return cl.ergodic_error_traces(*args, **kwargs)
+
 class LinearValuePredictionTask(object):
     """ Base class for LQR and discrete case tasks """
     
@@ -73,14 +76,15 @@ class LinearValuePredictionTask(object):
         else:
             jobs = []
             for seed in range(n_indep):
+                kwargs=kwargs.copy()                
                 kwargs['seed']=seed
-                curmethods = [m.clone() for m in methods]
+                print kwargs
                 if n_eps is None:
-                    jobs.append((LinearLQRValuePredictionTask.ergodic_error_traces,["", curmethods], kwargs))
-                    
+                    #jobs.append((tmp,["", curmethods], kwargs))
+                    jobs.append((tmp, [self, methods], kwargs))
                 else:
                     kwargs["n_eps"] = n_eps
-                    jobs.append((LinearLQRValuePredictionTask.episodic_error_traces,[methods], kwargs))
+                    jobs.append((LinearLQRValuePredictionTask.episodic_error_traces,[self, methods], kwargs))
             res = Parallel(n_jobs=n_jobs, verbose=verbose)(jobs)
         res = np.array(res).swapaxes(0,1)
         return np.mean(res, axis=1), np.std(res, axis=1), res
@@ -133,6 +137,9 @@ class LinearValuePredictionTask(object):
                                                         policy=self.behavior_policy, 
                                                         seed=seed)
         for i in xrange(n_samples):
+            if restarts[i]: 
+                for m in methods: m.reset_trace() 
+                
             for k, m in enumerate(methods):
                 if self.off_policy:
                     m.update_V_offpolicy(s[i], s_n[i], r[i], a[i],
@@ -266,21 +273,22 @@ class LinearValuePredictionTask(object):
                 f1 = self.phi(s_n)
 
     def _init_error_fun(self, criterion, general=False):
-        if criterion is "MSE":
+        if criterion == "MSE":
             err_f = self.MSE
-        elif criterion is "RMSE":
+        elif criterion == "RMSE":
             err_o = self.MSE
             err_f = lambda x: np.sqrt(err_o(x))
-        elif criterion is "MSPBE":
+        elif criterion == "MSPBE":
             err_f = self.MSPBE
-        elif criterion is "MSBE":
+        elif criterion == "MSBE":
             err_f = self.MSBE
-        elif criterion is "RMSPBE":
+        elif criterion == "RMSPBE":
             err_o = self.MSPBE
             err_f = lambda x: np.sqrt(err_o(x))
-        elif criterion is "RMSBE":
+        elif criterion == "RMSBE":
             err_o = self.MSBE
             err_f = lambda x: np.sqrt(err_o(x))
+
         return err_f
 
 
@@ -316,13 +324,13 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
         some attribute such as state distribution or the true value function
         are very costly to compute, so they are only evaluated, if really needed
         """
-        if name is "mu":        
+        if name == "mu":        
             self.mu = self.mdp.stationary_distribution(seed=50, iterations=100000, policy=self.target_policy)
             return self.mu
-        elif name is "beh_mu":        
+        elif name == "beh_mu":        
             self.beh_mu = self.mdp.stationary_distribution(seed=50, iterations=100000, policy=self.behavior_policy)
             return self.beh_mu
-        elif name is "V_true":            
+        elif name == "V_true":            
             self.V_true = dynamic_prog.estimate_V_discrete(self.mdp, policy=self.target_policy, gamma=self.gamma)
             return self.V_true
         else:
@@ -461,7 +469,7 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         some attribute such as state distribution or the true value function
         are very costly to compute, so they are only evaluated, if really needed
         """
-        if name is "mu" or name is "mu_next" or name is "mu_r" or name is "mu_phi" or name is "mu_phi_next":
+        if name == "mu" or name == "mu_next" or name == "mu_r" or name == "mu_phi" or name == "mu_phi_next":
             self.mu,_, self.mu_r, self.mu_next, _, self.mu_phi, self.mu_phi_next  = self.mdp.samples_featured(policy=self.target_policy,
                 phi=self.phi,
                 n_iter=self.mu_iter,
@@ -497,11 +505,11 @@ class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
         some attribute such as state distribution or the true value function
         are very costly to compute, so they are only evaluated, if really needed
         """
-        if name is "V_true":
+        if name == "V_true":
             self.V_true = dynamic_prog.estimate_V_LQR(self.mdp, lambda x,y: self.bellman_operator(x,y, policy="target"),
                                                                                         gamma=self.gamma)
             return self.V_true
-        elif name is "mu_phi_full":
+        elif name == "mu_phi_full":
             self.mu_phi_full = util.apply_rowise(features.squared_tri(), self.mu)
             return self.mu_phi_full
         else:

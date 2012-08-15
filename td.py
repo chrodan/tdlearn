@@ -45,6 +45,7 @@ class ValueFunctionPredictor(object):
             else:
                 del self.z
 
+
     def _assert_iterator(self, p):
         try:
             return iter(p)
@@ -160,6 +161,18 @@ class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         o = self.__class__(self.init_vals['alpha'], self.init_vals['beta'], gamma=self.gamma, phi=self.phi)
         return o
 
+    def __getstate__(self):
+        res = self.__dict__
+        for n in ["alpha", "beta"]:
+            if isinstance(res[n], itertools.repeat):
+                res[n] = res[n].next()
+        return res
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self.alpha = self._assert_iterator(self.init_vals['alpha'])
+        self.beta = self._assert_iterator(self.init_vals['beta'])
+        
+        
 
     def reset(self):
         LinearValueFunctionPredictor.reset(self)
@@ -384,7 +397,7 @@ class GeriTDC(TDC):
 class KTD(LinearValueFunctionPredictor):
     """ Kalman Temporal Difference Learning
 
-        for details see ﻿Geist, M. (2010).
+        for details see Geist, M. (2010).
             Kalman temporal differences. Journal of artificial intelligence research, 39, 483-532.
             Retrieved from http://www.aaai.org/Papers/JAIR/Vol39/JAIR-3911.pdf
             Algorithm 5 (XKTD-V)
@@ -468,7 +481,7 @@ class GPTDP(LinearValueFunctionPredictor):
     """
     Parametric GPTD
     for details see
-     ﻿Engel, Y. (2005). Algorithms and Representations for Reinforcement Learning. Hebrew University.
+     Engel, Y. (2005). Algorithms and Representations for Reinforcement Learning. Hebrew University.
     Algorithm 18
     """
     def __init__(self, sigma=0.05, **kwargs):
@@ -511,7 +524,7 @@ class GPTD(ValueFunctionPredictor):
         Gaussian Process Temporal Difference Learning implementation
         with online sparsification
         for details see
-        ﻿Engel, Y., Mannor, S., & Meir, R. (2005). Reinforcement learning with Gaussian processes.
+        Engel, Y., Mannor, S., & Meir, R. (2005). Reinforcement learning with Gaussian processes.
          Proceedings of the 22nd international conference on Machine learning - ICML  ’05,
          201-208. New York, New York, USA: ACM Press. doi:10.1145/1102351.1102377
          Table 1
@@ -621,7 +634,7 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
          LSTD(\lambda) with linear function approximation, also works in the
          off-policy case and uses eligibility traces
 
-        for details see ﻿Yu, H. (2010). Least Squares Temporal Difference Methods :
+        for details see Yu, H. (2010). Least Squares Temporal Difference Methods :
          An Analysis Under General Conditions. (8)+(9)+(10)
     """
 
@@ -651,7 +664,7 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         self.init_vals["k1"] = self.init_theta * np.eye(len(self.init_vals["theta"]))
         self.init_vals["b"] = -self.init_vals["theta"] * self.init_theta
         for k,v in self.init_vals.items():
-            if k is "theta":
+            if k == "theta":
                 continue
             self.__setattr__(k,copy.copy(v))
         self.t = 0
@@ -693,7 +706,7 @@ class LSTDLambdaJP(LSTDLambda):
          LSTD(\lambda) with linear function approximation, also works in the
          off-policy case and uses eligibility traces
 
-        for details see ﻿Yu, H. (2010). Least Squares Temporal Difference Methods :
+        for details see Yu, H. (2010). Least Squares Temporal Difference Methods :
          An Analysis Under General Conditions. (8)+(9)
          Important difference: The update of C is different!
     """
@@ -840,6 +853,16 @@ class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredict
         theta_d = theta +  self.alpha.next() * np.dot(self.A, theta) + self.b
         self.theta = theta_d
         return self.theta
+        
+    def __getstate__(self):
+        res = self.__dict__
+        for n in ["alpha"]:
+            if isinstance(res[n], itertools.repeat):
+                res[n] = res[n].next()
+        return res
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self.alpha = self._assert_iterator(self.init_vals['alpha'])
 
 class RMalpha(object):
     """
@@ -899,6 +922,16 @@ class ResidualGradient(OffPolicyValueFunctionPredictor, LinearValueFunctionPredi
         self.theta = theta
         self._toc()
         return theta
+        
+    def __getstate__(self):
+        res = self.__dict__
+        for n in ["alpha"]:
+            if isinstance(res[n], itertools.repeat):
+                res[n] = res[n].next()
+        return res
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self.alpha = self._assert_iterator(self.init_vals['alpha'])
 
 
 class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
@@ -928,7 +961,15 @@ class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         LinearValueFunctionPredictor.reset(self)
         self.alpha = self._assert_iterator(self.init_vals['alpha'])
 
-
+    def __getstate__(self):
+        res = self.__dict__
+        for n in ["alpha"]:
+            if isinstance(res[n], itertools.repeat):
+                res[n] = res[n].next()
+        return res
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self.alpha = self._assert_iterator(self.init_vals['alpha'])
 
     def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
         """

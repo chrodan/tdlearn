@@ -107,7 +107,7 @@ if __name__ == "__main__":
     mean, std, raw = task.avg_error_traces(methods, n_indep=4,
         n_samples=l, error_every=error_every,
         criterion="RMSPBE",
-        verbose=20, n_jobs=2)
+        verbose=20, n_jobs=1)
 
     #plt.figure(figsize=(18,12))
     plt.title("Cart-Pole Off-Policy")
@@ -116,8 +116,8 @@ if __name__ == "__main__":
 
     for i, m in enumerate(methods):
         #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=10000/error_every, label=m.name)
-        #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/10, color=m.color, label=m.name)
-        plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], color=m.color, label=m.name)
+        plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/10, color=m.color, label=m.name)
+        #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], color=m.color, label=m.name)
     
     plt.legend()
     #plt.yscale("log")

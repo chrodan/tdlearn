@@ -47,6 +47,8 @@ class ContinuousMDP(object):
         res = self.__dict__.copy()
         if "start_state" in res:
             del res["start"]
+        del res["samples_featured"]        
+        del res["samples_cached"]
         return res
 
     def __setstate__(self, state):
@@ -225,22 +227,16 @@ class LQRMDP(ContinuousMDP):
         return np.dot(s0.T, np.dot(self.Q, s0)) + np.dot(a.T, np.dot(self.R, a))
         
     def __getstate__(self):
-        res = self.__dict__.copy()
-        if "start_state" in res:
-            del res["start"]
+        res = ContinuousMDP.__getstate__(self)
         del res["rf"]
         del res["sf"]
         return res
 
     def __setstate__(self, state):
-        self.__dict__ = state
-        if "start" not in state:
-            self.start = lambda: self.start_state.copy()
+        ContinuousMDP.__setstate__(self, state)
         self.sf = self.statefun 
         self.rf = self.rewardfun
-        self.samples_featured = memory.cache(self.samples_featured)        
-        self.samples_cached = memory.cache(self.samples_cached)
-
+        
 class MDP(object):
     """
     Markov Decision Process
