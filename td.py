@@ -986,8 +986,8 @@ class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         self._tic()
         delta = r + self.gamma * np.dot(theta, f1) \
                                - np.dot(theta, f0)
-        if np.isnan(delta):
-            import ipdb; ipdb.set_trace()
+        #if np.isnan(delta):
+        #    import ipdb; ipdb.set_trace()
         #print delta
         logging.debug("TD Learning Delta {}".format(delta))
         #print theta

@@ -15,7 +15,7 @@ import pickle
 
 
 from lqr_full import *
-
+error_every=int(l/20)
 
 def plot_2d_error_grid_file(fn, maxerr=5):
     with open(fn) as f:
