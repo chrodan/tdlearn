@@ -13,7 +13,7 @@ import policies
 from util import multinomial_sample
 from joblib import Memory
 
-memory = Memory(cachedir=".", verbose=2)
+memory = Memory(cachedir=".", verbose=1)
 
 
 def _false(x):

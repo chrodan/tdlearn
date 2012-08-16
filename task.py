@@ -78,9 +78,7 @@ class LinearValuePredictionTask(object):
             for seed in range(n_indep):
                 kwargs=kwargs.copy()                
                 kwargs['seed']=seed
-                print kwargs
                 if n_eps is None:
-                    #jobs.append((tmp,["", curmethods], kwargs))
                     jobs.append((tmp, [self, methods], kwargs))
                 else:
                     kwargs["n_eps"] = n_eps

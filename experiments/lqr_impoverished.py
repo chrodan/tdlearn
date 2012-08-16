@@ -75,7 +75,7 @@ for alpha, mu in [(.005,0.001)]: #optimal
 #methods = []
 #for eps in np.power(10,np.arange(-1,4)):
 eps=100
-lstd = td.LSTDLambda(lam=0, eps=eps, phi=phi, gamma=gamma)
+lstd = td.RecursiveLSTDLambda(lam=0, eps=eps, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({}) $\epsilon$={}".format(0, eps)
 lstd.color = "g"
 methods.append(lstd)
@@ -104,20 +104,13 @@ methods.append(ktd)
 
 l=16000
 error_every=200
+n_indep=50
+name="lqr_imp_onpolicy"
+title="4-dim. State Pole Balancing Onpolicy Diagonal Features"
+criterion="RMSPBE"
 
-#task.MSPBE = lambda x: t.LinearContinuousValuePredictionTask.MSPBE(task,x)
-mean, std, raw = task.avg_error_traces(methods, n_indep=3,
-    n_samples=l, error_every=error_every,
-    criterion="RMSPBE",
-    verbose=True)
-
-plt.figure(figsize=(15,10))
-plt.ylabel(r"$\sqrt{MSPBE}$")
-plt.xlabel("Timesteps")
-plt.title("Impoverished Linearized Cart Pole Balancing")
-for i, m in enumerate(methods):
-    plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/8, label=m.name)
-    #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], label=m.name)
-plt.legend()
-plt.show()
-
+if __name__ =="__main__":
+    from experiments import *
+    mean, std, raw = run_experiment(n_jobs=2, **globals())
+    #save_results(**globals())
+    plot_errorbar(**globals())

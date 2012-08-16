@@ -87,43 +87,27 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
-ktd = td.KTD(phi=phi, gamma=gamma, theta_noise=None, eta=0.001, reward_noise=1e-5)
-ktd.name = r"KTD"
+reward_noise=1e-1
+ktd = td.KTD(phi=phi, gamma=gamma, theta_noise=None, eta=1e-5,P_init=1., reward_noise=reward_noise)
+ktd.name = r"KTD $r_n={}$".format(reward_noise)
 methods.append(ktd)
 
-sigma=1e-5
+
+sigma=1e-8
 gptdp = td.GPTDP(phi=phi, sigma=sigma)
 gptdp.name =r"GPTDP $\sigma$={}".format(sigma)
 methods.append(gptdp)
 
 l=50000
 error_every=2000
-n_indep=20
+n_indep=50
 name="lqr_full_onpolicy"
 title="4-dim. State Pole Balancing Onpolicy"
 
+criterion="RMSPBE"
+
 if __name__ =="__main__":
-    mean, std, raw = task.avg_error_traces(methods, n_indep=n_indep,
-        n_samples=l, error_every=error_every,
-        criterion="RMSPBE",
-        verbose=True)
-    import os
-    if not os.path.exists("data/{name}".format(name=name)):
-        os.makedirs("data/{name}".format(name=name))
-
-    with open("data/{name}/setting.pck".format(name=name), "w") as f:
-        pickle.dump(dict(l=l, error_every=error_every, n_indep=n_indep, methods=methods, mdp=mdp, phi=phi),f)
-
-    np.savez_compressed("data/{name}/results.npz".format(name=name), mean=mean, std=std, raw=raw)
-
-
-
-    plt.figure(figsize=(15,10))
-    plt.ylabel(r"$\sqrt{MSPBE}$")
-    plt.xlabel("Timesteps")
-    plt.title(title)
-    for i, m in enumerate(methods):
-        plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/8, label=m.name)
-        #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], label=m.name)
-    plt.legend()
-    plt.show()
+    from experiments import *
+    mean, std, raw = run_experiment(n_jobs=2, **globals())
+    #save_results(**globals())
+    plot_errorbar(**globals())

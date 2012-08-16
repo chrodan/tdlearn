@@ -16,7 +16,7 @@ dt = 0.1
 #mdp = examples.MiniLQMDP(dt=dt)
 mdp = examples.PoleBalancingMDP(sigma=sigma, dt=dt)
 
-phi = features.squared_diag()
+phi = features.squared_tri()
 
 
 n_feat = len(phi(np.zeros(mdp.dim_S)))
@@ -101,10 +101,10 @@ methods.append(lstd)
 
 l=20000
 error_every=100
-name="cartpole_off"
-title="4-dim. State Pole Balancing Offpolicy Diagonal Features"
+name="lqr_full_offpolicy"
+title="4-dim. State Pole Balancing Offpolicy Full Features"
 criterion="RMSPBE"
-n_indep=50
+n_indep=4
 
 if __name__ =="__main__":
     from experiments import *
