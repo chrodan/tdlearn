@@ -5,6 +5,9 @@ import numpy as np
 import util
 class LinearContinuous(object):
     
+    def __repr__(self):
+        return "LinearContinuous("+repr(self.theta)+","+repr(self.noise)+")"
+        
     def __init__(self, theta=None, noise=None, dim_S=None, dim_A=None):
         if theta is None:
             self.dim_S = dim_S
@@ -34,7 +37,8 @@ class LinearContinuous(object):
         return np.exp(-0.5*np.dot(m_a, np.dot(self.precision, m_a)))/ ((2*np.pi)**(float(self.dim_A) / 2)) / np.sqrt(np.trace(self.approx_noise))
 
 class Discrete(object):
-
+    def __repr__(self):
+        return "Discrete("+repr(self.prop_table)+")"
     def __init__(self, prop_table):
         self.tab = prop_table
         self.dim_S, self.dim_A = self.tab.shape
@@ -68,9 +72,27 @@ class MarcsPolicy(object):
         self.precision = np.linalg.pinv(self.approx_noise)
         from mlabwrap import mlab
         self.mlab = mlab
+        self.mlab._autosync_dirs = False
         self.mlab.addpath("./mlab_cartpole")
         self.mlab.load(filename)
-        
+        self.filename = filename
+
+    def __repr__(self):
+        return "MarcsPolicy (fn="+self.filename+",noise="+repr(self.noise)+")"
+
+    def __getstate__(self):
+        res = self.__dict__.copy()
+        del res["mlab"]
+        return res
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        from mlabwrap import mlab
+        self.mlab = mlab
+        self.mlab.addpath("./mlab_cartpole")
+        self.mlab.load(self.filename)
+        self.mlab._autosync_dirs = False
+
     def mean(self, s):
         lst = [str(a) for a in s[:-1]]+ [str(np.sin(s[-1])), str(np.cos(s[-1]))]
         strrep = ",".join(lst)

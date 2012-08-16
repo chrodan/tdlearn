@@ -11,59 +11,13 @@ import matplotlib.pyplot as plt
 from joblib import Parallel, delayed
 import policies
 from util import multinomial_sample
+from joblib import Memory
 
-def test_lqrmdp():
-    A = np.eye(2)
-    B = np.eye(2)*0.5
-    Q = np.eye(2)
-    R = np.zeros((2,2))
-    uut = LQRMDP(A,B,Q,R, 3)
-    sc = []
-    for s in uut.sample_transition(1000000):
-        sc.append(s[0])
-    d = np.vstack(tuple(sc))
-    plt.plot(d[:,0], d[:,1], "o-")
-    print d.shape
-    plt.show()
-    
-def test_pole_balancing():
-    r"""
-    S = [\alpha, \dot \alpha, x, \dot x]
-    A = [\ddot x]
-    """
-    dt = .01
-    m = 1.
-    l = 2.
-    g = 9.81
-    mu = 0.01
-    A = np.array([[1., dt, 0, 0],
-                  [g/l, 1 - (mu*dt)/m/l/l, 0 ,0],
-                  [0., 0, 1, dt],
-                  [0, 0, 0, 1]])
-    B = np.array([0., dt/l, 0, dt]).reshape(4,1)
-    Q = np.diag([-2., -.5, -0.1, 0])
-    terminal_f = lambda x: np.abs(x[0]) > 1
-    R = np.zeros((1,1))
-    sigma = np.zeros((4,4))
-    sigma[-1,-1] = 0.1
-    uut = LQRMDP(A,B,Q,R, sigma, terminal_f=terminal_f, start_f=lambda : np.array([0.0001, 0, 0, 0]))
-    sc = []
-    for s in uut.sample_transition(1000, policy=lambda x: np.array([0])):
-        sc.append(s[0])
-    d = np.vstack(tuple(sc))
-    plt.figure()    
-    plt.plot(d[:,0], "b-")
-    from dynamic_prog import solve_LQR
-    theta, P =  solve_LQR(uut, n_iter=int(1e5))
-    sc = []
-    for s in uut.sample_transition(1000, policy=lambda x: np.dot(theta, x)):
-        sc.append(s[0])
-    d = np.vstack(tuple(sc))
-    plt.plot(d[:,0], "r-")
-    plt.show()
+memory = Memory(cachedir=".", verbose=2)
 
-_false = lambda x: False
 
+def _false(x):
+    return False
 
 class ContinuousMDP(object):
 
@@ -73,11 +27,13 @@ class ContinuousMDP(object):
         self.dim_S = dim_S
         self.dim_A = dim_A
         if terminal_f is None:
-            terminal_f = lambda x: False
+            terminal_f = _false
         self.terminal_f = terminal_f
         if not hasattr(start, '__call__'):
-            startf = lambda: start.copy()
+            self.start_state=start
+            startf = lambda: self.start_state.copy()
         else:
+            self.start_state=None
             startf = start
         self.start = startf
         if isinstance(Sigma, (float, int, long)):
@@ -85,16 +41,33 @@ class ContinuousMDP(object):
         else:
             assert Sigma.shape == (self.dim_S,)
             self.Sigma = Sigma
+        self.__setstate__(self.__dict__)
 
-    def samples(self, n_iter=1000, n_restarts=100,
-                    policy="linear", no_next_noise=False):
+    def __getstate__(self):
+        res = self.__dict__.copy()
+        if "start_state" in res:
+            del res["start"]
+        del res["samples_featured"]        
+        del res["samples_cached"]
+        return res
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        if "start" not in state:
+            self.start = lambda: self.start_state.copy()
+        self.samples_featured = memory.cache(self.samples_featured)        
+        self.samples_cached = memory.cache(self.samples_cached)
+
+    def samples(self, policy,n_iter=1000, n_restarts=100,
+                     no_next_noise=False, seed=None):
         states = np.empty((n_restarts * n_iter, self.dim_S))
         states_next = np.empty((n_restarts * n_iter, self.dim_S))
         actions = np.empty((n_restarts * n_iter, self.dim_A))
         rewards = np.empty((n_restarts * n_iter))
         k=0
         for i in xrange(n_restarts):
-            for s,a,s_n, r in self.sample_transition(n_iter, policy, with_restart=False, no_next_noise=no_next_noise):
+            for s,a,s_n, r in self.sample_transition(n_iter, policy, with_restart=False,
+                                                    no_next_noise=no_next_noise, seed=seed):
                 states[k,:] = s
                 states_next[k,:] = s_n
                 rewards[k] = r
@@ -103,20 +76,46 @@ class ContinuousMDP(object):
 
         return states[:k,:],actions[:k,:], rewards[:k], states_next[:k,:]
 
-    def state_samples(self, phi, n_iter=1000, n_restarts=100,
-                      policy="linear", seed=None,  verbose=False):
-        return self.samples(phi, n_iter, n_restarts, policy, seed, verbose)[0]
-
-    def stationary_feature_distribution(self, phi, n_iter=1000, n_restarts=100,
-                                        policy="linear"):
-        n_feat = len(phi(np.zeros(self.dim_S)))
-        result = np.empty((n_restarts * n_iter, n_feat))
+    def samples_cached(self, policy, n_iter=1000, n_restarts=100,
+                     no_next_noise=False, seed=1):
+        assert(seed is not None)
+        states = np.ones([n_restarts * n_iter, self.dim_S])
+        states_next = np.ones([n_restarts * n_iter, self.dim_S])
+        actions = np.ones([n_restarts * n_iter, self.dim_A])
+        rewards = np.ones(n_restarts * n_iter)
+       
+        restarts = np.zeros(n_restarts * n_iter, dtype="bool")
         k=0
-        for i in xrange(n_restarts):
-            for s,a,s_n, r in self.sample_transition(n_iter, policy, with_restart=False):
-                result[k,:] = phi(s)
+        while k < n_restarts * n_iter:
+            restarts[k] = True
+            for s,a,s_n, r in self.sample_transition(n_iter, policy, with_restart=False, 
+                                                     no_next_noise=no_next_noise, seed=seed):
+                states[k,:] = s
+                states_next[k,:] = s_n
+                rewards[k] = r
+                actions[k,:] = a
+
                 k+=1
-        return result
+                if k >= n_restarts * n_iter:
+                    break
+        return states ,actions, rewards, states_next, restarts
+       
+    def samples_featured(self, phi, policy, n_iter=1000, n_restarts=100,
+                     no_next_noise=False, seed=1):
+        assert(seed is not None)
+        s,a,r,sn,restarts = self.samples_cached(policy, n_iter, n_restarts, no_next_noise, seed)        
+             
+        n_feat = len(phi(np.zeros(self.dim_S)))
+        feats = np.empty([n_restarts * n_iter, n_feat])
+        feats_next = np.empty([n_restarts * n_iter,n_feat])  
+        
+        for k in xrange(n_iter * n_restarts):
+                
+            feats[k,:] = phi(s[k])
+            feats_next[k,:] = phi(sn[k])
+                
+        return s ,a, r, sn, restarts, feats, feats_next
+
 
     def sample_transition(self, max_n, policy, seed=None, with_restart = False, no_next_noise=False):
         """
@@ -209,17 +208,35 @@ class LQRMDP(ContinuousMDP):
         else:
             assert Sigma.shape == (self.dim_S,)
             self.Sigma = Sigma
+            
         if not hasattr(start, '__call__'):
-            startf = lambda: start.copy()
+            self.start_state=start
+            startf = lambda: self.start_state.copy()
         else:
+            self.start_state=None
             startf = start
         self.start = startf
         assert A.shape[1] == self.dim_S
         assert B.shape[0] == self.dim_S
-        self.sf =  lambda s0, a: np.dot(self.A,s0) + np.dot(self.B,a)
-        self.rf = lambda s0, a: np.dot(s0.T, np.dot(self.Q, s0)) + np.dot(a.T, np.dot(self.R, a))
+        self.__setstate__(self.__dict__)
 
+    def statefun(self, s0, a):
+        return np.dot(self.A,s0) + np.dot(self.B,a)
+    
+    def rewardfun(self, s0, a):
+        return np.dot(s0.T, np.dot(self.Q, s0)) + np.dot(a.T, np.dot(self.R, a))
+        
+    def __getstate__(self):
+        res = ContinuousMDP.__getstate__(self)
+        del res["rf"]
+        del res["sf"]
+        return res
 
+    def __setstate__(self, state):
+        ContinuousMDP.__setstate__(self, state)
+        self.sf = self.statefun 
+        self.rf = self.rewardfun
+        
 class MDP(object):
     """
     Markov Decision Process

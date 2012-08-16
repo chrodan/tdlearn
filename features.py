@@ -4,6 +4,9 @@ import numpy as np
 
 class gaussians(object):
 
+    def __repr__(self):
+        return "gaussians("+repr(self.means)+","+repr(self.sigmasq)+")"
+
     def expectation(self, x, Sigma):
         
         sig = Sigma + self.sigmasq[:, None]
@@ -21,6 +24,10 @@ class gaussians(object):
                 / np.power(self.sigmasq*2*np.pi, len(x) /2.)
 
 class squared_full(object):
+
+    def __repr__(self):
+        return "squared_full("+repr(self.normalization)+")"    
+    
     def __init__(self, normalization=None):
         self.normalization = normalization
 
@@ -55,6 +62,10 @@ class squared_full(object):
         return r
 
 class squared_tri(object):
+
+    def __repr__(self):
+        return "squared_tri("+repr(self.normalization)+")"       
+    
     def __init__(self, normalization=None):
         self.normalization = normalization
 
@@ -102,6 +113,10 @@ class squared_tri(object):
             r *= self.normalization
         return r
 class squared_diag(object):
+
+    def __repr__(self):
+        return "squared_diag("+repr(self.normalization)+")"   
+    
     def __init__(self, normalization=None):
         self.normalization = normalization
 

@@ -8,6 +8,8 @@ Created on Sun Jan 22 00:51:55 2012
 import numpy as np
 import logging
 import policies
+from joblib import Memory
+memory = Memory(cachedir=".", verbose=20)
 def estimate_V_discrete(mdp, n_iter=100000, policy="uniform", gamma=1.):
     if policy =="uniform":
         policy =mdp.uniform_policy()
@@ -73,6 +75,7 @@ def bellman_operator(mdp, P, b, theta, noise=0., gamma=1.):
     + np.trace((R + gamma * B.T * np.matrix(P)*B)* np.matrix(noise))
     return Pn, bn
 
+@memory.cache
 def solve_LQR(lqmdp, n_iter=100000, gamma=1., eps=1e-14):
     """ Solves exactly the Linear-quadratic MDP with 
         the value function has the form

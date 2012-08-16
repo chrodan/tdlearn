@@ -31,11 +31,10 @@ class MiniLQMDP(mdp.LQRMDP):
         Q = np.diag([-1., 0.])
         #terminal_f = lambda x: np.abs(x[0]) > 10
         
-        terminal_f = lambda x: False
         R = np.ones((1,1))*(-1)
 
-        mdp.LQRMDP.__init__(self, A, B, Q, R, sigma, terminal_f=terminal_f, 
-                            start_f=lambda : np.array([0.0001, 0]))
+        mdp.LQRMDP.__init__(self, A, B, Q, R, sigma, 
+                            start=np.array([0.0001, 0]))
 
 
 class NLinkPendulumMDP(mdp.LQRMDP):
@@ -64,8 +63,8 @@ class NLinkPendulumMDP(mdp.LQRMDP):
         Q = np.zeros((2*n, 2*n))
         Q[:n, :n] += np.eye(n)*penalty
         R = np.eye(n)*action_penalty
-        mdp.LQRMDP.__init__(self, A, B, Q, R, sigma,
-            start_f=np.zeros(2*n))
+        mdp.LQRMDP.__init__(self, A, B, Q, R, Sigma=sigma,
+            start=np.zeros(2*n))
 
 class PoleBalancingMDP(mdp.LQRMDP):
     """
@@ -199,32 +198,45 @@ class PendulumSwingUpCartPole(mdp.ContinuousMDP):
         self.m = m
         self.dt = dt
         self.b = b
-        def ode(s,t,a):
-            g = 9.81
-            ds = np.zeros(4)
-            ds[0] = s[1]
-            ds[1] = (2*m*l*s[2]**2 * np.sin(s[3]) + 3*m*g*np.sin(s[3])*np.cos(s[3])+ 4*a-4*b*s[1]) \
-                    / (4*(M+m)-3*m*np.cos(s[3])**2)
-            ds[2] = (-3*m*l*s[2]**2*np.sin(s[3])*np.cos(s[3])-6*(M+m)*g*np.sin(s[3])-6*(a-b*s[1])*np.cos(s[3])) \
-                    / (4*l*(m+M)-3*m*l*np.cos(s[3])**2)
-            ds[3] = s[2]
-            return ds
 
-        def statefun(s, a):
-            #import ipdb
-            #ipdb.set_trace(),
-            s1 = scipy.integrate.odeint(ode,s,[0., dt], args=(a,), printmessg=False)
-            s1 = s1[-1,:].flatten()
-            s1[-1] = ((s1[-1] + np.pi) % (2*np.pi)) - np.pi
-            return s1
+        mdp.ContinuousMDP.__init__(self, self.statefun, self.rewardfun, 4, 1, np.array([0.,0., 0., 0.]), Sigma=Sigma)
 
-        def rewardfun(s, a):
-            return -np.cos(s[-1])*l - 1e-5 *np.abs(s[0])
+    def ode(self,s,t,a):
+        g = 9.81
+        m = self.m
+        l = self.l
+        M = self.M
+        b = self.b
+        ds = np.zeros(4)
+        ds[0] = s[1]
+        ds[1] = (2*m*l*s[2]**2 * np.sin(s[3]) + 3*m*g*np.sin(s[3])*np.cos(s[3])+ 4*a-4*b*s[1])\
+        / (4*(M+m)-3*m*np.cos(s[3])**2)
+        ds[2] = (-3*m*l*s[2]**2*np.sin(s[3])*np.cos(s[3])-6*(M+m)*g*np.sin(s[3])-6*(a-b*s[1])*np.cos(s[3]))\
+        / (4*l*(m+M)-3*m*l*np.cos(s[3])**2)
+        ds[3] = s[2]
+        return ds
 
+    def statefun(self, s, a):
+        s1 = scipy.integrate.odeint(self.ode,s,[0., self.dt], args=(a,), printmessg=False)
+        s1 = s1[-1,:].flatten()
+        s1[-1] = ((s1[-1] + np.pi) % (2*np.pi)) - np.pi
+        return s1
 
+    def rewardfun(self, s, a):
+        l = self.l
+        return -np.cos(s[-1])*l - 1e-5 *np.abs(s[0])
 
-        mdp.ContinuousMDP.__init__(self, statefun, rewardfun, 4, 1, np.array([0.,0., 0., 0.]), Sigma=Sigma)
-        
+    def __getstate__(self):
+        res = mdp.ContinuousMDP.__getstate__(self)
+        del res["rf"]
+        del res["sf"]
+        return res
+
+    def __setstate__(self, state):
+        mdp.ContinuousMDP.__setstate__(self, state)
+        self.rf = self.rewardfun
+        self.sf = self.statefun
+
     def animate_trace(self, state_trace, action_trace=None):
         fig = plt.figure()
         off = np.max(np.abs(state_trace[:,0])) + self.l
