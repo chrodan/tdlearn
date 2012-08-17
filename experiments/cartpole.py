@@ -78,45 +78,16 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 #methods.append(rg)
 
-l=100
+l=10000
 error_every=1
-name="swingup"
+name="swingup_255gauss_onpolicy"
+title="Cartpole Swingup Onpolicy"
+n_indep=50
+criterion="RMSPBE"
 
 if __name__ =="__main__":
-    err, rewards, states = task.ergodic_error_traces(methods,
-        n_samples=l, error_every=error_every,
-        criterion="RMSPBE",with_trace=True)
-
-    plt.figure(figsize=(15,10))
-    plt.subplot(311)
-    plt.ylabel(r"$\sqrt{MSPBE}$")
-    plt.xlabel("Timesteps")
-    plt.title("Impoverished Swingup Onpolicy")
-    for i, m in enumerate(methods):
-        plt.plot(range(0,l,error_every), err[:,i], label=m.name)
-        #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], label=m.name)
-    plt.legend()
-    plt.subplot(312)
-    plt.plot(range(0,l,error_every), rewards)
-    plt.subplot(313)
-    for i in range(4):
-        plt.plot(range(0,l,error_every), states[:,i])
-    plt.legend()
-    plt.show()
-"""
-if __name__ =="__main__":
-    mean, std, raw = task.avg_error_traces(methods, n_indep=1,
-        n_samples=l, error_every=error_every,
-        criterion="RMSPBE",
-        verbose=True)
-
-    plt.figure(figsize=(15,10))
-    plt.ylabel(r"$\sqrt{MSPBE}$")
-    plt.xlabel("Timesteps")
-    plt.title("Impoverished Swingup Onpolicy")
-    for i, m in enumerate(methods):
-        plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/8, label=m.name)
-        #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], label=m.name)
-    plt.legend()
-    plt.show()"""
+    from experiments import *
+    mean, std, raw = run_experiment(n_jobs=2, **globals())
+    save_results(**globals())
+    #plot_errorbar(**globals())
 
