@@ -20,8 +20,8 @@ error_every=int(l/20)
 def load_result_file(fn, maxerr=5):
     with open(fn) as f:
         d = pickle.load(f)
-    print np.argmin(d["res"])
-    print d["params"][np.argmin(d["res"])]
+    print np.nanargmin(d["res"])
+    print d["params"][np.nanargmin(d["res"])]
     return d
 
 def plot_2d_error_grid_file(fn, maxerr=5):
