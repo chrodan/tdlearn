@@ -78,16 +78,16 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 #methods.append(rg)
 
-l=10000
+l=200000
 error_every=1
 name="swingup_255gauss_onpolicy"
 title="Cartpole Swingup Onpolicy"
-n_indep=50
+n_indep=20
 criterion="RMSPBE"
 
 if __name__ =="__main__":
     from experiments import *
-    mean, std, raw = run_experiment(n_jobs=2, **globals())
+    mean, std, raw = run_experiment(n_jobs=1, **globals())
     save_results(**globals())
     #plot_errorbar(**globals())
 
