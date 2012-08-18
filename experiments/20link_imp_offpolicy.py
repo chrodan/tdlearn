@@ -79,23 +79,14 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
-l=20000
+l=30000
 error_every=200
+n_indep=50
+criterion="RMSPBE"
+title="Impoverished 20-Link Pole Balancing Off-policy"
 name="20link_imp_offpolicy"
-
 if __name__ =="__main__":
-    mean, std, raw = task.avg_error_traces(methods, n_indep=1,
-        n_samples=l, error_every=error_every,
-        criterion="RMSPBE",
-        verbose=True)
-
-    plt.figure(figsize=(15,10))
-    plt.ylabel(r"$\sqrt{MSPBE}$")
-    plt.xlabel("Timesteps")
-    plt.title("Impoverished 20-Link Pole Balancing Offpolicy")
-    for i, m in enumerate(methods):
-        plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l/error_every/8, label=m.name)
-        #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], label=m.name)
-    plt.legend()
-    plt.show()
-
+    from experiments import *
+    mean, std, raw = run_experiment(n_jobs=1, **globals())
+    save_results(**globals())
+    #plot_errorbar(**globals())

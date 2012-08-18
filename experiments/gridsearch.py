@@ -12,9 +12,8 @@ from joblib import Parallel, delayed
 from matplotlib.colors import LogNorm
 import pickle
 
+from experiments.20link_imp_offpolicy import *
 
-
-from lqr_full import *
 error_every=int(l/20)
 
 def load_result_file(fn, maxerr=5):
@@ -195,4 +194,6 @@ def gridsearch_gptdp():
 if __name__ == "__main__":
     gridsearch_1d()
     gridsearch_2d()
+    gridsearch_ktd()
+    gridsearch_gptdp()
     gridsearch_lambda()

@@ -112,5 +112,5 @@ criterion="RMSPBE"
 if __name__ =="__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=2, **globals())
-    #save_results(**globals())
+    save_results(**globals())
     plot_errorbar(**globals())
