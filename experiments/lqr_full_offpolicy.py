@@ -106,10 +106,10 @@ error_every=100
 name="lqr_full_offpolicy"
 title="4-dim. State Pole Balancing Offpolicy Full Features"
 criterion="RMSPBE"
-n_indep=4
+n_indep=50
 
 if __name__ =="__main__":
     from experiments import *
-    mean, std, raw = run_experiment(n_jobs=2, **globals())
-    #save_results(**globals())
-    plot_errorbar(**globals())
+    mean, std, raw = run_experiment(n_jobs=-1, **globals())
+    save_results(**globals())
+    #plot_errorbar(**globals())
