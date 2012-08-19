@@ -15,9 +15,13 @@ dt = 0.1
 mdp = examples.PendulumSwingUpCartPole(dt = dt, Sigma=0.01)
 s = slice(-4., 5., 4.)
 s2 = slice(-1., 1.1, 0.5)
+s3 = slice(-10., 11., 20./5)
+s4 = slice(-2.5., 3., 1.)
 means = np.mgrid[s,s,s2,s2].reshape(4,-1).T
 #means = np.zeros((5**4, 4), dtype="float")
 sigmas = np.ones(means.shape[0])
+sigmas[:2] = 2.*sigmas[:2]
+sigmas[2:] = 0.25 * sigmas[2:]
 phi = features.gaussians(means,sigmas)
 
 
@@ -29,7 +33,7 @@ policy = policies.MarcsPolicy()
 #theta0 =  10*np.ones(n_feat)
 theta0 =  0.*np.ones(n_feat)
 
-task = LinearContinuousValuePredictionTask(mdp, gamma, phi, theta0, policy=policy, normalize_phi=True, mu_iter=10)
+task = LinearContinuousValuePredictionTask(mdp, gamma, phi, theta0, policy=policy, normalize_phi=True, mu_iter=1000)
 #print task.mu_phi
 #task.seed=0
 #phi = task.phi
@@ -78,16 +82,16 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 #methods.append(rg)
 
-l=200000
+l=10000
 error_every=1
 name="swingup_255gauss_onpolicy"
 title="Cartpole Swingup Onpolicy"
-n_indep=20
+n_indep=1
 criterion="RMSPBE"
 
 if __name__ =="__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=1, **globals())
-    save_results(**globals())
-    #plot_errorbar(**globals())
+    #save_results(**globals())
+    plot_errorbar(**globals())
 
