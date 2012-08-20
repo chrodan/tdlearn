@@ -101,20 +101,22 @@ class ContinuousMDP(object):
         return states ,actions, rewards, states_next, restarts
        
     def samples_featured(self, phi, policy, n_iter=1000, n_restarts=100,
-                     no_next_noise=False, seed=1):
+                     no_next_noise=False, seed=1, n_subsample=1):
         assert(seed is not None)
         s,a,r,sn,restarts = self.samples_cached(policy, n_iter, n_restarts, no_next_noise, seed)        
              
         n_feat = len(phi(np.zeros(self.dim_S)))
-        feats = np.empty([n_restarts * n_iter, n_feat])
-        feats_next = np.empty([n_restarts * n_iter,n_feat])  
-        
+        feats = np.empty([int(n_restarts * n_iter / float(n_subsample)), n_feat])
+        feats_next = np.empty([int(n_restarts * n_iter / float(n_subsample)),n_feat])  
+        i=0
+        l = range(0, n_restarts * n_iter, n_subsample)
         for k in xrange(n_iter * n_restarts):
+            if k % n_subsample == 0:
                 
-            feats[k,:] = phi(s[k])
-            feats_next[k,:] = phi(sn[k])
-                
-        return s ,a, r, sn, restarts, feats, feats_next
+                feats[i,:] = phi(s[k])
+                feats_next[i,:] = phi(sn[k])
+                i += 1                
+        return s[l] ,a[l], r[l], sn[l], restarts[l], feats, feats_next
 
 
     def sample_transition(self, max_n, policy, seed=None, with_restart = False, no_next_noise=False):
@@ -280,7 +282,9 @@ class MDP(object):
         assert np.abs(np.sum(self.P0) - 1) < 1e-12
         assert np.all(self.P0 >= 0)
         assert np.all(self.P0 <= 1)
-
+        
+        self.dim_S = 1
+        self.dim_A = 1
         # transition kernel testing
         self.P = np.asanyarray(state_transition_kernel)
         assert np.all(self.P >= 0)
@@ -358,6 +362,48 @@ class MDP(object):
         mu = (cnt).astype("float")
         mu =  mu / mu.sum()
         return mu
+        
+    def samples_cached(self, policy, n_iter=1000, n_restarts=100,
+                     no_next_noise=False, seed=1):
+                         
+        assert (no_next_noise==False)
+        assert(seed is not None)
+        states = np.ones([n_restarts * n_iter, self.dim_S])
+        states_next = np.ones([n_restarts * n_iter, self.dim_S])
+        actions = np.ones([n_restarts * n_iter, self.dim_A])
+        rewards = np.ones(n_restarts * n_iter)
+       
+        restarts = np.zeros(n_restarts * n_iter, dtype="bool")
+        k=0
+        while k < n_restarts * n_iter:
+            restarts[k] = True
+            for s,a,s_n, r in self.sample_transition(n_iter, policy, with_restart=False, 
+                                                     seed=seed):
+                states[k,:] = s
+                states_next[k,:] = s_n
+                rewards[k] = r
+                actions[k,:] = a
+
+                k+=1
+                if k >= n_restarts * n_iter:
+                    break
+        return states ,actions, rewards, states_next, restarts
+       
+    def samples_featured(self, phi, policy, n_iter=1000, n_restarts=100,
+                     no_next_noise=False, seed=1, n_subsample=1):
+        assert(seed is not None)
+        s,a,r,sn,restarts = self.samples_cached(policy, n_iter, n_restarts, no_next_noise, seed)        
+             
+        n_feat = len(phi(0))
+        feats = np.empty([n_restarts * n_iter, n_feat])
+        feats_next = np.empty([n_restarts * n_iter,n_feat])  
+        
+        for k in xrange(n_iter * n_restarts):
+                
+            feats[k,:] = phi(s[k])
+            feats_next[k,:] = phi(sn[k])
+                
+        return s ,a, r, sn, restarts, feats, feats_next
                                                                 
 
     def synchronous_sweep(self, seed=None, policy="uniform"):

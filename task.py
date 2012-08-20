@@ -21,6 +21,10 @@ from util import cached_property
 def tmp(cl, *args, **kwargs): 
     return cl.ergodic_error_traces(*args, **kwargs)
 
+
+def tmp2(cl, *args, **kwargs): 
+    return cl.episodic_error_traces(*args, **kwargs)
+
 class LinearValuePredictionTask(object):
     """ Base class for LQR and discrete case tasks """
     
@@ -78,11 +82,12 @@ class LinearValuePredictionTask(object):
             for seed in range(n_indep):
                 kwargs=kwargs.copy()                
                 kwargs['seed']=seed
+                self.projection_operator()
                 if n_eps is None:
                     jobs.append((tmp, [self, methods], kwargs))
                 else:
                     kwargs["n_eps"] = n_eps
-                    jobs.append((LinearLQRValuePredictionTask.episodic_error_traces,[self, methods], kwargs))
+                    jobs.append((tmp2,[self, methods], kwargs))
             res = Parallel(n_jobs=n_jobs, verbose=verbose)(jobs)
         res = np.array(res).swapaxes(0,1)
         return np.mean(res, axis=1), np.std(res, axis=1), res
@@ -252,24 +257,7 @@ class LinearValuePredictionTask(object):
                
         return errors.T
 
-    def save_traces(self, filename, n_eps, n_samples, seed=None):
-        _n_eps = n_eps if n_eps is not None else 1
-        for s, a, s_n, r in self.mdp.sample_transition(n_samples,
-                                    policy=self.behavior_policy,
-                                    with_restart=False):
-            f0 = self.phi(s)
-            n_feat = len(f0)
-            break
-        states = np.zeros((_n_eps, n_samples, n_feat))
 
-        for i in xrange(_n_eps):
-            cur_seed = i+n_samples*seed if seed is not None else None
-            for s, a, s_n, r in self.mdp.sample_transition(n_samples,
-                                                            policy=self.behavior_policy,
-                                                            with_restart=False,
-                                                            seed=cur_seed):
-                f0 = self.phi(s)
-                f1 = self.phi(s_n)
 
     def _init_error_fun(self, criterion, general=False):
         if criterion == "MSE":
@@ -311,8 +299,6 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
 
         if target_policy is not None:
             self.off_policy = True
-            if target_policy == "uniform":
-                target_policy = mdp.uniform_policy()
             self.target_policy = target_policy
         else:
             self.target_policy =policy
@@ -407,7 +393,7 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
     def MSPBE(self, theta):
 
         V = (theta * np.asarray(self.Phi)).sum(axis=1)
-        v = np.asarray(V - np.dot(self.projection_operator,self.bellman_operator(V)))
+        v = np.asarray(V - np.dot(self.projection_operator(),self.bellman_operator(V)))
         return np.sum(v**2 * self.mu)
 
 
@@ -419,7 +405,7 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
     """
 
     def __init__(self, mdp, gamma, phi, theta0, policy, target_policy=None, normalize_phi=False, mu_iter=1000,
-                 mu_restarts=5, mu_seed=1000):
+                 mu_restarts=5, mu_seed=1000, mu_subsample=1):
         self.mdp = mdp
         self.mu_iter = mu_iter
         self.mu_seed = mu_seed
@@ -428,7 +414,7 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         self.phi = phi
         self.theta0 = theta0
         self.behavior_policy = policy
-
+        self.mu_subsample=mu_subsample
         if target_policy is not None:
             self.off_policy = True
             self.target_policy = target_policy
@@ -478,7 +464,8 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
                 n_iter=self.mu_iter,
                 n_restarts=self.mu_restarts,
                 no_next_noise=True,
-                seed=self.mu_seed)
+                seed=self.mu_seed,
+                n_subsample=self.mu_subsample)
             return self.__dict__[name]
 
         else:

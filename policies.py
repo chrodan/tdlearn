@@ -44,10 +44,10 @@ class Discrete(object):
         self.dim_S, self.dim_A = self.tab.shape
         
     def __call__(self, s):
-        return  util.multinomial_sample(1,self.tab[s, :])
+        return  util.multinomial_sample(1,self.tab[int(s), :])
         
     def p(self,s,a):
-        return self.tab[s,a]
+        return self.tab[int(s),int(a)]
 
 class DiscreteUniform(Discrete):
 

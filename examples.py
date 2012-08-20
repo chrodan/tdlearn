@@ -401,21 +401,5 @@ class BairdStarExample(mdp.MDP):
         mdp.MDP.__init__(self, range(1, n_corners + 1) + ["center", ],
                      actions, r, P, d0)
 
-    def phi(self, state):
-        """
-        official approximation function for this example
 
-        taken from: Maei, H. R. (2011). Gradient Temporal-Difference Learning
-                Algorithms. Machine Learning. University of Alberta.
-                p. 17
-        """
-        n_corners = len(self.states) - 1
-        result = np.zeros(n_corners + 2)
-        if state == n_corners:
-            result[-1] = 2
-            result[-2] = 1
-        else:
-            result[-1] = 1
-            result[state] = 2
-        return result
 

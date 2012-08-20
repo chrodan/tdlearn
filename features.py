@@ -9,7 +9,7 @@ class gaussians(object):
 
     def expectation(self, x, Sigma):
         
-        sig = Sigma + self.sigmasq[:, None]
+        sig = Sigma + self.sigmasq
         detsig = np.sqrt(sig.prod(axis=1))
         return np.exp(-(np.power(x-self.means, 2)/sig).sum(axis=1) / 2.) \
                 / np.power(2*np.pi, len(x) /2.) / detsig      
@@ -20,8 +20,38 @@ class gaussians(object):
         self.sigmasq = np.power(sigmas,2)
 
     def __call__(self, x):
-        return np.exp(-np.power(x-self.means, 2).sum(axis=1) / self.sigmasq / 2.) \
-                / np.power(self.sigmasq*2*np.pi, len(x) /2.)
+        detsig = np.sqrt(self.sigmasq.prod(axis=1))
+        return np.exp(-(np.power(x-self.means, 2) / self.sigmasq).sum(axis=1) / 2.) \
+                / np.power(2*np.pi, len(x) /2.) / detsig
+
+class linear_blended(object):
+    """
+        official approximation function for baird star example
+
+        taken from: Maei, H. R. (2011). Gradient Temporal-Difference Learning
+                Algorithms. Machine Learning. University of Alberta.
+                p. 17
+    """
+    
+    def __repr__(self):
+        return "linear_blended("+repr(self.n_states)+")"
+        
+    
+    def __call__(self, x):  
+        state=int(x)
+        n_corners = self.n_states - 1
+        result = np.zeros(n_corners + 2)
+        if state == n_corners:
+            result[-1] = 2
+            result[-2] = 1
+        else:
+            result[-1] = 1
+            result[state] = 2
+        return result
+        
+    def __init__(self, n_states):
+        self.n_states=n_states
+        
 
 class squared_full(object):
 
