@@ -30,7 +30,7 @@ theta0 =  0.*np.ones(n_feat)
 
 task = LinearContinuousValuePredictionTask(mdp, gamma, phi, theta0, policy=policy, 
                                            normalize_phi=True, 
-                                           mu_subsample=200, mu_iter=200000,
+                                           mu_subsample=200, mu_iter=2000,
                                            mu_restarts=3)
 #print task.mu_phi
 #task.seed=0
@@ -57,11 +57,11 @@ gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 #methods.append(gtd)
 
-alpha = .0005
+alpha = .02
 td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
 td0.name = r"TD(0) $\alpha$={}".format(alpha)
 td0.color = "k"
-#methods.append(td0)
+methods.append(td0)
 
 alpha, mu = (.001,0.5)
 tdc = td.TDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
@@ -69,10 +69,10 @@ tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
 tdc.color = "b"
 #methods.append(tdc)
 
-lstd = td.RecursiveLSTDLambda(lam=0, eps=1000, phi=phi, gamma=gamma)
+lstd = td.RecursiveLSTDLambda(lam=0, eps=100, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({})".format(0)
 lstd.color = "g"
-methods.append(lstd)
+#methods.append(lstd)
 
 alpha=.008
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
@@ -80,8 +80,9 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 #methods.append(rg)
 
-l=200000
-error_every=200
+l=2000
+n_eps=10
+error_every=10
 name="swingup_255gauss_onpolicy"
 title="Cartpole Swingup Onpolicy"
 n_indep=1
