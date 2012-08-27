@@ -199,7 +199,10 @@ class PendulumSwingUpCartPole(mdp.ContinuousMDP):
         self.dt = dt
         self.b = b
 
-        mdp.ContinuousMDP.__init__(self, self.statefun, self.rewardfun, 4, 1, np.array([0.,0., 0., 0.]), Sigma=Sigma)
+        mdp.ContinuousMDP.__init__(self, self.statefun, self.rewardfun, 4, 1, self.__class__.randstart(), Sigma=Sigma)
+
+    def randstart():
+        return np.array([0., 0., 0., (np.random.rand()-.5)*2*np.pi])
 
     def ode(self,s,t,a):
         g = 9.81

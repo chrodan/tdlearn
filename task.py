@@ -63,7 +63,7 @@ class LinearValuePredictionTask(object):
 
         return min_errors
 
-    def avg_error_traces(self, methods, n_indep, n_eps=None, verbose=False, n_jobs=1, **kwargs):
+    def avg_error_traces(self, methods, n_indep, verbose=False, n_jobs=1, kind="ergodic",**kwargs):
 
         res = []
         if n_jobs==1:
@@ -73,20 +73,19 @@ class LinearValuePredictionTask(object):
                     p.update(seed, n_indep, "{} of {} seeds".format(seed, n_indep))
                     kwargs['seed']=seed
 
-                    if n_eps is None:
+                    if kind == "ergodic":
                         res.append(self.ergodic_error_traces(methods, **kwargs))
                     else:
-                        res.append(self.episodic_error_traces(methods, n_eps=n_eps, **kwargs))
+                        res.append(self.episodic_error_traces(methods,  **kwargs))
         else:
             jobs = []
             for seed in range(n_indep):
                 kwargs=kwargs.copy()                
                 kwargs['seed']=seed
                 self.projection_operator()
-                if n_eps is None:
+                if kind == "ergodic":
                     jobs.append((tmp, [self, methods], kwargs))
                 else:
-                    kwargs["n_eps"] = n_eps
                     jobs.append((tmp2,[self, methods], kwargs))
             res = Parallel(n_jobs=n_jobs, verbose=verbose)(jobs)
         res = np.array(res).swapaxes(0,1)
@@ -125,45 +124,7 @@ class LinearValuePredictionTask(object):
 
         return errors[:i,:].T
         
-    def ergodic_error_traces(self, methods, n_samples=1000, 
-                             seed=1, criterion="MSE", error_every=1, with_trace=False):
 
-        self._init_methods(methods)
-        err_f = self._init_error_fun(criterion)
-        err_f_gen = self._init_error_fun(criterion, general=True)
-        errors = np.ones((int(np.ceil(float(n_samples)/error_every)),len(methods)))*np.inf
-        
-        for m in methods: m.reset_trace()
-
-        s, a, r, s_n, restarts, f0, f1 = self.mdp.samples_featured(phi=self.phi, n_iter=n_samples, 
-                                                        n_restarts=1, 
-                                                        policy=self.behavior_policy, 
-                                                        seed=seed)
-        #import ipdb; ipdb.set_trace()
-        for i in xrange(n_samples):
-            if restarts[i]: 
-                for m in methods: m.reset_trace() 
-                
-            for k, m in enumerate(methods):
-                if self.off_policy:
-                    m.update_V_offpolicy(s[i], s_n[i], r[i], a[i],
-                                                          self.behavior_policy, 
-                                                          self.target_policy,
-                                                    f0=f0[i], f1=f1[i])
-                else:
-                    m.update_V(s[i], s_n[i], r[i], f0=f0[i], f1=f1[i])
-                if i % error_every == 0:
-                    if isinstance(m, td.LinearValueFunctionPredictor):
-                        cur_theta = m.theta
-                        errors[int(i/error_every),k] = err_f(cur_theta)
-                    else:
-                        errors[int(i/error_every),k] = err_f_gen(m.V)
-
-            i += 1
-        if with_trace:
-            return errors[:i,:], r, s
-        else:
-            return errors[:i,:].T
 
 
     def parameter_search(self, methods, n_eps=None, n_samples=1000, seed=None):
@@ -224,6 +185,46 @@ class LinearValuePredictionTask(object):
                 if i >= n_samples: break
         return param      
       
+    def ergodic_error_traces(self, methods, n_samples=1000, n_eps=1,
+                             seed=1, criterion="MSE", error_every=1, with_trace=False):
+
+        self._init_methods(methods)
+        err_f = self._init_error_fun(criterion)
+        err_f_gen = self._init_error_fun(criterion, general=True)
+        errors = np.ones((int(np.ceil(float(n_samples)/error_every)),len(methods)))*np.inf
+        
+        for m in methods: m.reset_trace()
+
+        s, a, r, s_n, restarts, f0, f1 = self.mdp.samples_featured(phi=self.phi, n_iter=n_samples, 
+                                                        n_restarts=n_eps, 
+                                                        policy=self.behavior_policy, 
+                                                        seed=seed)
+        #import ipdb; ipdb.set_trace()
+        for i in xrange(n_samples):
+            if restarts[i]: 
+                for m in methods: m.reset_trace() 
+                
+            for k, m in enumerate(methods):
+                if self.off_policy:
+                    m.update_V_offpolicy(s[i], s_n[i], r[i], a[i],
+                                                          self.behavior_policy, 
+                                                          self.target_policy,
+                                                    f0=f0[i], f1=f1[i])
+                else:
+                    m.update_V(s[i], s_n[i], r[i], f0=f0[i], f1=f1[i])
+                if i % error_every == 0:
+                    if isinstance(m, td.LinearValueFunctionPredictor):
+                        cur_theta = m.theta
+                        errors[int(i/error_every),k] = err_f(cur_theta)
+                    else:
+                        errors[int(i/error_every),k] = err_f_gen(m.V)
+
+            i += 1
+        if with_trace:
+            return errors[:i,:], r, s
+        else:
+            return errors[:i,:].T     
+     
     def episodic_error_traces(self, methods, n_eps=10000, error_every=1, n_samples=1000, seed=None, criterion="MSE"):
 
         self._init_methods(methods)
@@ -231,7 +232,14 @@ class LinearValuePredictionTask(object):
         errors = np.ones((int(np.ceil(n_samples/error_every)),len(methods)))*np.inf
         err_f_gen = self._init_error_fun(criterion, general=True)
 
-        for i in xrange(n_eps):
+        s, a, r, s_n, restarts, f0, f1 = self.mdp.samples_featured(phi=self.phi, n_iter=n_samples, 
+                                                        n_restarts=n_eps, 
+                                                        policy=self.behavior_policy, 
+                                                        seed=seed)
+
+        for i in xrange(n_eps*n_samples):
+            if restarts[i]: 
+                for m in methods: m.reset_trace()
             for m in methods: m.reset_trace()
             cur_seed = i+n_samples*seed if seed is not None else None
             for s, a, s_n, r in self.mdp.sample_transition(n_samples, 
