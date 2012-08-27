@@ -4,11 +4,11 @@ import numpy as np
 import os 
 import matplotlib.pyplot as plt
 def run_experiment(task, methods, n_indep, l, error_every, name, 
-                   mdp, phi, title, criterion="RMSPBE", verbose=True, n_jobs=1, **kwargs):
+                   mdp, phi, title, n_eps=1, criterion="RMSPBE", verbose=True, n_jobs=1, **kwargs):
     return task.avg_error_traces(methods, n_indep=n_indep,
         n_samples=l, error_every=error_every,
         criterion=criterion,
-        verbose=verbose, n_jobs=n_jobs)
+        verbose=verbose, n_jobs=n_jobs, n_eps=n_eps)
 
 def save_results(name, l, criterion, error_every, n_indep, methods,
                  mdp, phi, title, mean, std, raw, **kwargs):
