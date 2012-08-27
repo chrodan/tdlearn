@@ -40,7 +40,7 @@ def plot_errorbar(title, methods, mean, std, l, error_every, criterion, n_eps, *
     plt.xlabel("Timesteps")
     plt.title(title)
     for i, m in enumerate(methods):
-        plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], errorevery=l*n_eps/error_every/8, label=m.name)
+        plt.errorbar(range(0,l*n_eps,error_every), mean[i,:], yerr=std[i,:], errorevery=l*n_eps/error_every/8, label=m.name)
         #plt.errorbar(range(0,l,error_every), mean[i,:], yerr=std[i,:], label=m.name)
     plt.legend()
     plt.show()

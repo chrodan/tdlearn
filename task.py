@@ -191,7 +191,7 @@ class LinearValuePredictionTask(object):
         self._init_methods(methods)
         err_f = self._init_error_fun(criterion)
         err_f_gen = self._init_error_fun(criterion, general=True)
-        errors = np.ones((int(np.ceil(float(n_samples)/error_every)),len(methods)))*np.inf
+        errors = np.ones((int(np.ceil(float(n_samples*n_eps)/error_every)),len(methods)))*np.inf
         
         for m in methods: m.reset_trace()
 
@@ -200,7 +200,7 @@ class LinearValuePredictionTask(object):
                                                         policy=self.behavior_policy, 
                                                         seed=seed)
         #import ipdb; ipdb.set_trace()
-        for i in xrange(n_samples):
+        for i in xrange(n_samples*n_eps):
             if restarts[i]: 
                 for m in methods: m.reset_trace() 
                 

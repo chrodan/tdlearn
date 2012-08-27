@@ -13,13 +13,14 @@ import policies
 from util import multinomial_sample
 from joblib import Memory
 
-memory = Memory(cachedir=".", verbose=1)
+memory = Memory(cachedir=".", verbose=20)
 
 
 def _false(x):
     return False
 
 class ContinuousMDP(object):
+
 
     def __init__(self, sf, rf, dim_S, dim_A, start, terminal_f = None, Sigma=0.):
         self.sf = sf
@@ -83,13 +84,14 @@ class ContinuousMDP(object):
         states_next = np.ones([n_restarts * n_iter, self.dim_S])
         actions = np.ones([n_restarts * n_iter, self.dim_A])
         rewards = np.ones(n_restarts * n_iter)
-       
+        np.random.seed(seed)
+
         restarts = np.zeros(n_restarts * n_iter, dtype="bool")
         k=0
         while k < n_restarts * n_iter:
             restarts[k] = True
             for s,a,s_n, r in self.sample_transition(n_iter, policy, with_restart=False, 
-                                                     no_next_noise=no_next_noise, seed=seed):
+                                                     no_next_noise=no_next_noise, seed=None):
                 states[k,:] = s
                 states_next[k,:] = s_n
                 rewards[k] = r
