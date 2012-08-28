@@ -492,7 +492,7 @@ class Memory(Logger):
             self.cachedir = os.path.join(cachedir, 'joblib')
             mkdirp(self.cachedir)
 
-    def cache(self, func=None, ignore=None, verbose=None,
+    def cache(self, func=None, ignore=None, hashfun={}, verbose=None,
                         mmap_mode=False):
         """ Decorates the given function func to only compute its return
             value for input arguments not cached on disk.
@@ -536,6 +536,7 @@ class Memory(Logger):
                                    ignore=ignore,
                                    compress=self.compress,
                                    verbose=verbose,
+                                   hashfun=hashfun,
                                    timestamp=self.timestamp)
 
     def clear(self, warn=True):
