@@ -14,10 +14,37 @@ from util import multinomial_sample
 from joblib import Memory
 
 memory = Memory(cachedir=".", verbose=20)
+#memory = Memory(cachedir="/BS/latentCRF/nobackup/td", verbose=50)
 
 
 def _false(x):
     return False
+
+@memory.cache
+def samples_cached(mymdp, policy, n_iter=1000, n_restarts=100,
+                 no_next_noise=False, seed=1):
+    assert(seed is not None)
+    states = np.ones([n_restarts * n_iter, mymdp.dim_S])
+    states_next = np.ones([n_restarts * n_iter, mymdp.dim_S])
+    actions = np.ones([n_restarts * n_iter, mymdp.dim_A])
+    rewards = np.ones(n_restarts * n_iter)
+    np.random.seed(seed)
+
+    restarts = np.zeros(n_restarts * n_iter, dtype="bool")
+    k=0
+    while k < n_restarts * n_iter:
+        restarts[k] = True
+        for s,a,s_n, r in mymdp.sample_transition(n_iter, policy, with_restart=False, 
+                                                 no_next_noise=no_next_noise, seed=None):
+            states[k,:] = s
+            states_next[k,:] = s_n
+            rewards[k] = r
+            actions[k,:] = a
+
+            k+=1
+            if k >= n_restarts * n_iter:
+                break
+    return states ,actions, rewards, states_next, restarts
 
 class ContinuousMDP(object):
 
@@ -56,8 +83,7 @@ class ContinuousMDP(object):
         self.__dict__ = state
         if "start" not in state:
             self.start = lambda: self.start_state.copy()
-        self.samples_featured = memory.cache(self.samples_featured)        
-        self.samples_cached = memory.cache(self.samples_cached)
+        self.samples_featured = memory.cache(self.samples_featured)   
 
     def samples(self, policy,n_iter=1000, n_restarts=100,
                      no_next_noise=False, seed=None):
@@ -77,30 +103,8 @@ class ContinuousMDP(object):
 
         return states[:k,:],actions[:k,:], rewards[:k], states_next[:k,:]
 
-    def samples_cached(self, policy, n_iter=1000, n_restarts=100,
-                     no_next_noise=False, seed=1):
-        assert(seed is not None)
-        states = np.ones([n_restarts * n_iter, self.dim_S])
-        states_next = np.ones([n_restarts * n_iter, self.dim_S])
-        actions = np.ones([n_restarts * n_iter, self.dim_A])
-        rewards = np.ones(n_restarts * n_iter)
-        np.random.seed(seed)
-
-        restarts = np.zeros(n_restarts * n_iter, dtype="bool")
-        k=0
-        while k < n_restarts * n_iter:
-            restarts[k] = True
-            for s,a,s_n, r in self.sample_transition(n_iter, policy, with_restart=False, 
-                                                     no_next_noise=no_next_noise, seed=None):
-                states[k,:] = s
-                states_next[k,:] = s_n
-                rewards[k] = r
-                actions[k,:] = a
-
-                k+=1
-                if k >= n_restarts * n_iter:
-                    break
-        return states ,actions, rewards, states_next, restarts
+    def samples_cached(self, *args, **kwargs):
+        return samples_cached(self, *args, **kwargs)
        
     def samples_featured(self, phi, policy, n_iter=1000, n_restarts=100,
                      no_next_noise=False, seed=1, n_subsample=1):
