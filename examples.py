@@ -201,7 +201,7 @@ class PendulumSwingUpCartPole(mdp.ContinuousMDP):
 
         mdp.ContinuousMDP.__init__(self, self.statefun, self.rewardfun, 4, 1, self.__class__.randstart(), Sigma=Sigma)
 
-    def __repr(self):
+    def __repr__(self):
         return "<PendulumSwingUpCartPole("+repr([self.l, self.M, self.m, self.dt, self.b, self.Sigma])+")>"
 
     @staticmethod

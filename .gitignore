@@ -3,4 +3,4 @@
 *~
 /.project
 /.pydevproject
-/joblib/*
+/cache/*

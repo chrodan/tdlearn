@@ -9,7 +9,7 @@ import numpy as np
 import logging
 import policies
 from joblib import Memory
-memory = Memory(cachedir=".", verbose=20)
+memory = Memory(cachedir="./cache", verbose=20)
 def estimate_V_discrete(mdp, n_iter=100000, policy="uniform", gamma=1.):
     if policy =="uniform":
         policy =mdp.uniform_policy()
