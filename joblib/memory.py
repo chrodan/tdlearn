@@ -221,7 +221,7 @@ class MemorizedFunc(Logger):
         coerce_mmap = (self.mmap_mode is not None)
         argdict = filter_args(self.func, self.ignore,
                              args, kwargs)
-        for k,v in self.hash_fun:
+        for k,v in self.hashfun:
             if k in argdict:
                 argdict[k] = v(argdict[k])
         argument_hash = hash(argdict,
