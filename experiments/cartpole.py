@@ -10,13 +10,13 @@ gamma=0.9
 dt = 0.1
 
 mdp = examples.PendulumSwingUpCartPole(dt = dt, Sigma=0.)
-s = slice(0., 20., 10.)
-s2 = slice(-4., 4, 8./5)
-s3 = slice(-10., 11., 20./5)
-s4 = slice(-2.5, 3., .5)
+s = slice(0., 20., 5.)
+s2 = slice(-4., 4, 8./10)
+s3 = slice(-10., 11., 20./20)
+s4 = slice(-2.5, 3., .125)
 means = np.mgrid[s,s,s2,s2].reshape(4,-1).T
 #means = np.zeros((5**4, 4), dtype="float")
-sigmas = np.ones_like(means) * np.array([10., 8./5, 4., .5])
+sigmas = np.ones_like(means) * np.array([5., .8, 1., .125])
 phi = features.gaussians(means,sigmas)
 
 
@@ -90,6 +90,6 @@ criterion="RMSPBE"
 if __name__ =="__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=1, **globals())
-    #save_results(**globals())
-    plot_errorbar(**globals())
+    save_results(**globals())
+    #plot_errorbar(**globals())
 

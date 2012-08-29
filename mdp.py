@@ -13,14 +13,14 @@ import policies
 from util import multinomial_sample
 from joblib import Memory
 
-memory = Memory(cachedir="./cache", verbose=20)
-#memory = Memory(cachedir="/BS/latentCRF/nobackup/td", verbose=50)
+#memory = Memory(cachedir="./cache", verbose=20)
+memory = Memory(cachedir="/BS/latentCRF/nobackup/td", verbose=50)
 
 
 def _false(x):
     return False
 
-@memory.cache(hash_fun={"mymdp": repr})
+@memory.cache(hashfun={"mymdp": repr, "policy": repr})
 def samples_cached(mymdp, policy, n_iter=1000, n_restarts=100,
                  no_next_noise=False, seed=1):
     assert(seed is not None)
@@ -76,7 +76,7 @@ class ContinuousMDP(object):
         if "start_state" in res:
             del res["start"]
         del res["samples_featured"]        
-        del res["samples_cached"]
+        #del res["samples_cached"]
         return res
 
     def __setstate__(self, state):

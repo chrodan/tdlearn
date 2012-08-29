@@ -221,9 +221,10 @@ class MemorizedFunc(Logger):
         coerce_mmap = (self.mmap_mode is not None)
         argdict = filter_args(self.func, self.ignore,
                              args, kwargs)
-        for k,v in self.hashfun:
+        for k,v in self.hashfun.iteritems():
             if k in argdict:
                 argdict[k] = v(argdict[k])
+        #import ipdb; ipdb.set_trace()
         argument_hash = hash(argdict,
                              coerce_mmap=coerce_mmap)
         output_dir = os.path.join(self._get_func_dir(self.func),
@@ -522,7 +523,7 @@ class Memory(Logger):
         if func is None:
             # Partial application, to be able to specify extra keyword
             # arguments in decorators
-            return functools.partial(self.cache, ignore=ignore)
+            return functools.partial(self.cache, ignore=ignore, hashfun=hashfun)
         if self.cachedir is None:
             return func
         if verbose is None:
@@ -531,6 +532,7 @@ class Memory(Logger):
             mmap_mode = self.mmap_mode
         if isinstance(func, MemorizedFunc):
             func = func.func
+        #import ipdb; ipdb.set_trace()
         return MemorizedFunc(func, cachedir=self.cachedir,
                                    mmap_mode=mmap_mode,
                                    ignore=ignore,
