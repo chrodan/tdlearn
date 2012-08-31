@@ -734,6 +734,62 @@ class LSTDLambdaJP(LSTDLambda):
         #print self.C
         #print self.b
 
+class RecursiveLSTDLambdaJP(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
+    """
+        recursive Implementation of Least Squared Temporal Difference Learning
+         LSTD(\lambda) with linear function approximation, also works in the
+         off-policy case and uses eligibility traces
+        
+        for details see Scherrer, B., & Geist, M. (EWRL 2011). :
+            Recursive Least-Squares Learning with Eligibility Traces.
+            Algorithm 1
+    """
+
+    def __init__(self, eps=100, **kwargs):
+        """
+            lam: lambda in [0, 1] specifying the tradeoff between bootstrapping
+                    and MC sampling
+            gamma:  discount factor
+        """
+        LinearValueFunctionPredictor.__init__(self, **kwargs)        
+        OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
+        LambdaValueFunctionPredictor.__init__(self, **kwargs)   
+        self.eps = eps
+        #import ipdb; ipdb.set_trace()
+        self.init_vals["C"] = np.eye(len(self.init_vals["theta"]))*eps
+        self.reset()
+
+    def clone(self):
+        o = self.__class__(eps=self.eps, lam=self.lam, gamma=self.gamma, phi=self.phi)
+        return o
+
+    def reset(self):
+        self.reset_trace()   
+        self.init_vals["C"] = np.eye(len(self.init_vals["theta"]))*self.eps
+        for k,v in self.init_vals.items():
+            self.__setattr__(k,copy.copy(v))
+
+    def update_V(self, s0, s1, r, f0=None, f1=None,  theta=None, rho=1, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+        self._tic()
+        if theta is None: theta=self.theta
+        if not hasattr(self, "z"):
+            self.z = f0
+        
+        L = np.dot(self.C,self.z)
+        deltaf = f0 - self.gamma * f1
+        K = rho * L / (1+ np.dot(deltaf,L))
+        
+        theta += K * (r - np.dot(deltaf, theta))
+        self.C -= np.outer(K, np.dot(deltaf, self.C))
+        self.z = self.gamma * self.lam * rho * self.z + f1
+        self.theta = theta
+        self._toc()
 
 class RecursiveLSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
     """

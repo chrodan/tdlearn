@@ -12,7 +12,7 @@ from joblib import Parallel, delayed
 from matplotlib.colors import LogNorm
 import pickle
 
-from experiments.20link_imp_offpolicy import *
+from experiments.lqr_impoverished import *
 
 error_every=int(l/20)
 
@@ -160,6 +160,23 @@ def gridsearch_1d():
         with open("data/{}/{}_gs.pck".format(name, m.__name__), "w") as f:
             pickle.dump(dict(params=params, alphas=alphas, res=res), f)
 
+def gridsearch_rmalpha():
+    methods = [td.LinearTD0, td.ResidualGradient]
+    td.RMalpha
+    c = [0.1, 1, 5, 10, 30]
+    t = [0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.5]
+    l = list(itertools.product(c, t))
+    params=[td.RMalpha(ct, tt) for ct,tt in l]
+    for m in methods:
+        k = (delayed(run)(m, dict(alpha=p)) for p in params)
+        res = Parallel(n_jobs=1, verbose=11)(k)
+
+        res = np.array(res).reshape(len(sigma), -1)
+        if not os.path.exists("data/{name}".format(name=name)):
+            os.makedirs("data/{name}".format(name=name))
+        with open("data/{}/{}_rm_gs.pck".format(name, m.__name__), "w") as f:
+            pickle.dump(dict(params=params, sigma=sigma, res=res), f)
+
 def gridsearch_ktd():
     #theta_noises= [None, 0.0001, 0.001, 0.01, 0.1, 1]
     reward_noises = np.power(10,np.arange(-5.,0,1))
@@ -192,8 +209,4 @@ def gridsearch_gptdp():
         pickle.dump(dict(params=params, sigma=sigma, res=res), f)
 
 if __name__ == "__main__":
-    gridsearch_1d()
-    gridsearch_2d()
-    gridsearch_ktd()
-    gridsearch_gptdp()
-    gridsearch_lambda()
+    gridsearch_rmalpha()

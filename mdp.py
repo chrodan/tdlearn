@@ -13,8 +13,8 @@ import policies
 from util import multinomial_sample
 from joblib import Memory
 
-#memory = Memory(cachedir="./cache", verbose=20)
-memory = Memory(cachedir="/BS/latentCRF/nobackup/td", verbose=50)
+memory = Memory(cachedir="./cache", verbose=20)
+#memory = Memory(cachedir="/BS/latentCRF/nobackup/td", verbose=50)
 
 
 def _false(x):
@@ -120,7 +120,10 @@ class ContinuousMDP(object):
             if k % n_subsample == 0:
                 
                 feats[i,:] = phi(s[k])
-                feats_next[i,:] = phi(sn[k])
+                if no_next_noise:
+                    feats_next[i,:] = phi.expectation(sn[k], self.Sigma)
+                else:
+                    feats_next[i,:] = phi(sn[k])
                 i += 1                
         return s[l] ,a[l], r[l], sn[l], restarts[l], feats, feats_next
 
@@ -155,7 +158,10 @@ class ContinuousMDP(object):
                         break
                     else:
                         return
-                a = policy(s0)
+                if no_next_noise:
+                    a = policy.mean(s0)
+                else:
+                    a = policy(s0)
                 mean = self.sf(s0, a)
                 s1 = mean + rands[i]
 

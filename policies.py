@@ -30,6 +30,9 @@ class LinearContinuous(object):
         
     def __call__(self, s):
         return np.random.multivariate_normal(np.array(np.dot(self.theta, s)).flatten(), self.noise)
+
+    def mean(self, s):    
+        return np.array(np.dot(self.theta, s)).flatten()
         
     def p(self,s,a):
         s = np.array(s).flatten()
