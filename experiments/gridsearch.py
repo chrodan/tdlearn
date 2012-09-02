@@ -87,7 +87,7 @@ def gridsearch_2d():
     methods = [td.TDC, td.GeriTDC, td.GTD, td.GTD2]
     if not os.path.exists("data/{name}".format(name=name)):
         os.makedirs("data/{name}".format(name=name))
-    alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5]
+    alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5, 1., 10., 20., 30., 50., 100.]
     mus = [0.0001, 0.001, 0.01,0.01, 0.1, 0.5,1,2,4,8,16]
     params = list(itertools.product(alphas, mus))
 
@@ -102,7 +102,7 @@ def gridsearch_2d():
 def gridsearch_lambda():
     methods = [td.RecursiveLSTDLambda, td.LSTDLambdaJP]
 
-    alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5]
+    alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5, 1., 10., 20., 30., 50., 100.]
     mus = [0.0001, 0.001, 0.01,0.01, 0.1, 0.5,1,2,4,8,16]
     lambdas = np.linspace(0., 1., 10)
     params = lambdas
@@ -147,7 +147,7 @@ def gridsearch_lambda():
 def gridsearch_1d():
     methods = [td.LinearTD0, td.ResidualGradient]
 
-    alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.]
+    alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1., 10., 20., 30., 50., 100.]
     params = alphas
 
     for m in methods:
@@ -209,4 +209,5 @@ def gridsearch_gptdp():
         pickle.dump(dict(params=params, sigma=sigma, res=res), f)
 
 if __name__ == "__main__":
-    gridsearch_rmalpha()
+    gridsearch_1d()
+    gridsearch_2d()

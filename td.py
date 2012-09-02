@@ -34,6 +34,7 @@ class ValueFunctionPredictor(object):
         raise NotImplementedError("Each predictor has to implement this")
 
     def reset(self):
+        self.time = 0
         self.reset_trace()
         for k,v in self.init_vals.items():
             self.__setattr__(k,copy.copy(v))
@@ -1048,7 +1049,10 @@ class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         logging.debug("TD Learning Delta {}".format(delta))
         #print theta
         #print f0, f1
-        theta += self.alpha.next() * delta * rho * f0
+        al = self.alpha.next()                    
+        #if isinstance(self.alpha,  RMalpha):
+        #    print al, self.alpha.t            
+        theta += al * delta * rho * f0
         self.theta = theta
         self._toc()
         return theta

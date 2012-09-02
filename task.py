@@ -24,6 +24,8 @@ def tmp(cl, *args, **kwargs):
 
 def tmp2(cl, *args, **kwargs): 
     return cl.episodic_error_traces(*args, **kwargs)
+def tmp3(cl, *args, **kwargs): 
+    return cl.error_data_budget(*args, **kwargs)
 
 class LinearValuePredictionTask(object):
     """ Base class for LQR and discrete case tasks """
@@ -184,6 +186,61 @@ class LinearValuePredictionTask(object):
                     
                 if i >= n_samples: break
         return param      
+    
+    def avg_error_data_budget(self, methods, n_indep, verbose=False, n_jobs=1, **kwargs):
+
+        res = []
+        if n_jobs==1:
+            with ProgressBar(enabled=verbose) as p:
+                
+                for seed in range(n_indep):
+                    p.update(seed, n_indep, "{} of {} seeds".format(seed, n_indep))
+                    kwargs['seed']=seed
+                    res.append(self.error_data_budget(methods, **kwargs))
+                    
+        else:
+            jobs = []
+            for seed in range(n_indep):
+                kwargs=kwargs.copy()                
+                kwargs['seed']=seed
+                self.projection_operator()
+                jobs.append((tmp3,[self, methods], kwargs))
+                
+            res = Parallel(n_jobs=n_jobs, verbose=verbose)(jobs)
+        errors, times = zip(*res)
+        
+        errors = np.array(errors).swapaxes(0,1)
+        return np.mean(errors, axis=1), np.std(errors, axis=1), np.mean(times, axis=0)     
+    
+    def error_data_budget(self, methods, passes, n_samples=1000, n_eps=1,
+                             seed=1, criterion="MSE"):
+
+        self._init_methods(methods)
+        err_f = self._init_error_fun(criterion)
+        errors = np.ones((passes,len(methods)))*np.inf
+        for m in methods: m.reset_trace()
+
+        s, a, r, s_n, restarts, f0, f1 = self.mdp.samples_featured(phi=self.phi, n_iter=n_samples, 
+                                                        n_restarts=n_eps, 
+                                                        policy=self.behavior_policy, 
+                                                        seed=seed)
+        for p in range(passes):
+            for k, m in enumerate(methods):
+                m.reset_trace() 
+                for i in xrange(n_samples*n_eps):
+                    if restarts[i]: 
+                       m.reset_trace() 
+                    if self.off_policy:
+                        m.update_V_offpolicy(s[i], s_n[i], r[i], a[i],
+                                                              self.behavior_policy, 
+                                                              self.target_policy,
+                                                        f0=f0[i], f1=f1[i])
+                    else:
+                        m.update_V(s[i], s_n[i], r[i], f0=f0[i], f1=f1[i])
+                errors[p,k] = err_f(m.theta)   
+        times = [m.time for m in methods]
+        return errors, times
+      
       
     def ergodic_error_traces(self, methods, n_samples=1000, n_eps=1,
                              seed=1, criterion="MSE", error_every=1, with_trace=False):
