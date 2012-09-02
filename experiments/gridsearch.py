@@ -1,4 +1,5 @@
 import td
+import os
 import examples
 import numpy as np
 import matplotlib.pyplot as plt
@@ -169,9 +170,9 @@ def gridsearch_rmalpha():
     params=[td.RMalpha(ct, tt) for ct,tt in l]
     for m in methods:
         k = (delayed(run)(m, dict(alpha=p)) for p in params)
-        res = Parallel(n_jobs=1, verbose=11)(k)
+        res = Parallel(n_jobs=-1, verbose=11)(k)
 
-        res = np.array(res).reshape(len(sigma), -1)
+        res = np.array(res).reshape(len(c), -1)
         if not os.path.exists("data/{name}".format(name=name)):
             os.makedirs("data/{name}".format(name=name))
         with open("data/{}/{}_rm_gs.pck".format(name, m.__name__), "w") as f:
