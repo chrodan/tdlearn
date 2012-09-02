@@ -13,7 +13,7 @@ import policies
 from util import multinomial_sample
 from joblib import Memory
 
-memory = Memory(cachedir="./cache", verbose=20)
+memory = Memory(cachedir="./cache", verbose=0)
 #memory = Memory(cachedir="/BS/latentCRF/nobackup/td", verbose=50)
 
 
@@ -75,15 +75,14 @@ class ContinuousMDP(object):
         res = self.__dict__.copy()
         if "start_state" in res:
             del res["start"]
-        del res["samples_featured"]        
+        #del res["samples_featured"]        
         #del res["samples_cached"]
         return res
 
     def __setstate__(self, state):
         self.__dict__ = state
         if "start" not in state:
-            self.start = lambda: self.start_state.copy()
-        self.samples_featured = memory.cache(self.samples_featured)   
+            self.start = lambda: self.start_state.copy()   
 
     def samples(self, policy,n_iter=1000, n_restarts=100,
                      no_next_noise=False, seed=None):
