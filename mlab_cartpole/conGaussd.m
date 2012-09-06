@@ -44,7 +44,7 @@ dMdw = zeros(E,n,E); dSdw = zeros(E,E,n,E); dCdw = zeros(D,E,n,E);
 r = zeros(1,D); T = zeros(D);Z = zeros(n,D); kdX = zeros(n,E,D);
 QdXj = zeros(D);
 
-%if nargout < 4, [M, S, C] = conGauss(policy, m, s); return; end
+if nargout < 4, [M, S, C] = conGauss(policy, m, s); return; end
 
 inp = bsxfun(@minus,cen,m');                     % centralize training inputs
 

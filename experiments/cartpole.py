@@ -10,7 +10,7 @@ gamma=0.9
 dt = 0.1
 
 def make_slice(l,u,n):
-    return slice(l,u+1, float(u-l)/n)
+    return slice(l,u+float(u-l)/(n-1)/2., float(u-l)/(n-1))
 
 mdp = examples.PendulumSwingUpCartPole(dt = dt, Sigma=np.array([0., 0.005, 0.005, 0.]))
 n_slices=[2,3,5,10]
@@ -19,7 +19,7 @@ s = [make_slice(b[0], b[1], n) for b,n in zip(bounds, n_slices)]
 bounds = np.array(bounds, dtype="float")
 means = np.mgrid[s[0], s[1], s[2], s[3]].reshape(4,-1).T
 
-sigmas = np.ones_like(means) * ((bounds[:,1]-bounds[:,0])/2./np.array(n_slices)).flatten()
+sigmas = np.ones_like(means) * ((bounds[:,1]-bounds[:,0])/2./(np.array(n_slices) -1)).flatten()
 phi = features.gaussians(means,sigmas)
 
 
@@ -33,7 +33,7 @@ theta0 =  0.*np.ones(n_feat)
 task = LinearContinuousValuePredictionTask(mdp, gamma, phi, theta0, policy=policy, 
                                            normalize_phi=True, 
                                            mu_subsample=1, mu_iter=200,
-                                           mu_restarts=30)
+                                           mu_restarts=60)
 
 
 methods = []
@@ -43,16 +43,16 @@ mu = 0.01 #optimal
 gtd = td.GTD(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
-methods.append(gtd)
+#methods.append(gtd)
 
 
 alpha, mu = 1600., 16 #optimal
 gtd = td.GTD2(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
-methods.append(gtd)
+#methods.append(gtd)
 
-alpha = 1600.
+alpha = 1.
 td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
 td0.name = r"TD(0) $\alpha$={}".format(alpha)
 td0.color = "k"
@@ -64,13 +64,13 @@ alpha = td.RMalpha(c=c, mu=mu)
 td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
 td0.name = r"TD(0) $\alpha={}\exp(-{}t$".format(c, mu)
 td0.color = "k"
-methods.append(td0)
+#methods.append(td0)
 
 alpha, mu = (1600.,16)
 tdc = td.TDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
 tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
 tdc.color = "b"
-methods.append(tdc)
+#methods.append(tdc)
 
 lstd = td.RecursiveLSTDLambda(lam=0, eps=100, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({})".format(0)
@@ -81,7 +81,7 @@ alpha=1600
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
-methods.append(rg)
+#methods.append(rg)
 
 reward_noise=1e-1
 ktd = td.KTD(phi=phi, gamma=gamma, theta_noise=None, eta=1e-5,P_init=1., reward_noise=reward_noise)
@@ -95,11 +95,11 @@ gptdp.name =r"GPTDP $\sigma$={}".format(sigma)
 
 l=200
 n_eps=2000
-error_every=8000
+error_every=4000
 name="swingup_"+str(n_slices[0])+"-"+ \
     str(n_slices[1])+"-"+str(n_slices[2])+"-"+str(n_slices[3])+"_gauss_onpolicy"
 title="Cartpole Swingup Onpolicy"
-n_indep=5
+n_indep=10
 criterion="RMSPBE"
 
 if __name__ =="__main__":
