@@ -13,9 +13,9 @@ from joblib import Parallel, delayed
 from matplotlib.colors import LogNorm
 import pickle
 
-from experiments.lqr_impoverished import *
+from experiments.cartpole import *
 
-error_every=int(l/20)
+error_every=int(l*n_eps/20)
 
 def load_result_file(fn, maxerr=5):
     with open(fn) as f:
@@ -44,42 +44,42 @@ def plot_2d_error_grid(val, alphas, mus, maxerr=5):
 def run_2d(alpha, mu, cls):
     np.seterr(all="ignore")
     m = cls(alpha=alpha, beta=mu*alpha, phi=task.phi, gamma=gamma)
-    mean, std, raw = task.avg_error_traces([m], n_indep=3, n_samples=l, error_every=error_every, criterion="RMSPBE", verbose=False)
+    mean, std, raw = task.avg_error_traces([m], n_indep=1, n_samples=l, n_eps=n_eps, error_every=error_every, criterion="RMSPBE", verbose=False)
     val = np.mean(mean)
     return val
 
 def run_1d(alpha, cls):
     np.seterr(all="ignore")
     m = cls(alpha=alpha, phi=task.phi, gamma=gamma)
-    mean, std, raw = task.avg_error_traces([m], n_indep=3, n_samples=l, error_every=error_every, criterion="RMSPBE", verbose=False)
+    mean, std, raw = task.avg_error_traces([m], n_indep=1, n_samples=l,n_eps=n_eps, error_every=error_every, criterion="RMSPBE", verbose=False)
     val = np.mean(mean)
     return val
 
 def run(cls, param):
     np.seterr(all="ignore")
     m = cls(phi=task.phi, gamma=gamma, **param)
-    mean, std, raw = task.avg_error_traces([m], n_indep=3, n_samples=l, error_every=error_every, criterion="RMSPBE", verbose=False)
+    mean, std, raw = task.avg_error_traces([m], n_indep=1, n_samples=l, n_eps=n_eps, error_every=error_every, criterion="RMSPBE", verbose=False)
     val = np.mean(mean)
     return val
 
 def run_lambda_1d(lam, cls):
     np.seterr(all="ignore")
     m = cls(lam=lam, phi=task.phi, gamma=gamma)
-    mean, std, raw = task.avg_error_traces([m], n_indep=3, n_samples=l, error_every=error_every, criterion="RMSPBE", verbose=False)
+    mean, std, raw = task.avg_error_traces([m], n_indep=1, n_samples=l, n_eps=n_eps, error_every=error_every, criterion="RMSPBE", verbose=False)
     val = np.mean(mean)
     return val
 
 def run_lambda_2d(lam, alpha, cls):
     np.seterr(all="ignore")
     m = cls(lam=lam, alpha=alpha, phi=task.phi, gamma=gamma)
-    mean, std, raw = task.avg_error_traces([m], n_indep=3, n_samples=l, error_every=error_every, criterion="RMSPBE", verbose=False)
+    mean, std, raw = task.avg_error_traces([m], n_indep=1, n_samples=l,n_eps=n_eps,  error_every=error_every, criterion="RMSPBE", verbose=False)
     val = np.mean(mean)
     return val
 
 def run_lambda_3d(lam, alpha, mu, cls):
     np.seterr(all="ignore")
     m = cls(lam=lam, alpha=alpha, beta=mu*alpha, phi=task.phi, gamma=gamma)
-    mean, std, raw = task.avg_error_traces([m], n_indep=3, n_samples=l, error_every=error_every, criterion="RMSPBE", verbose=False)
+    mean, std, raw = task.avg_error_traces([m], n_indep=1, n_samples=l, n_eps=n_eps, error_every=error_every, criterion="RMSPBE", verbose=False)
     val = np.mean(mean)
     return val
 
@@ -88,7 +88,7 @@ def gridsearch_2d():
     methods = [td.TDC, td.GeriTDC, td.GTD, td.GTD2]
     if not os.path.exists("data/{name}".format(name=name)):
         os.makedirs("data/{name}".format(name=name))
-    alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5, 1., 10., 20., 30., 50., 100.]
+    alphas = [1., 10., 20., 30., 50., 100., 150, 200, 400, 800]
     mus = [0.0001, 0.001, 0.01,0.01, 0.1, 0.5,1,2,4,8,16]
     params = list(itertools.product(alphas, mus))
 
@@ -103,13 +103,13 @@ def gridsearch_2d():
 def gridsearch_lambda():
     methods = [td.RecursiveLSTDLambda, td.LSTDLambdaJP]
 
-    alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5, 1., 10., 20., 30., 50., 100.]
+    alphas = [1., 10., 50., 100., 150, 200, 400, 800, 1600]
     mus = [0.0001, 0.001, 0.01,0.01, 0.1, 0.5,1,2,4,8,16]
     lambdas = np.linspace(0., 1., 10)
     params = lambdas
     if not os.path.exists("data/{name}".format(name=name)):
         os.makedirs("data/{name}".format(name=name))
-
+    """
     for m in methods:
         k = (delayed(run_lambda_1d)(p,m) for p in params)
         res = Parallel(n_jobs=-1, verbose=11)(k)
@@ -117,7 +117,7 @@ def gridsearch_lambda():
         res = np.array(res).reshape(len(lambdas), -1)
         with open("data/{}/{}_gs_lam.pck".format(name, m.__name__), "w") as f:
             pickle.dump(dict(params=params, lambdas=lambdas, res=res), f)
-
+    """
     methods = [td.LinearTDLambda]
 
 
@@ -148,7 +148,7 @@ def gridsearch_lambda():
 def gridsearch_1d():
     methods = [td.LinearTD0, td.ResidualGradient]
 
-    alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1., 10., 20., 30., 50., 100.]
+    alphas = [1., 10., 20., 30., 50., 100., 150., 200., 400., 800.]
     params = alphas
 
     for m in methods:
@@ -164,19 +164,19 @@ def gridsearch_1d():
 def gridsearch_rmalpha():
     methods = [td.LinearTD0, td.ResidualGradient]
     td.RMalpha
-    c = [0.1, 1, 5, 10, 30]
-    t = [0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.5]
+    c = [100, 200, 800, 1600, 3200]
+    t = [0.001, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.5]
     l = list(itertools.product(c, t))
     params=[td.RMalpha(ct, tt) for ct,tt in l]
     for m in methods:
         k = (delayed(run)(m, dict(alpha=p)) for p in params)
-        res = Parallel(n_jobs=-1, verbose=11)(k)
+        res = Parallel(n_jobs=10, verbose=11)(k)
 
         res = np.array(res).reshape(len(c), -1)
         if not os.path.exists("data/{name}".format(name=name)):
             os.makedirs("data/{name}".format(name=name))
         with open("data/{}/{}_rm_gs.pck".format(name, m.__name__), "w") as f:
-            pickle.dump(dict(params=params, sigma=sigma, res=res), f)
+            pickle.dump(dict(params=params, c=c, t=t, res=res), f)
 
 def gridsearch_ktd():
     #theta_noises= [None, 0.0001, 0.001, 0.01, 0.1, 1]
@@ -212,3 +212,4 @@ def gridsearch_gptdp():
 if __name__ == "__main__":
     gridsearch_1d()
     gridsearch_2d()
+    #gridsearch_lambda()
