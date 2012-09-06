@@ -251,13 +251,14 @@ class LinearValuePredictionTask(object):
         errors = np.ones((int(np.ceil(float(n_samples*n_eps)/error_every)),len(methods)))*np.inf
         
         for m in methods: m.reset_trace()
-
-        s, a, r, s_n, restarts, f0, f1 = self.mdp.samples_featured(phi=self.phi, n_iter=n_samples, 
-                                                        n_restarts=n_eps, 
-                                                        policy=self.behavior_policy, 
+        s, a, r, s_n, restarts = self.mdp.samples_cached(n_iter=n_samples,
+                                                        n_restarts=n_eps,
+                                                        policy=self.behavior_policy,
                                                         seed=seed)
         #import ipdb; ipdb.set_trace()
         for i in xrange(n_samples*n_eps):
+            f0 = self.phi(s[i])
+            f1 = self.phi(s_n[i])
             if restarts[i]: 
                 for m in methods: m.reset_trace() 
                 
@@ -266,9 +267,9 @@ class LinearValuePredictionTask(object):
                     m.update_V_offpolicy(s[i], s_n[i], r[i], a[i],
                                                           self.behavior_policy, 
                                                           self.target_policy,
-                                                    f0=f0[i], f1=f1[i])
+                                                    f0=f0, f1=f1)
                 else:
-                    m.update_V(s[i], s_n[i], r[i], f0=f0[i], f1=f1[i])
+                    m.update_V(s[i], s_n[i], r[i], f0=f0, f1=f1)
                 if i % error_every == 0:
                     if isinstance(m, td.LinearValueFunctionPredictor):
                         cur_theta = m.theta

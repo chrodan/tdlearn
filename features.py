@@ -10,9 +10,8 @@ class gaussians(object):
     def expectation(self, x, Sigma):
         
         sig = Sigma + self.sigmasq
-        detsig = np.sqrt(sig.prod(axis=1))
-        return np.exp(-(np.power(x-self.means, 2)/sig).sum(axis=1) / 2.) \
-                / np.power(2*np.pi, len(x) /2.) / detsig      
+        phi =  np.exp(-(np.power(x-self.means, 2)/sig).sum(axis=1) / 2.)
+        return phi / np.sum(phi)
 
     def __init__(self, means, sigmas):
         assert(means.shape[0] == sigmas.shape[0])
@@ -20,9 +19,10 @@ class gaussians(object):
         self.sigmasq = np.power(sigmas,2)
 
     def __call__(self, x):
-        detsig = np.sqrt(self.sigmasq.prod(axis=1))
-        return np.exp(-(np.power(x-self.means, 2) / self.sigmasq).sum(axis=1) / 2.) \
-                / np.power(2*np.pi, len(x) /2.) / detsig
+        #detsig = np.sqrt(self.sigmasq.prod(axis=1))
+        phi = np.exp(-(np.power(x-self.means, 2) / self.sigmasq).sum(axis=1) / 2.)
+        return phi / np.sum(phi)
+
 
 class linear_blended(object):
     """
