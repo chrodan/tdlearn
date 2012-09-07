@@ -11,7 +11,7 @@ import dynamic_prog
 import numpy as np
 from util.progressbar import ProgressBar
 import util
-from joblib import delayed, Parallel
+from joblib import Parallel
 #import matplotlib.pyplot as plt
 import policies
 import features
@@ -153,9 +153,8 @@ class LinearValuePredictionTask(object):
 
         return param
 
-    def parameter_traces(self, methods, n_samples=1000, seed=None):
+    def parameter_traces(self, methods, n_samples=1000, seed=None, override_terminal=0):
         # deprecated
-        pass
         self._init_methods(methods)
 
         param = np.empty((n_samples, len(methods)) + self.theta0.shape)
@@ -169,9 +168,11 @@ class LinearValuePredictionTask(object):
             for s, a, s_n, r in self.mdp.sample_transition(
                 n_samples, policy=self.behavior_policy,
                 with_restart=False,
-                    seed=cur_seed):
+                seed=cur_seed,
+                    override_terminal=override_terminal):
                 f0 = self.phi(s)
                 f1 = self.phi(s_n)
+                #print s, a, s_n, r, f0, f1
                 for k, m in enumerate(methods):
                     if self.off_policy:
                         m.update_V_offpolicy(s, s_n, r, a,

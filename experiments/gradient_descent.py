@@ -19,59 +19,57 @@ import scipy.optimize
 
 n = 7
 n_feat = 2
-n_iter = 100
-mdp = examples.BoyanChain(n, n_feat)
-phi=mdp.phi
-task = task.LinearDiscreteValuePredictionTask(mdp, 1, phi, np.array([50.,0.]))
+n_iter = 50
+mdp = examples.BoyanChain(n, n_feat, additional_terminal=False)
+phi = mdp.phi
+task = task.LinearDiscreteValuePredictionTask(mdp, 0.9, phi, np.array([50., -20.]))
 
 
 methods = []
 
-lstd = td.LSTDLambda(lam=0, eps=1000, phi=phi)
-lstd.name = r"LSTD({}) $\epsilon$={}".format(0, 1000)    
-lstd.color = "b"        
-#methods.append(lstd)
 
 for alpha in [1]:
-    td0 = td.LinearTDLambda(lam=0, alpha=alpha, phi=phi)
-    td0.name = r"TD(0) $\alpha$={}".format(alpha)    
+    td0 = td.LinearTD0(alpha=alpha, phi=phi)
+    td0.name = r"TD(0) $\alpha$={}".format(alpha)
     td0.color = "k"
     methods.append(td0)
-    
-for alpha, mu in[( 1, 0.1)]:        
-    tdc = td.TDC(alpha=alpha, beta=alpha*mu, phi=phi)
-    tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)   
-    tdc.color = "r"        
+
+for alpha, mu in[(1, 0.1)]:
+    tdc = td.TDC(alpha=alpha, beta=alpha * mu, phi=phi)
+    tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
+    tdc.color = "r"
     methods.append(tdc)
 
 err_f = task._init_error_fun("RMSE")
-param_sgd = task.parameter_traces(methods, n_samples=500)
+param_sgd = task.parameter_traces(methods, n_samples=150)
 
 # Ordinary Gradient Descent
-grad = lambda x: scipy.optimize.approx_fprime(x, err_f, scipy.optimize.optimize._epsilon*5)
-param_gd = np.empty((param_sgd.shape[0],2))
+grad = lambda x: scipy.optimize.approx_fprime(
+    x, err_f, scipy.optimize.optimize._epsilon * 5)
+param_gd = np.empty((param_sgd.shape[0], 2))
 p = task.theta0
 for i in xrange(param_gd.shape[0]):
-    param_gd[i,:] = p
-    p -= 10*grad(p)
+    param_gd[i, :] = p
+    p -= 10 * grad(p)
 
-size = np.array(param_sgd.shape) + [0,1,0]
+size = np.array(param_sgd.shape) + [0, 1, 0]
 param = np.empty(size)
-param[:,:-1,:] = param_sgd
-param[:,-1,:] = param_gd
+param[:, :-1, :] = param_sgd
+param[:, -1, :] = param_gd
 
 
-w1, w2 = np.meshgrid(np.linspace(np.min(-10 + param[:,:,0]), 10 + np.max(param[:,:,0]), 150), 
-                     np.linspace(np.min(-10 + param[:,:,1]), 10 + np.max(param[:,:,1]), 150))
-                     
+w1, w2 = np.meshgrid(
+    np.linspace(
+        np.min(-10 + param[:, :, 0]), 10 + np.max(param[:, :, 0]), 150),
+    np.linspace(np.min(-10 + param[:, :, 1]), 10 + np.max(param[:, :, 1]), 150))
 
-extends = np.min(w1), np.max(w1), np.min(w2),np.max(w2)
+
+extends = np.min(w1), np.max(w1), np.min(w2), np.max(w2)
 s = w1.copy()
 
 for i in xrange(w1.shape[0]):
     for j in xrange(w2.shape[1]):
-        s[i,j] = err_f([w1[i,j], w2[i,j]])
-
+        s[i, j] = err_f([w1[i, j], w2[i, j]])
 
 
 plt.figure()
@@ -81,10 +79,10 @@ plt.ylabel(r"$\theta_2$")
 plt.autoscale(tight=True)
 plt.colorbar().ax.set_ylabel(r"$\sqrt{MSE}$")
 
-plt.plot(param[:,0,0],param[:,0,1],'w', linewidth=2, label="TD(0)")
-plt.plot(param[:,1,0],param[:,1,1],'#ff2277', linewidth=2, label="TDC")
-plt.plot(param[:,2,0],param[:,2,1],'m', linewidth=2, label="Grad. Desc.")
-lg = plt.legend(loc= "lower right")    
+plt.plot(param[:, 0, 0], param[:, 0, 1], 'w', linewidth=2, label="TD(0)")
+plt.plot(param[:, 1, 0], param[:, 1, 1], '#ff2277', linewidth=2, label="TDC")
+plt.plot(param[:, 2, 0], param[:, 2, 1], 'm', linewidth=2, label="Grad. Desc.")
+lg = plt.legend(loc="lower right")
 lg.get_frame().set_facecolor('#cccccc')
 
 plt.show()
