@@ -34,16 +34,16 @@ for i=1:E     % compute predicted mean and inv(s) times input-output covariance
   B = LL*s*LL+eye(D); 
   tt = in/B;
   l = exp(-sum(in.*tt,2)/2); lb = l.*w(:,i);
-  tL = tt*LL;
+  %tL = tt*LL;
   c = 1/sqrt(det(B));
   
   M(i) = sum(lb)*c;                                            % predicted mean
-  C(:,i) = tL'*lb*c;                    % inv(s) times input-output covariance
+  %C(:,i) = tL'*lb*c;                    % inv(s) times input-output covariance
   k(:,i) = -sum(in.*in,2)/2;
 end
 
-if nargout < 3; return; end
-
+%if nargout < 3; return; end
+return;
 for i=1:E                  % compute predictive covariance, non-central moments
   ii = bsxfun(@rdivide,inp,exp(2*ll(1:D,i)'));
   
