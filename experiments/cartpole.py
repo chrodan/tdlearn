@@ -42,21 +42,21 @@ task = LinearContinuousValuePredictionTask(
 
 methods = []
 
-alpha = 1.
-mu = 0.01  # optimal
+alpha = .5
+mu = 0.1  # optimal
 gtd = td.GTD(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
 methods.append(gtd)
 
 
-alpha, mu = .5, .01  # optimal
+alpha, mu = .5, 8.  # optimal
 gtd = td.GTD2(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
-alpha = .1
+alpha = .8
 td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
 td0.name = r"TD(0) $\alpha$={}".format(alpha)
 td0.color = "k"
@@ -70,7 +70,7 @@ td0.name = r"TD(0) $\alpha={}\exp(-{}t$".format(c, mu)
 td0.color = "k"
 methods.append(td0)
 
-alpha, mu = (1., 0.05)
+alpha, mu = (.5, 4.)
 tdc = td.TDC(alpha=alpha, beta=alpha * mu, phi=phi, gamma=gamma)
 tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
 tdc.color = "b"
@@ -81,7 +81,7 @@ lstd.name = r"LSTD({})".format(0)
 lstd.color = "g"
 methods.append(lstd)
 
-alpha = .3
+alpha = .8
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
@@ -96,10 +96,10 @@ ktd.name = r"KTD $r_n={}$".format(reward_noise)
 sigma = 1e-6
 gptdp = td.GPTDP(phi=phi, sigma=sigma)
 gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
-#methods.append(gptdp)
+methods.append(gptdp)
 
 l = 200
-n_eps = 2000
+n_eps = 1000
 error_every = 4000
 name = "swingup_" + str(n_slices[0]) + "-" + \
     str(n_slices[1]) + "-" + str(n_slices[2]) + "-" + str(n_slices[3]
@@ -110,6 +110,6 @@ criterion = "RMSPBE"
 
 if __name__ == "__main__":
     from experiments import *
-    mean, std, raw = run_experiment(n_jobs=1, **globals())
+    mean, std, raw = run_experiment(n_jobs=2, **globals())
     save_results(**globals())
     plot_errorbar(**globals())

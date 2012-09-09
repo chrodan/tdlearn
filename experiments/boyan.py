@@ -16,10 +16,10 @@ import matplotlib.pyplot as plt
 n = 14
 n_feat = 4
 mdp = examples.BoyanChain(n, n_feat)
-phi=mdp.phi
+phi = mdp.phi
 task = LinearDiscreteValuePredictionTask(mdp, 1, phi, np.zeros(n_feat))
 
-# define the methods to examine          
+# define the methods to examine
 gtd2 = td.GTD2(alpha=0.5, beta=0.5, phi=phi)
 gtd2.name = "GTD2"
 gtd2.color = "#0F6E08"
@@ -28,13 +28,13 @@ gtd = td.GTD(alpha=0.5, beta=0.5, phi=phi)
 gtd.name = "GTD"
 gtd.color = "#6E086D"
 
-methods = [] # [td0, gtd, gtd2]
+methods = []  # [td0, gtd, gtd2]
 
 #for alpha in [0.5,0.7]:
 #    for mu in [0.01, 0.005, 0.05]:
 alpha = 1
 mu = 0.01
-gtd = td.GTD(alpha=alpha, beta=mu*alpha, phi=phi)
+gtd = td.GTD(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "#6E086D"
 methods.append(gtd)
@@ -42,7 +42,7 @@ methods.append(gtd)
 #for alpha in [0.5,0.9, 1]:
 #    for mu in [0.5, 0.3]:
 alpha, mu = 0.9, 0.3
-gtd = td.GTD2(alpha=alpha, beta=mu*alpha, phi=phi)
+gtd = td.GTD2(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "#6E086D"
 methods.append(gtd)
@@ -50,86 +50,89 @@ methods.append(gtd)
 
 for alpha in [0.3]:
     td0 = td.LinearTD0(alpha=alpha, phi=phi)
-    td0.name = r"TD(0) $\alpha$={}".format(alpha)    
+    td0.name = r"TD(0) $\alpha$={}".format(alpha)
     td0.color = "k"
     methods.append(td0)
 
 #for alpha in [0.3,0.5,0.7]:
 #    for mu in [0.01, 0.005, 0.05]:
-for alpha, mu in[( 0.7, 0.01)]:        
-    tdc = td.TDC(alpha=alpha, beta=alpha*mu, phi=phi)
-    tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)   
-    tdc.color = "r"        
+for alpha, mu in[(0.7, 0.01)]:
+    tdc = td.TDC(alpha=alpha, beta=alpha * mu, phi=phi)
+    tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
+    tdc.color = "r"
     methods.append(tdc)
 
 #methods = []
 #for eps in np.power(10,np.arange(-1,4)):
-
-lstd = td.LSTDLambda(lam=0, phi=phi)
+lstd = td.RecursiveLSTDLambda(lam=0, phi=phi)
 lstd.name = r"LSTD({})".format(0)
-lstd.color = "b"        
-methods.append(lstd)
-
-lstd = td.LSTDLambda(lam=1, phi=phi)
-lstd.name = r"LSTD({})".format(1)
 lstd.color = "b"
 methods.append(lstd)
 
-#methods = []    
+lstd = td.RecursiveLSPELambda(lam=0, phi=phi)
+lstd.name = r"LSPE({})".format(0)
+lstd.color = "b"
+methods.append(lstd)
+
+#lstd = td.LSTDLambda(lam=1, phi=phi)
+#lstd.name = r"LSTD({})".format(1)
+#lstd.color = "b"
+#methods.append(lstd)
+
+#methods = []
 #for alpha in np.linspace(0.01,1,10):
 alpha = 0.9
 rg = td.ResidualGradient(alpha=alpha, phi=phi)
-rg.name = r"RG $\alpha$={}".format(alpha)    
+rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
 eta = 0.001
-reward_noise=0.001
-P_init=1.
-ktd = td.KTD(phi=phi, gamma=1., P_init=P_init,theta_noise=None, eta=eta, reward_noise=reward_noise)
-ktd.name = r"KTD $\eta$={}, $\sigma^2$={} $P_0$={}".format(eta, reward_noise, P_init)
+reward_noise = 0.001
+P_init = 1.
+ktd = td.KTD(phi=phi, gamma=1., P_init=P_init, theta_noise=None, eta=eta,
+             reward_noise=reward_noise)
+ktd.name = r"KTD $\eta$={}, $\sigma^2$={} $P_0$={}".format(
+    eta, reward_noise, P_init)
 methods.append(ktd)
 
-nu=0.0001
-sigma0=1.
+nu = 0.0001
+sigma0 = 1.
 gptd = td.GPTD(phi=phi, nu=nu, sigma0=sigma0)
-gptd.name =r"GPTD $\nu$={}, $\sigma_0$={}".format(nu, sigma0)
+gptd.name = r"GPTD $\nu$={}, $\sigma_0$={}".format(nu, sigma0)
 #methods.append(gptd)
 
 
-
-nu=0.
-sigma0=1.
+nu = 0.
+sigma0 = 1.
 gptd = td.GPTD(phi=phi, nu=nu, sigma0=sigma0)
-gptd.name =r"GPTD $\nu$={}, $\sigma_0$={}".format(nu, sigma0)
+gptd.name = r"GPTD $\nu$={}, $\sigma_0$={}".format(nu, sigma0)
 #methods.append(gptd)
 
-sigma=.5
+sigma = .5
 gptdp = td.GPTDP(phi=phi, sigma=sigma)
-gptdp.name =r"GPTDP $\sigma$={}".format(sigma)
+gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
 #methods.append(gptdp)
 
 
-sigma=1.
+sigma = 1.
 gptdp = td.GPTDP(phi=phi, sigma=sigma)
-gptdp.name =r"GPTDP $\sigma$={}".format(sigma)
+gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
 methods.append(gptdp)
 
 
-
-n_iter = 500
+l = 20
+n_eps = 500
 n_indep = 5
-mean, std, raw = task.avg_error_traces(methods, n_indep, n_eps=n_iter, criterion="RMSBE", verbose=True)
 
-plt.figure()
-plt.title("{}-State Boyan Chain ({} trials)".format(n, n_indep))
-plt.ylabel(r"$\sqrt{MSBE}$")
-plt.xlabel("Episodes")    
-plt.ylim(0,3)
+error_every = 1
+name = "boyan"
+title = "{}-State Boyan Chain ({} trials)".format(n, n_indep)
+n_indep = 5
+criterion = "RMSPBE"
 
-for i, m in enumerate(methods):
-# be aware that the errorevery keyword is currently not supported in Matplotlib.
-# There is an open pull request, so it will hopefully be included in MPL soon.
-    plt.errorbar(range(len(mean[i,:])), mean[i,:], yerr=std[i,:], errorevery=int(n_iter/10.), label=m.name)
-plt.legend()
-plt.show()
+if __name__ == "__main__":
+    from experiments import *
+    mean, std, raw = run_experiment(n_jobs=1, **globals())
+    save_results(**globals())
+    plot_errorbar(**globals())

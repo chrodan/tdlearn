@@ -817,6 +817,72 @@ class RecursiveLSTDLambdaJP(OffPolicyValueFunctionPredictor, LambdaValueFunction
         self._toc()
 
 
+class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
+    """
+        recursive Implementation of Least Squared Policy Evaluation
+         LSPE(\lambda) with linear function approximation, also works in the
+         off-policy case and uses eligibility traces
+
+        for details see Scherrer, B., & Geist, M. (EWRL 2011). :
+            Recursive Least-Squares Learning with Eligibility Traces.
+            Algorithm 2
+    """
+
+    def __init__(self, eps=100, **kwargs):
+        """
+            lam: lambda in [0, 1] specifying the tradeoff between bootstrapping
+                    and MC sampling
+            gamma:  discount factor
+        """
+        LinearValueFunctionPredictor.__init__(self, **kwargs)
+        OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
+        LambdaValueFunctionPredictor.__init__(self, **kwargs)
+        self.eps = eps
+        #import ipdb; ipdb.set_trace()
+        n = len(self.init_vals["theta"])
+        self.init_vals["A"] = np.zeros((n,n))
+        self.init_vals["b"] = np.zeros(n)
+        self.init_vals["N"] = np.eye(n) * eps
+        self.reset()
+
+    def clone(self):
+        o = self.__class__(
+            eps=self.eps, lam=self.lam, gamma=self.gamma, phi=self.phi)
+        return o
+
+    def reset(self):
+        self.reset_trace()
+        n = len(self.init_vals["theta"])
+        self.init_vals["A"] = np.zeros((n,n))
+        self.init_vals["b"] = np.zeros(n)
+        self.init_vals["N"] = np.eye(n) * self.eps
+        for k, v in self.init_vals.items():
+            self.__setattr__(k, copy.copy(v))
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+        self._tic()
+        if theta is None:
+            theta = self.theta
+        if not hasattr(self, "z"):
+            self.z = f0
+
+        L = np.dot(f0, self.N)
+        self.N -= np.dot(np.dot(self.N,f0), L)/ (1 + np.dot(L, f0))
+        deltaf = f0 - self.gamma * rho * f1
+        self.A += np.outer(self.z, deltaf)
+
+        self.b += rho * self.z * r
+
+        theta += np.dot(self.N, (self.b - np.dot(self.A, theta)))
+        self.theta = theta
+        self._toc()
+
 class RecursiveLSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
     """
         recursive Implementation of Least Squared Temporal Difference Learning
