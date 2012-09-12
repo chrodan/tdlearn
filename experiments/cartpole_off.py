@@ -14,7 +14,7 @@ def make_slice(l, u, n):
     return slice(l, u + float(u - l) / (n - 1) / 2., float(u - l) / (n - 1))
 
 mdp = examples.PendulumSwingUpCartPole(
-    dt=dt, Sigma=np.array([0., 0.005, 0.005, 0.]))
+    dt=dt, Sigma=np.array([0., 0., 0., 0.]))
 n_slices = [3, 4, 6, 10]
 bounds = [[0, 20], [-3, 4], [-12, 12], [-3, 3]]
 s = [make_slice(b[0], b[1], n) for b, n in zip(bounds, n_slices)]
@@ -30,11 +30,12 @@ n_feat = len(phi(np.zeros(mdp.dim_S)))
 print "Number of features:", n_feat
 theta_p = np.array([-0.1, 0., 0., 0.])
 
-policy = policies.MarcsPolicy()  # noise=np.array([[0.1]]))
+beh_policy = policies.MarcsPolicy(noise=np.array([[0.1]]))
+tar_policy = policies.MarcsPolicy(noise=np.array([[0.01]]))
 theta0 = 0. * np.ones(n_feat)
 
 task = LinearContinuousValuePredictionTask(
-    mdp, gamma, phi, theta0, policy=policy,
+    mdp, gamma, phi, theta0, policy=beh_policy, target_policy=tar_policy,
     normalize_phi=False,
     mu_subsample=1, mu_iter=200,
     mu_restarts=30)
@@ -99,7 +100,7 @@ gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
 methods.append(gptdp)
 
 l = 200
-n_eps = 1000
+n_eps = 2000
 error_every = 4000
 name = "swingup_" + str(n_slices[0]) + "-" + \
     str(n_slices[1]) + "-" + str(n_slices[2]) + "-" + str(n_slices[3]
