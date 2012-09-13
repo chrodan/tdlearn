@@ -197,8 +197,7 @@ class ContinuousMDP(object):
         if seed is not None:
             np.random.seed(seed)
 
-        rands = np.random.multivariate_normal(
-            np.zeros(self.dim_S), np.diag(self.Sigma), 1)
+        rands = np.random.randn(n_samples, self.dim_S) * self.Sigma[None, :]
         a = policy(s0, n_samples)
         if n_samples == 1:
             mean = self.sf(s0, a)
