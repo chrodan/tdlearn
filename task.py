@@ -486,8 +486,9 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
 
     def __init__(
         self, mdp, gamma, phi, theta0, policy, target_policy=None, normalize_phi=False, mu_iter=1000,
-            mu_restarts=5, mu_seed=1000, mu_subsample=1):
+            mu_restarts=5, mu_seed=1000, mu_subsample=1, mu_next=20):
         self.mdp = mdp
+        self.mu_next = mu_next
         self.mu_iter = mu_iter
         self.mu_seed = mu_seed
         self.mu_restarts = mu_restarts
@@ -541,13 +542,13 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         are very costly to compute, so they are only evaluated, if really needed
         """
         if name == "mu" or name == "mu_next" or name == "mu_r" or name == "mu_phi" or name == "mu_phi_next":
-            self.mu, _, self.mu_r, self.mu_next, _, self.mu_phi, self.mu_phi_next = self.mdp.samples_featured(policy=self.target_policy,
-                                                                                                              phi=self.phi,
-                                                                                                              n_iter=self.mu_iter,
-                                                                                                              n_restarts=self.mu_restarts,
-                                                                                                              no_next_noise=True,
-                                                                                                              seed=self.mu_seed,
-                                                                                                              n_subsample=self.mu_subsample)
+            self.mu, _, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next = self.mdp.samples_featured(policy=self.target_policy,
+                                                                                                           phi=self.phi,
+                                                                                                           n_next=self.mu_next,
+                                                                                                           n_iter=self.mu_iter,
+                                                                                                           n_restarts=self.mu_restarts,
+                                                                                                           seed=self.mu_seed,
+                                                                                                           n_subsample=self.mu_subsample)
             return self.__dict__[name]
 
         else:

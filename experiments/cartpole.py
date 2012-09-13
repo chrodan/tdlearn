@@ -37,7 +37,7 @@ task = LinearContinuousValuePredictionTask(
     mdp, gamma, phi, theta0, policy=policy,
     normalize_phi=False,
     mu_subsample=1, mu_iter=200,
-    mu_restarts=30)
+    mu_restarts=10, mu_next=10)
 
 
 methods = []

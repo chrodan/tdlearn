@@ -1,26 +1,26 @@
-import mdp
 import numpy as np
 
 
 class gaussians(object):
 
     def __repr__(self):
-        return "gaussians("+repr(self.means)+","+repr(self.sigmasq)+")"
+        return "gaussians(" + repr(self.means) + "," + repr(self.sigmasq) + ")"
 
     def expectation(self, x, Sigma):
-        
+
         sig = Sigma + self.sigmasq
-        phi =  np.exp(-(np.power(x-self.means, 2)/sig).sum(axis=1) / 2.)
+        phi = np.exp(-(np.power(x - self.means, 2) / sig).sum(axis=1) / 2.)
         return phi / np.sum(phi)
 
     def __init__(self, means, sigmas):
         assert(means.shape[0] == sigmas.shape[0])
         self.means = means
-        self.sigmasq = np.power(sigmas,2)
+        self.sigmasq = np.power(sigmas, 2)
 
     def __call__(self, x):
         #detsig = np.sqrt(self.sigmasq.prod(axis=1))
-        phi = np.exp(-(np.power(x-self.means, 2) / self.sigmasq).sum(axis=1) / 2.)
+        phi = np.exp(
+            -(np.power(x - self.means, 2) / self.sigmasq).sum(axis=1) / 2.)
         return phi / np.sum(phi)
 
 
@@ -32,13 +32,12 @@ class linear_blended(object):
                 Algorithms. Machine Learning. University of Alberta.
                 p. 17
     """
-    
+
     def __repr__(self):
-        return "linear_blended("+repr(self.n_states)+")"
-        
-    
-    def __call__(self, x):  
-        state=int(x)
+        return "linear_blended(" + repr(self.n_states) + ")"
+
+    def __call__(self, x):
+        state = int(x)
         n_corners = self.n_states - 1
         result = np.zeros(n_corners + 2)
         if state == n_corners:
@@ -48,26 +47,27 @@ class linear_blended(object):
             result[-1] = 1
             result[state] = 2
         return result
-        
+
     def __init__(self, n_states):
-        self.n_states=n_states
-        
+        self.n_states = n_states
+
 
 class squared_full(object):
 
     def __repr__(self):
-        return "squared_full("+repr(self.normalization)+")"    
-    
+        return "squared_full(" + repr(self.normalization) + ")"
+
     def __init__(self, normalization=None):
         self.normalization = normalization
 
     def __call__(self, state):
         a = np.outer(state, state)
-        r= np.concatenate((a.flatten(), [1])) 
+        r = np.concatenate((a.flatten(), [1]))
         if self.normalization is not None:
             assert self.normalization.shape == r.shape
             r /= self.normalization
         return r
+
     def param_back(self, theta):
         """ transform theta back to P,b """
         if self.normalization is not None:
@@ -78,7 +78,7 @@ class squared_full(object):
     def expectation(self, x, Sigma):
         a = np.outer(x, x)
         a += np.diag(Sigma)
-        r= np.concatenate((a.flatten(), [1]))
+        r = np.concatenate((a.flatten(), [1]))
         if self.normalization is not None:
             assert self.normalization.shape == r.shape
             r /= self.normalization
@@ -91,18 +91,19 @@ class squared_full(object):
             r *= self.normalization
         return r
 
+
 class squared_tri(object):
 
     def __repr__(self):
-        return "squared_tri("+repr(self.normalization)+")"       
-    
+        return "squared_tri(" + repr(self.normalization) + ")"
+
     def __init__(self, normalization=None):
         self.normalization = normalization
 
     def __call__(self, state):
         iu1 = np.triu_indices(len(state))
         a = np.outer(state, state)
-        a = a* (2-np.eye(len(state)))
+        a = a * (2 - np.eye(len(state)))
         r = np.concatenate((a[iu1], [1]))
         if self.normalization is not None:
             assert self.normalization.shape == r.shape
@@ -112,9 +113,9 @@ class squared_tri(object):
     def expectation(self, x, Sigma):
 
         iu1 = np.triu_indices(len(x))
-        a = np.outer(x,x)
+        a = np.outer(x, x)
         a += np.diag(Sigma)
-        a = a* (2-np.eye(len(x)))
+        a = a * (2 - np.eye(len(x)))
         r = np.concatenate((a[iu1], [1]))
         if self.normalization is not None:
             assert self.normalization.shape == r.shape
@@ -126,11 +127,11 @@ class squared_tri(object):
         if self.normalization is not None:
             theta = theta / self.normalization
         b = theta[-1]
-        p = theta	[:-1]
-        l = 1 if len(p) == 1 else (-1 + np.sqrt(1 + 8*len(p)))/2
+        p = theta[:-1]
+        l = 1 if len(p) == 1 else (-1 + np.sqrt(1 + 8 * len(p))) / 2
         iu = np.triu_indices(l)
         il = np.tril_indices(l)
-        a = np.empty((l,l))
+        a = np.empty((l, l))
         a[iu] = p
         a[il] = a.T[il]
         return a, b
@@ -142,11 +143,13 @@ class squared_tri(object):
         if self.normalization is not None:
             r *= self.normalization
         return r
+
+
 class squared_diag(object):
 
     def __repr__(self):
-        return "squared_diag("+repr(self.normalization)+")"   
-    
+        return "squared_diag(" + repr(self.normalization) + ")"
+
     def __init__(self, normalization=None):
         self.normalization = normalization
 

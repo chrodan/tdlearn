@@ -7,14 +7,7 @@ Created on Fri Dec  9 19:01:41 2011
 @author: Christoph Dann <cdann@cdann.de>
 """
 import numpy as np
-import matplotlib.pyplot as plt
-from joblib import Parallel, delayed
-import policies
-from util import multinomial_sample
-from joblib import Memory
-
-memory = Memory(cachedir="./cache", verbose=0)
-#memory = Memory(cachedir="/BS/latentCRF/nobackup/td", verbose=50)
+from util import multinomial_sample, memory
 
 
 def _false(x):
@@ -36,8 +29,7 @@ def samples_cached(mymdp, policy, n_iter=1000, n_restarts=100,
     while k < n_restarts * n_iter:
         restarts[k] = True
         for s, a, s_n, r in mymdp.sample_transition(
-            n_iter, policy, with_restart=False,
-                no_next_noise=no_next_noise, seed=None):
+                n_iter, policy, with_restart=False, seed=None):
             states[k, :] = s
             states_next[k, :] = s_n
             rewards[k] = r
@@ -47,6 +39,29 @@ def samples_cached(mymdp, policy, n_iter=1000, n_restarts=100,
             if k >= n_restarts * n_iter:
                 break
     return states, actions, rewards, states_next, restarts
+
+
+@memory.cache(hashfun={"mymdp": repr, "policy": repr})
+def samples_distribution(mymdp, policy, n_iter=1000, n_restarts=100, n_next=20, seed=1):
+    states = np.ones([n_restarts * n_next * n_iter, mymdp.dim_S])
+    states_next = np.ones([n_restarts * n_next * n_iter, mymdp.dim_S])
+    actions = np.ones([n_restarts * n_next * n_iter, mymdp.dim_A])
+    rewards = np.ones(n_restarts * n_next * n_iter)
+    np.random.seed(seed)
+
+    k = 0
+    s = mymdp.start()
+    for k in xrange(0, n_restarts * n_iter * n_next, n_next):
+        if mymdp.terminal_f(s):
+            s = mymdp.start()
+        s0, a, s1, r = mymdp.sample_step(s, policy=policy, n_samples=n_next)
+        states[k:k + n_next, :] = s0
+        states_next[k:k + n_next, :] = s1
+        rewards[k:k + n_next] = r
+        actions[k:k + n_next, :] = a
+        s = s1[-1, :]
+
+    return states, actions, rewards, states_next
 
 
 class ContinuousMDP(object):
@@ -109,28 +124,24 @@ class ContinuousMDP(object):
         return samples_cached(self, *args, **kwargs)
 
     def samples_featured(self, phi, policy, n_iter=1000, n_restarts=100,
-                         no_next_noise=False, seed=1, n_subsample=1):
+                         n_next=1, seed=None, n_subsample=1):
         assert(seed is not None)
-        s, a, r, sn, restarts = self.samples_cached(
-            policy, n_iter, n_restarts, no_next_noise, seed)
+        s, a, r, sn, = samples_distribution(self, policy=policy,
+                                            n_iter=n_iter, n_next=n_next, n_restarts=n_restarts, seed=seed)
 
         n_feat = len(phi(np.zeros(self.dim_S)))
         feats = np.empty(
-            [int(n_restarts * n_iter / float(n_subsample)), n_feat])
+            [int(n_restarts * n_iter * n_next / float(n_subsample)), n_feat])
         feats_next = np.empty(
-            [int(n_restarts * n_iter / float(n_subsample)), n_feat])
+            [int(n_restarts * n_iter * n_next / float(n_subsample)), n_feat])
         i = 0
-        l = range(0, n_restarts * n_iter, n_subsample)
-        for k in xrange(n_iter * n_restarts):
+        l = range(0, n_restarts * n_iter * n_next, n_subsample)
+        for k in xrange(n_iter * n_restarts * n_next):
             if k % n_subsample == 0:
-
                 feats[i, :] = phi(s[k])
-                if no_next_noise:
-                    feats_next[i, :] = phi.expectation(sn[k], self.Sigma)
-                else:
-                    feats_next[i, :] = phi(sn[k])
+                feats_next[i, :] = phi(sn[k])
                 i += 1
-        return s[l], a[l], r[l], sn[l], restarts[l], feats, feats_next
+        return s[l], a[l], r[l], sn[l], feats, feats_next
 
     def sample_transition(self, max_n, policy, seed=None, with_restart=False, no_next_noise=False):
         """
@@ -152,8 +163,7 @@ class ContinuousMDP(object):
         if seed is not None:
             np.random.seed(seed)
 
-        rands = np.random.multivariate_normal(
-            np.zeros(self.dim_S), np.diag(self.Sigma), max_n)
+        rands = np.random.randn(max_n, self.dim_S) * self.Sigma[None, :]
         i = 0
         while i < max_n:
             s0 = self.start()
@@ -178,7 +188,7 @@ class ContinuousMDP(object):
                 i += 1
                 s0 = s1
 
-    def sample_step(self, s0, policy=None, seed=None, no_next_noise=False):
+    def sample_step(self, s0, policy=None, seed=None, n_samples=1):
         """
         samples one step from the MDP
         returns a transition tuple (X_n, A, X_n+1, R)
@@ -189,13 +199,19 @@ class ContinuousMDP(object):
 
         rands = np.random.multivariate_normal(
             np.zeros(self.dim_S), np.diag(self.Sigma), 1)
-        a = policy(s0)
-        mean = self.sf(s0, a)
-        if not no_next_noise:
-            s1 = mean + rands[0]
+        a = policy(s0, n_samples)
+        if n_samples == 1:
+            mean = self.sf(s0, a)
+            s1 = mean + rands.flatten()
+            r = self.rf(s0, a)
         else:
-            s1 = mean
-        r = self.rf(s0, a)
+            s0 = np.ones((n_samples, self.dim_S)) * s0[None, :]
+            s1 = np.zeros((n_samples, self.dim_S))
+            r = np.zeros(n_samples)
+            for i in xrange(n_samples):
+                s1[i, :] = self.sf(s0[i], a[i])
+                r = self.rf(s0[i], a[i])
+            s1 += rands
         return (s0, a, s1, r)
 
 
