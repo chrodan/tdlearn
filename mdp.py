@@ -7,7 +7,7 @@ Created on Fri Dec  9 19:01:41 2011
 @author: Christoph Dann <cdann@cdann.de>
 """
 import numpy as np
-from util import multinomial_sample, memory
+from util import multinomial_sample, memory, apply_rowise
 
 
 def _false(x):
@@ -42,26 +42,30 @@ def samples_cached(mymdp, policy, n_iter=1000, n_restarts=100,
 
 
 @memory.cache(hashfun={"mymdp": repr, "policy": repr})
-def samples_distribution(mymdp, policy, n_iter=1000, n_restarts=100, n_next=20, seed=1):
-    states = np.ones([n_restarts * n_next * n_iter, mymdp.dim_S])
-    states_next = np.ones([n_restarts * n_next * n_iter, mymdp.dim_S])
-    actions = np.ones([n_restarts * n_next * n_iter, mymdp.dim_A])
-    rewards = np.ones(n_restarts * n_next * n_iter)
+def samples_distribution(mymdp, policy, phi, n_subsample=1, n_iter=1000, n_restarts=100, n_next=20, seed=1):
+    assert(n_subsample == 1)  # not implemented, do that if you need it
+    states = np.ones([n_restarts * n_iter, mymdp.dim_S])
+    states_next = np.ones([n_restarts * n_iter, mymdp.dim_S])
+    feat = np.zeros((n_restarts * n_iter, phi.dim))
+    feat_next = np.zeros_like(feat)
+    rewards = np.ones(n_restarts * n_iter)
     np.random.seed(seed)
 
     k = 0
     s = mymdp.start()
-    for k in xrange(0, n_restarts * n_iter * n_next, n_next):
+    for k in xrange(n_restarts * n_iter):
         if mymdp.terminal_f(s):
             s = mymdp.start()
         s0, a, s1, r = mymdp.sample_step(s, policy=policy, n_samples=n_next)
-        states[k:k + n_next, :] = s0
-        states_next[k:k + n_next, :] = s1
-        rewards[k:k + n_next] = r
-        actions[k:k + n_next, :] = a
-        s = s1[-1, :]
+        states[k, :] = s0
+        feat[k, :] = phi(s0)
+        fn = apply_rowise(phi, s1)
+        feat_next[k, :] = np.mean(fn, axis=0)
+        states_next[k, :] = np.mean(s1, axis=0)
+        rewards[k] = np.mean(r)
+        s = np.mean(s1, axis=0)
 
-    return states, actions, rewards, states_next
+    return states, rewards, states_next, feat, feat_next
 
 
 class ContinuousMDP(object):
@@ -131,12 +135,12 @@ class ContinuousMDP(object):
 
         n_feat = len(phi(np.zeros(self.dim_S)))
         feats = np.empty(
-            [int(n_restarts * n_iter * n_next / float(n_subsample)), n_feat])
+            [int(n_restarts * n_iter / float(n_subsample)), n_feat])
         feats_next = np.empty(
-            [int(n_restarts * n_iter * n_next / float(n_subsample)), n_feat])
+            [int(n_restarts * n_iter / float(n_subsample)), n_feat])
         i = 0
         l = range(0, n_restarts * n_iter * n_next, n_subsample)
-        for k in xrange(n_iter * n_restarts * n_next):
+        for k in xrange(n_iter * n_restarts):
             if k % n_subsample == 0:
                 feats[i, :] = phi(s[k])
                 feats_next[i, :] = phi(sn[k])
@@ -204,12 +208,11 @@ class ContinuousMDP(object):
             s1 = mean + rands.flatten()
             r = self.rf(s0, a)
         else:
-            s0 = np.ones((n_samples, self.dim_S)) * s0[None, :]
             s1 = np.zeros((n_samples, self.dim_S))
             r = np.zeros(n_samples)
             for i in xrange(n_samples):
-                s1[i, :] = self.sf(s0[i], a[i])
-                r = self.rf(s0[i], a[i])
+                s1[i, :] = self.sf(s0, a[i])
+                r = self.rf(s0, a[i])
             s1 += rands
         return (s0, a, s1, r)
 
@@ -398,7 +401,7 @@ class MDP(object):
     def samples_cached(self, policy, n_iter=1000, n_restarts=100,
                        no_next_noise=False, seed=1):
 
-        assert (no_next_noise == False)
+        assert (not no_next_noise)
         assert(seed is not None)
         states = np.ones([n_restarts * n_iter, self.dim_S])
         states_next = np.ones([n_restarts * n_iter, self.dim_S])

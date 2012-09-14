@@ -12,10 +12,9 @@ import numpy as np
 from util.progressbar import ProgressBar
 import util
 from joblib import Parallel
-#import matplotlib.pyplot as plt
 import policies
 import features
-from util import memory
+import mdp
 
 
 def tmp(cl, *args, **kwargs):
@@ -169,7 +168,7 @@ class LinearValuePredictionTask(object):
             for s, a, s_n, r in self.mdp.sample_transition(
                 n_samples, policy=self.behavior_policy,
                 with_restart=False,
-                seed=cur_seed):
+                    seed=cur_seed):
                     #override_terminal=override_terminal):
                 f0 = self.phi(s)
                 f1 = self.phi(s_n)
@@ -546,13 +545,13 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         are very costly to compute, so they are only evaluated, if really needed
         """
         if name == "mu" or name == "mu_next" or name == "mu_r" or name == "mu_phi" or name == "mu_phi_next":
-            self.mu, _, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next = self.mdp.samples_featured(policy=self.target_policy,
-                                                                                                           phi=self.phi,
-                                                                                                           n_next=self.mu_n_next,
-                                                                                                           n_iter=self.mu_iter,
-                                                                                                           n_restarts=self.mu_restarts,
-                                                                                                           seed=self.mu_seed,
-                                                                                                           n_subsample=self.mu_subsample)
+            self.mu, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next = mdp.samples_distribution(self.mdp, policy=self.target_policy,
+                                                                                                       phi=self.phi,
+                                                                                                       n_next=self.mu_n_next,
+                                                                                                       n_iter=self.mu_iter,
+                                                                                                       n_restarts=self.mu_restarts,
+                                                                                                       seed=self.mu_seed,
+                                                                                                       n_subsample=self.mu_subsample)
             return self.__dict__[name]
 
         else:
@@ -588,7 +587,7 @@ class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
             return self.V_true
         elif name == "mu_phi_full":
             self.mu_phi_full = util.apply_rowise(
-                features.squared_tri(), self.mu)
+                features.squared_tri(self.mdp.dim_S), self.mu)
             return self.mu_phi_full
         else:
             return LinearContinuousValuePredictionTask.__getattr__(self, name)
@@ -646,18 +645,16 @@ class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
         return Pn, bn
 
     def MSE(self, theta):
-        p = features.squared_tri().param_forward(*self.phi.param_back(theta)) -\
-            features.squared_tri().param_forward(*self.V_true)
+        p = features.squared_tri(self.mdp.dim_S).param_forward(*self.phi.param_back(theta)) -\
+            features.squared_tri(self.mdp.dim_S).param_forward(*self.V_true)
         return np.mean((p * self.mu_phi_full).sum(axis=1) ** 2)
 
     def MSBE(self, theta):
         """ Mean Squared Bellman Error """
         V = np.array((theta * self.mu_phi).sum(axis=1))
-        theta_trans = features.squared_tri().param_forward(
+        theta_trans = features.squared_tri(self.mdp.dim_S).param_forward(
             *self.bellman_operator(*self.phi.param_back(theta)))
         V2 = np.array((theta_trans * self.mu_phi_full).sum(axis=1))
-        #import ipdb
-        #ipdb.set_trace()
         return np.mean((V - V2) ** 2)
 
     def MSPBE(self, theta):
@@ -665,7 +662,7 @@ class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
         """ Mean Squared Projected Bellman Error """
         #print "Wrong!"
         V = np.matrix((theta * np.asarray(self.mu_phi)).sum(axis=1)).T
-        theta_trans = features.squared_tri().param_forward(
+        theta_trans = features.squared_tri(self.mdp.dim_S).param_forward(
             *self.bellman_operator(*self.phi.param_back(theta)))
         v = np.asarray(V - self.projection_operator(
         ) * np.matrix(self.mu_phi_full) * np.matrix(theta_trans).T)

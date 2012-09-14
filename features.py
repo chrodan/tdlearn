@@ -13,6 +13,7 @@ class gaussians(object):
         return phi / np.sum(phi)
 
     def __init__(self, means, sigmas):
+        self.dim = means.shape[0]
         assert(means.shape[0] == sigmas.shape[0])
         self.means = means
         self.sigmasq = np.power(sigmas, 2)
@@ -39,7 +40,7 @@ class linear_blended(object):
     def __call__(self, x):
         state = int(x)
         n_corners = self.n_states - 1
-        result = np.zeros(n_corners + 2)
+        result = np.zeros(self.dim)
         if state == n_corners:
             result[-1] = 2
             result[-2] = 1
@@ -49,6 +50,7 @@ class linear_blended(object):
         return result
 
     def __init__(self, n_states):
+        self.dim = n_states + 1
         self.n_states = n_states
 
 
@@ -57,7 +59,8 @@ class squared_full(object):
     def __repr__(self):
         return "squared_full(" + repr(self.normalization) + ")"
 
-    def __init__(self, normalization=None):
+    def __init__(self, dim, normalization=None):
+        self.dim = dim
         self.normalization = normalization
 
     def __call__(self, state):
@@ -97,7 +100,8 @@ class squared_tri(object):
     def __repr__(self):
         return "squared_tri(" + repr(self.normalization) + ")"
 
-    def __init__(self, normalization=None):
+    def __init__(self, dim, normalization=None):
+        self.dim = dim
         self.normalization = normalization
 
     def __call__(self, state):
@@ -150,7 +154,8 @@ class squared_diag(object):
     def __repr__(self):
         return "squared_diag(" + repr(self.normalization) + ")"
 
-    def __init__(self, normalization=None):
+    def __init__(self, dim, normalization=None):
+        self.dim = dim
         self.normalization = normalization
 
     def __call__(self, state):
