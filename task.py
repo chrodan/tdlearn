@@ -15,7 +15,7 @@ from joblib import Parallel
 #import matplotlib.pyplot as plt
 import policies
 import features
-#from util import cached_property
+from util import memory
 
 
 def tmp(cl, *args, **kwargs):
@@ -87,7 +87,8 @@ class LinearValuePredictionTask(object):
             for seed in range(n_indep):
                 kwargs = kwargs.copy()
                 kwargs['seed'] = seed
-                self.projection_operator()
+                #self.projection_operator()
+                #del self.Pi
                 if kind == "ergodic":
                     jobs.append((tmp, [self, methods], kwargs))
                 else:
@@ -253,14 +254,13 @@ class LinearValuePredictionTask(object):
                                                              seed=seed)
 
     def ergodic_error_traces(self, methods, n_samples=1000, n_eps=1,
-                             seed=1, criterion="MSE", error_every=1, with_trace=False):
-
+                             seed=1, criterion="MSE", error_every=1):
+        #return 1
         self._init_methods(methods)
         err_f = self._init_error_fun(criterion)
         err_f_gen = self._init_error_fun(criterion, general=True)
         errors = np.ones((int(np.ceil(
             float(n_samples * n_eps) / error_every)), len(methods))) * np.inf
-
         for m in methods:
             m.reset_trace()
         s, a, r, s_n, restarts = self.mdp.samples_cached(n_iter=n_samples,
@@ -290,11 +290,8 @@ class LinearValuePredictionTask(object):
                     else:
                         errors[int(i / error_every), k] = err_f_gen(m.V)
 
-            i += 1
-        if with_trace:
-            return errors[:i, :], r, s
-        else:
-            return errors[:i, :].T
+        i += 1
+        return errors[:i, :].T
 
     def episodic_error_traces(self, methods, n_eps=10000, error_every=1, n_samples=1000, seed=None, criterion="MSE"):
 
@@ -488,7 +485,7 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         self, mdp, gamma, phi, theta0, policy, target_policy=None, normalize_phi=False, mu_iter=1000,
             mu_restarts=5, mu_seed=1000, mu_subsample=1, mu_next=20):
         self.mdp = mdp
-        self.mu_next = mu_next
+        self.mu_n_next = mu_next
         self.mu_iter = mu_iter
         self.mu_seed = mu_seed
         self.mu_restarts = mu_restarts
@@ -517,8 +514,15 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         if hasattr(self, "Pi"):
             return self.Pi
         else:
-            self.Pi = np.matrix(self.mu_phi) * np.linalg.pinv(np.matrix(self.mu_phi).T * np.matrix(self.mu_phi)) * np.matrix(self.mu_phi).T
+            self.Pi = self.proj(self.mu_phi)
         return self.Pi
+
+    @staticmethod
+    #@memory.cache
+    def proj(mu):
+        m = np.matrix(mu)
+        minv = np.linalg.pinv(m.T * m)
+        return m * minv * m.T
 
     def kl_policy(self):
         """ computes the KL Divergence between the behavioral and target policy
@@ -544,7 +548,7 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         if name == "mu" or name == "mu_next" or name == "mu_r" or name == "mu_phi" or name == "mu_phi_next":
             self.mu, _, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next = self.mdp.samples_featured(policy=self.target_policy,
                                                                                                            phi=self.phi,
-                                                                                                           n_next=self.mu_next,
+                                                                                                           n_next=self.mu_n_next,
                                                                                                            n_iter=self.mu_iter,
                                                                                                            n_restarts=self.mu_restarts,
                                                                                                            seed=self.mu_seed,
