@@ -168,8 +168,8 @@ class LinearValuePredictionTask(object):
             for s, a, s_n, r in self.mdp.sample_transition(
                 n_samples, policy=self.behavior_policy,
                 with_restart=False,
-                seed=cur_seed,
-                    override_terminal=override_terminal):
+                seed=cur_seed):
+                    #override_terminal=override_terminal):
                 f0 = self.phi(s)
                 f1 = self.phi(s_n)
                 #print s, a, s_n, r, f0, f1

@@ -678,10 +678,10 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
 
         self.init_vals["C"] = self.init_theta * np.eye(len(
             self.init_vals["theta"]))
-        self.init_vals["k2"] = self.init_theta * np.eye(len(
-            self.init_vals["theta"]))
-        self.init_vals["k1"] = self.init_theta * np.eye(len(
-            self.init_vals["theta"]))
+#        self.init_vals["k2"] = self.init_theta * np.eye(len(
+#            self.init_vals["theta"]))
+#        self.init_vals["k1"] = self.init_theta * np.eye(len(
+#            self.init_vals["theta"]))
         self.init_vals["b"] = -self.init_vals["theta"] * self.init_theta
         for k, v in self.init_vals.items():
             if k == "theta":
@@ -715,8 +715,8 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         self.b = (1 - alpha) * self.b + alpha * self.z * rho * r
         self.C = (1 - alpha) * self.C + alpha * np.outer(self.z,
                                                          self.gamma * rho * f1 - f0)
-        self.k1 = (1 - alpha) * self.k1 + alpha * np.outer(f0, rho * f0)
-        self.k2 = (1 - alpha) * self.k2 + alpha * np.outer(f0, f0)
+ #       self.k1 = (1 - alpha) * self.k1 + alpha * np.outer(f0, rho * f0)
+ #       self.k2 = (1 - alpha) * self.k2 + alpha * np.outer(f0, f0)
         self._toc()
         #print self.C
         #print self.b
@@ -808,7 +808,7 @@ class RecursiveLSTDLambdaJP(OffPolicyValueFunctionPredictor, LambdaValueFunction
 
         L = np.dot(self.C, self.z)
         deltaf = f0 - self.gamma * f1
-        K = rho * L / (1 + np.dot(deltaf, L))
+        K = rho * L / (1 + rho * np.dot(deltaf, L))
 
         theta += K * (r - np.dot(deltaf, theta))
         self.C -= np.outer(K, np.dot(deltaf, self.C))
@@ -840,7 +840,7 @@ class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
         self.eps = eps
         #import ipdb; ipdb.set_trace()
         n = len(self.init_vals["theta"])
-        self.init_vals["A"] = np.zeros((n,n))
+        self.init_vals["A"] = np.zeros((n, n))
         self.init_vals["b"] = np.zeros(n)
         self.init_vals["N"] = np.eye(n) * eps
         self.reset()
@@ -853,7 +853,7 @@ class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
     def reset(self):
         self.reset_trace()
         n = len(self.init_vals["theta"])
-        self.init_vals["A"] = np.zeros((n,n))
+        self.init_vals["A"] = np.zeros((n, n))
         self.init_vals["b"] = np.zeros(n)
         self.init_vals["N"] = np.eye(n) * self.eps
         for k, v in self.init_vals.items():
@@ -873,7 +873,7 @@ class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
             self.z = f0
 
         L = np.dot(f0, self.N)
-        self.N -= np.dot(np.dot(self.N,f0), L)/ (1 + np.dot(L, f0))
+        self.N -= np.dot(np.dot(self.N, f0), L) / (1 + np.dot(L, f0))
         deltaf = f0 - self.gamma * rho * f1
         self.A += np.outer(self.z, deltaf)
 
@@ -882,6 +882,7 @@ class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
         theta += np.dot(self.N, (self.b - np.dot(self.A, theta)))
         self.theta = theta
         self._toc()
+
 
 class RecursiveLSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
     """

@@ -19,10 +19,10 @@ import scipy.optimize
 
 n = 7
 n_feat = 2
-n_iter = 50
-mdp = examples.BoyanChain(n, n_feat, additional_terminal=False)
-phi = mdp.phi
-task = task.LinearDiscreteValuePredictionTask(mdp, 0.9, phi, np.array([50., -20.]))
+n_iter = 100
+mdp = examples.BoyanChain(n, n_feat)
+phi=mdp.phi
+task = task.LinearDiscreteValuePredictionTask(mdp, 1, phi, np.array([50.,0.]))
 
 
 methods = []
@@ -40,8 +40,8 @@ for alpha, mu in[(1, 0.1)]:
     tdc.color = "r"
     methods.append(tdc)
 
-err_f = task._init_error_fun("RMSE")
-param_sgd = task.parameter_traces(methods, n_samples=150)
+err_f = task._init_error_fun("RMSPBE")
+param_sgd = task.parameter_traces(methods, n_samples=500)
 
 # Ordinary Gradient Descent
 grad = lambda x: scipy.optimize.approx_fprime(
@@ -77,11 +77,11 @@ plt.imshow(s, extent=extends, origin="lower")
 plt.xlabel(r"$\theta_1$")
 plt.ylabel(r"$\theta_2$")
 plt.autoscale(tight=True)
-plt.colorbar().ax.set_ylabel(r"$\sqrt{MSE}$")
+plt.colorbar().ax.set_ylabel(r"$\sqrt{MSPBE}$")
 
 plt.plot(param[:, 0, 0], param[:, 0, 1], 'w', linewidth=2, label="TD(0)")
-plt.plot(param[:, 1, 0], param[:, 1, 1], '#ff2277', linewidth=2, label="TDC")
-plt.plot(param[:, 2, 0], param[:, 2, 1], 'm', linewidth=2, label="Grad. Desc.")
+plt.plot(param[:, 1, 0], param[:, 1, 1], 'm', linewidth=2, label="TDC")
+plt.plot(param[:, 2, 0], param[:, 2, 1], '#ff2277', linewidth=2, label="Grad. Desc.")
 lg = plt.legend(loc="lower right")
 lg.get_frame().set_facecolor('#cccccc')
 
