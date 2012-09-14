@@ -1,4 +1,9 @@
 import numpy as np
+from joblib import Memory
+
+
+memory = Memory(cachedir="./cache", verbose=0)
+#memory = Memory(cachedir="/BS/latentCRF/nobackup/td", verbose=50)
 
 
 class cached_property(object):
@@ -16,6 +21,7 @@ class cached_property(object):
             return self
         obj.__dict__[self.__name__] = result = self.fget(obj)
         return result
+
 
 def multinomial_sample(n, p):
     """
@@ -36,33 +42,37 @@ def multinomial_sample(n, p):
     S = np.add.reduce(mask, 2, dtype='uint8').squeeze()
     return S
 
+
 def apply_rowise(f, arr):
     if len(arr) <= 0:
         return arr
-    
+
     n = len(f(arr[0]))
-    res = np.empty((arr.shape[0],n))
+    res = np.empty((arr.shape[0], n))
     for i in xrange(arr.shape[0]):
-        res[i,:] = f(arr[i])
+        res[i, :] = f(arr[i])
     #import ipdb; ipdb.set_trace()
     return res
-    
-    
+
+
 def normalize_phi_mean(phi, s_samples):
     Phi = apply_rowise(phi, s_samples)
     m = np.mean(Phi, axis=0)
     stdd = np.std(Phi, axis=0)
-    phi_n = lambda x: (phi(x)-m)/stdd
+    phi_n = lambda x: (phi(x) - m) / stdd
     if hasattr(phi, "retransform"):
         phi_n.__dict__["retransform"] = lambda x: phi.retransform((x / stdd))
     return phi_n
+
+
 def normalize_phi(phi, s_samples):
     Phi = apply_rowise(phi, s_samples)
     stdd = np.std(Phi, axis=0)
-    phi_n = lambda x: (phi(x))/stdd
+    phi_n = lambda x: (phi(x)) / stdd
     if hasattr(phi, "retransform"):
         phi_n.__dict__["retransform"] = lambda x: phi.retransform((x / stdd))
     return phi_n
+
 
 class GrowingMat(object):
 
@@ -70,15 +80,18 @@ class GrowingMat(object):
         self.data = np.zeros(capacity)
         self.shape = shape
         self.capacity = capacity
-        self.grow_factor=grow_factor
+        self.grow_factor = grow_factor
 
     def expand(self, cols=None, rows=None, block=None):
         if cols is not None and rows is not None:
             cols = np.atleast_2d(cols)
             rows = np.atleast_2d(rows)
-            new_shape = (self.shape[0] + rows.shape[0], self.shape[1] + cols.shape[1])
-            new_capacity = (self.capacity[0] * self.grow_factor if new_shape[0] > self.capacity[0] else self.capacity[0],
-                            self.capacity[1] * self.grow_factor if new_shape[1] > self.capacity[1] else self.capacity[1])
+            new_shape = (
+                self.shape[0] + rows.shape[0], self.shape[1] + cols.shape[1])
+            new_capacity = (
+                self.capacity[0] * self.grow_factor if new_shape[
+                    0] > self.capacity[0] else self.capacity[0],
+                self.capacity[1] * self.grow_factor if new_shape[1] > self.capacity[1] else self.capacity[1])
             if new_capacity != self.capacity:
                 # grow array
                 newdata = np.zeros(new_capacity)
@@ -88,7 +101,8 @@ class GrowingMat(object):
             self.data[self.shape[0]:new_shape[0], :self.shape[1]] = rows
             self.data[:self.shape[0], self.shape[1]:new_shape[1]] = cols
             if block is not None:
-                self.data[self.shape[0]:new_shape[0], self.shape[1]:new_shape[1]] = block
+                self.data[self.shape[0]:new_shape[0],
+                          self.shape[1]:new_shape[1]] = block
 
             self.shape = new_shape
             #print "New shape", new_shape, self.shape, self.view.shape, #self.finalized.shape
@@ -110,8 +124,10 @@ class GrowingMat(object):
 
             rows = np.atleast_2d(rows)
             new_shape = (self.shape[0] + rows.shape[0], self.shape[1])
-            new_capacity = (self.capacity[0] * self.grow_factor if new_shape[0] > self.capacity[0] else self.capacity[0],
-                            self.capacity[1])
+            new_capacity = (
+                self.capacity[0] * self.grow_factor if new_shape[
+                    0] > self.capacity[0] else self.capacity[0],
+                self.capacity[1])
             if new_capacity != self.capacity:
                 # grow array
                 newdata = np.zeros(new_capacity)
@@ -139,16 +155,16 @@ class GrowingVector(object):
 
     def __init__(self, size, capacity=100, grow_factor=4):
         self.data = np.zeros(capacity)
-        self.size=size
+        self.size = size
         self.capacity = capacity
-        self.grow_factor=grow_factor
+        self.grow_factor = grow_factor
 
     def expand(self, rows):
 
-
         rows = np.atleast_1d(rows)
         new_size = self.size + rows.shape[0]
-        new_capacity = self.capacity * self.grow_factor if new_size > self.capacity else self.capacity
+        new_capacity = self.capacity * \
+            self.grow_factor if new_size > self.capacity else self.capacity
         if new_capacity != self.capacity:
             # grow array
             newdata = np.zeros(new_capacity)
