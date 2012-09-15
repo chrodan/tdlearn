@@ -53,9 +53,11 @@ def samples_distribution(mymdp, policy, phi, n_subsample=1, n_iter=1000, n_resta
 
     k = 0
     s = mymdp.start()
+    c = 0
     for k in xrange(n_restarts * n_iter):
-        if mymdp.terminal_f(s):
+        if mymdp.terminal_f(s) or c >= n_iter:
             s = mymdp.start()
+            c = 0
         s0, a, s1, r = mymdp.sample_step(s, policy=policy, n_samples=n_next)
         states[k, :] = s0
         feat[k, :] = phi(s0)
@@ -64,6 +66,7 @@ def samples_distribution(mymdp, policy, phi, n_subsample=1, n_iter=1000, n_resta
         states_next[k, :] = np.mean(s1, axis=0)
         rewards[k] = np.mean(r)
         s = np.mean(s1, axis=0)
+        c += 1
 
     return states, rewards, states_next, feat, feat_next
 
