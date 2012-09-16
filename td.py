@@ -828,7 +828,7 @@ class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
             Algorithm 2
     """
 
-    def __init__(self, eps=100, **kwargs):
+    def __init__(self, alpha=1, eps=100, **kwargs):
         """
             lam: lambda in [0, 1] specifying the tradeoff between bootstrapping
                     and MC sampling
@@ -843,6 +843,8 @@ class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
         self.init_vals["A"] = np.zeros((n, n))
         self.init_vals["b"] = np.zeros(n)
         self.init_vals["N"] = np.eye(n) * eps
+        self.init_vals['alpha'] = alpha
+        self.init_vals["i"] = 0
         self.reset()
 
     def clone(self):
@@ -858,6 +860,7 @@ class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
         self.init_vals["N"] = np.eye(n) * self.eps
         for k, v in self.init_vals.items():
             self.__setattr__(k, copy.copy(v))
+        self.alpha = self._assert_iterator(self.init_vals['alpha'])
 
     def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
         """
@@ -873,14 +876,15 @@ class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
             self.z = f0
 
         L = np.dot(f0, self.N)
-        self.N -= np.dot(np.dot(self.N, f0), L) / (1 + np.dot(L, f0))
+        self.N -= np.outer(np.dot(self.N, f0), L) / (1 + np.dot(L, f0))
         deltaf = f0 - self.gamma * rho * f1
         self.A += np.outer(self.z, deltaf)
 
         self.b += rho * self.z * r
-
-        theta += np.dot(self.N, (self.b - np.dot(self.A, theta)))
+        self.i += 1
+        theta += self.alpha.next() * np.dot(self.N, (self.b - np.dot(self.A, theta)))
         self.theta = theta
+        self.z = self.gamma * self.lam * rho * self.z + f1
         self._toc()
 
 
