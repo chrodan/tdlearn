@@ -641,7 +641,7 @@ class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
         Pn = C + self.gamma * (S.T * np.matrix(P) * S)
         bn = self.gamma * (b + np.trace(np.matrix(P) * np.matrix(Sigma))) \
             + np.trace((R + self.gamma * B.T *
-                        np.matrix(P) * B) * np.matrix(noise))
+                        np.matrix(P) * B) * np.matrix(np.diag(noise)))
         return Pn, bn
 
     def expected_reward_operator(self, P, b, policy="behavior"):
@@ -650,7 +650,6 @@ class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
         A = np.matrix(self.mdp.A)
         B = np.matrix(self.mdp.B)
         Sigma = np.matrix(np.diag(self.mdp.Sigma))
-
         if policy == "behavior":
             theta = np.matrix(self.behavior_policy.theta)
             noise = self.behavior_policy.noise
@@ -665,16 +664,26 @@ class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
                 C = Q + theta.T * R * theta
                 self.C = C
         elif policy == "target":
+            theta = np.matrix(self.target_policy.theta)
+            noise = self.target_policy.noise
+            if hasattr(self, "S_target"):
+                S = self.S_target
+            else:
+                S = A + B * theta
+                self.S_target = S
+            if hasattr(self, "C_target"):
+                C = self.C_target
+            else:
+                C = Q + theta.T * R * theta
+                self.C_target = C
+        else:
+            theta = np.matrix(policy)
+            noise = policy.noise
+            S = A + B * theta
+            C = Q + theta.T * R * theta
 
-        theta = np.matrix(policy.theta)
-        noise = policy.noise
-        S = A + B * theta
-        C = Q + theta.T * R * theta
-
-        Pn = C + self.gamma * (S.T * np.matrix(P) * S)
-        bn = self.gamma * (b + np.trace(np.matrix(P) * np.matrix(Sigma))) \
-            + np.trace((R + self.gamma * B.T *
-                        np.matrix(P) * B) * np.matrix(noise))
+        Pn = C
+        bn = np.trace((R) * np.matrix(noise))
         return Pn, bn
 
 

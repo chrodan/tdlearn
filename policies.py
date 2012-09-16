@@ -18,7 +18,7 @@ class NoisyContinuous(object):
 
     def __call__(self, s, n_samples=1):
         m = self.mean(s)
-        noise = self.noise[None, :] * np.random.randn(n_samples, self.dim_A)
+        noise = np.sqrt(self.noise[None, :]) * np.random.randn(n_samples, self.dim_A)
         if n_samples == 1:
             return (m + noise).flatten()
         else:

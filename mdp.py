@@ -170,7 +170,7 @@ class ContinuousMDP(object):
         if seed is not None:
             np.random.seed(seed)
 
-        rands = np.random.randn(max_n, self.dim_S) * self.Sigma[None, :]
+        rands = np.random.randn(max_n, self.dim_S) * np.sqrt(self.Sigma[None, :])
         i = 0
         while i < max_n:
             s0 = self.start()
@@ -204,7 +204,7 @@ class ContinuousMDP(object):
         if seed is not None:
             np.random.seed(seed)
 
-        rands = np.random.randn(n_samples, self.dim_S) * self.Sigma[None, :]
+        rands = np.random.randn(n_samples, self.dim_S) * np.sqrt(self.Sigma[None, :])
         a = policy(s0, n_samples)
         if n_samples == 1:
             mean = self.sf(s0, a)

@@ -37,7 +37,7 @@ task = LinearContinuousValuePredictionTask(
     mdp, gamma, phi, theta0, policy=policy,
     normalize_phi=False,
     mu_subsample=1, mu_iter=200,
-    mu_restarts=30, mu_next=100)
+    mu_restarts=30, mu_next=500)
 
 
 methods = []
@@ -96,7 +96,7 @@ ktd.name = r"KTD $r_n={}$".format(reward_noise)
 sigma = 1e-6
 gptdp = td.GPTDP(phi=phi, sigma=sigma)
 gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
-methods.append(gptdp)
+#methods.append(gptdp)
 
 l = 200
 n_eps = 1000
