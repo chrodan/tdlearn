@@ -65,7 +65,7 @@ def samples_distribution(mymdp, policy, phi, n_subsample=1, n_iter=1000, n_resta
         feat_next[k, :] = np.mean(fn, axis=0)
         states_next[k, :] = np.mean(s1, axis=0)
         rewards[k] = np.mean(r)
-        s = np.mean(s1, axis=0)
+        s = s1[-1]
         c += 1
 
     return states, rewards, states_next, feat, feat_next
@@ -195,7 +195,7 @@ class ContinuousMDP(object):
                 i += 1
                 s0 = s1
 
-    def sample_step(self, s0, policy=None, seed=None, n_samples=1):
+    def sample_step(self, s0, policy, seed=None, n_samples=1):
         """
         samples one step from the MDP
         returns a transition tuple (X_n, A, X_n+1, R)
@@ -215,8 +215,9 @@ class ContinuousMDP(object):
             r = np.zeros(n_samples)
             for i in xrange(n_samples):
                 s1[i, :] = self.sf(s0, a[i])
-                r = self.rf(s0, a[i])
+                r[i] = self.rf(s0, a[i])
             s1 += rands
+
         return (s0, a, s1, r)
 
 

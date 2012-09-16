@@ -644,6 +644,40 @@ class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
                         np.matrix(P) * B) * np.matrix(noise))
         return Pn, bn
 
+    def expected_reward_operator(self, P, b, policy="behavior"):
+        Q = np.matrix(self.mdp.Q)
+        R = np.matrix(self.mdp.R)
+        A = np.matrix(self.mdp.A)
+        B = np.matrix(self.mdp.B)
+        Sigma = np.matrix(np.diag(self.mdp.Sigma))
+
+        if policy == "behavior":
+            theta = np.matrix(self.behavior_policy.theta)
+            noise = self.behavior_policy.noise
+            if hasattr(self, "S"):
+                S = self.S
+            else:
+                S = A + B * theta
+                self.S = S
+            if hasattr(self, "C"):
+                C = self.C
+            else:
+                C = Q + theta.T * R * theta
+                self.C = C
+        elif policy == "target":
+
+        theta = np.matrix(policy.theta)
+        noise = policy.noise
+        S = A + B * theta
+        C = Q + theta.T * R * theta
+
+        Pn = C + self.gamma * (S.T * np.matrix(P) * S)
+        bn = self.gamma * (b + np.trace(np.matrix(P) * np.matrix(Sigma))) \
+            + np.trace((R + self.gamma * B.T *
+                        np.matrix(P) * B) * np.matrix(noise))
+        return Pn, bn
+
+
     def MSE(self, theta):
         p = features.squared_tri(self.mdp.dim_S).param_forward(*self.phi.param_back(theta)) -\
             features.squared_tri(self.mdp.dim_S).param_forward(*self.V_true)
@@ -658,9 +692,7 @@ class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
         return np.mean((V - V2) ** 2)
 
     def MSPBE(self, theta):
-        #return LinearContinuousValuePredictionTask.MSPBE(self, theta)
         """ Mean Squared Projected Bellman Error """
-        #print "Wrong!"
         V = np.matrix((theta * np.asarray(self.mu_phi)).sum(axis=1)).T
         theta_trans = features.squared_tri(self.mdp.dim_S).param_forward(
             *self.bellman_operator(*self.phi.param_back(theta)))
