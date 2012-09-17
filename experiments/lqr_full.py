@@ -78,7 +78,21 @@ lstd = td.RecursiveLSTDLambda(lam=0, eps=eps, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({}) $\epsilon$={}".format(0, eps)
 lstd.color = "g"
 methods.append(lstd)
-#
+
+eps = 100
+alpha = 1.
+lspe = td.RecursiveLSPELambda(
+    lam=0, alpha=alpha, eps=eps, phi=phi, gamma=gamma)
+lspe.name = r"LSPE({}) $\epsilon$={} $\alpha$={}".format(0, eps, alpha)
+lspe.color = "g"
+methods.append(lspe)
+
+eps = 100
+lspe = td.FPKF(lam=0, alpha=alpha, eps=eps, phi=phi, gamma=gamma)
+lspe.name = r"FPKF({}) $\epsilon$={} $\alpha$={}".format(0, eps, alpha)
+lspe.color = "g"
+methods.append(lspe)
+
 #methods = []
 #for alpha in [0.01, 0.02, 0.03]:
 #alpha = .2
@@ -101,13 +115,13 @@ gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
 methods.append(gptdp)
 
 l = 50000
-error_every = 2000
-n_indep = 50
+error_every = 500
+n_indep = 4
 n_eps = 1
-name = "lqr_full_onpolicy"
+criterion = "RMSPBE"
+name = "lqr_full_onpolicy" + criterion
 title = "4-dim. State Pole Balancing Onpolicy"
 
-criterion = "RMSPBE"
 
 if __name__ == "__main__":
     from experiments import *

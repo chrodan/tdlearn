@@ -526,7 +526,7 @@ class GPTDP(LinearValueFunctionPredictor):
         a = c * self.p
         self.p = a + np.dot(self.P, df)
         self.d = c * self.d + r - np.inner(df, self.theta)
-        s = self.sigma ** 2 + self.gamma ** 2 * self.sigma ** 2 - self.sigma **2 * self.gamma * c + \
+        s = self.sigma ** 2 + self.gamma ** 2 * self.sigma ** 2 - self.sigma ** 2 * self.gamma * c + \
             np.inner(a + self.p, df)
         self.sinv = 1. / s
         self.theta += self.sinv * self.d * self.p
@@ -678,10 +678,6 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
 
         self.init_vals["C"] = self.init_theta * np.eye(len(
             self.init_vals["theta"]))
-#        self.init_vals["k2"] = self.init_theta * np.eye(len(
-#            self.init_vals["theta"]))
-#        self.init_vals["k1"] = self.init_theta * np.eye(len(
-#            self.init_vals["theta"]))
         self.init_vals["b"] = -self.init_vals["theta"] * self.init_theta
         for k, v in self.init_vals.items():
             if k == "theta":
@@ -897,6 +893,86 @@ class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
         ) * np.dot(self.N, (self.b - np.dot(self.A, theta)))
         self.theta = theta
         self.z = self.gamma * self.lam * rho * self.z + f1
+        self._toc()
+
+
+class FPKF(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
+    """
+        recursive Implementation of Least Squared Policy Evaluation
+         LSPE(\lambda) with linear function approximation, also works in the
+         off-policy case and uses eligibility traces
+
+        for details see Scherrer, B., & Geist, M. (EWRL 2011). :
+            Recursive Least-Squares Learning with Eligibility Traces.
+            Algorithm 2
+    """
+
+    def __init__(self, alpha=1, eps=100, **kwargs):
+        """
+            lam: lambda in [0, 1] specifying the tradeoff between bootstrapping
+                    and MC sampling
+            gamma:  discount factor
+        """
+
+        LinearValueFunctionPredictor.__init__(self, **kwargs)
+        OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
+        LambdaValueFunctionPredictor.__init__(self, **kwargs)
+        self.eps = eps
+        n = len(self.init_vals["theta"])
+        self.init_vals["N"] = np.eye(n) * eps
+        self.init_vals['alpha'] = alpha
+        self.init_vals["i"] = 0
+        self.reset()
+
+    def clone(self):
+        o = self.__class__(
+            eps=self.eps, alpha=self.alpha, lam=self.lam, gamma=self.gamma, phi=self.phi)
+        return o
+
+    def __getstate__(self):
+        res = self.__dict__
+        for n in ["alpha"]:
+            if isinstance(res[n], itertools.repeat):
+                res[n] = res[n].next()
+        return res
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self.alpha = self._assert_iterator(self.init_vals['alpha'])
+
+    def reset(self):
+        self.reset_trace()
+        n = len(self.init_vals["theta"])
+        self.init_vals["N"] = np.eye(n) * self.eps
+        for k, v in self.init_vals.items():
+            self.__setattr__(k, copy.copy(v))
+        self.alpha = self._assert_iterator(self.init_vals['alpha'])
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+        self._tic()
+        if theta is None:
+            theta = self.theta
+        if not hasattr(self, "z"):
+            self.z = f0
+        if not hasattr(self, "Z"):
+            self.Z = np.outer(f0, theta)
+
+        L = np.dot(f0, self.N)
+        self.N -= np.outer(np.dot(self.N, f0), L) / (1 + np.dot(L, f0))
+        deltaf = f0 - self.gamma * rho * f1
+        self.i += 1
+        theta += self.alpha.next(
+        ) * np.dot(self.N, (self.z * rho * r - np.dot(self.Z, deltaf)))
+        self.theta = theta
+        self.z = self.gamma * self.lam * rho * self.z + f1
+        self.Z = self.gamma * self.lam * rho * self.Z + np.outer(
+            f1, self.theta)
         self._toc()
 
 
