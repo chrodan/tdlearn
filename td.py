@@ -834,11 +834,11 @@ class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
                     and MC sampling
             gamma:  discount factor
         """
+
         LinearValueFunctionPredictor.__init__(self, **kwargs)
         OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
         LambdaValueFunctionPredictor.__init__(self, **kwargs)
         self.eps = eps
-        #import ipdb; ipdb.set_trace()
         n = len(self.init_vals["theta"])
         self.init_vals["A"] = np.zeros((n, n))
         self.init_vals["b"] = np.zeros(n)
@@ -849,8 +849,19 @@ class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
 
     def clone(self):
         o = self.__class__(
-            eps=self.eps, lam=self.lam, gamma=self.gamma, phi=self.phi)
+            eps=self.eps, alpha=self.alpha, lam=self.lam, gamma=self.gamma, phi=self.phi)
         return o
+
+    def __getstate__(self):
+        res = self.__dict__
+        for n in ["alpha"]:
+            if isinstance(res[n], itertools.repeat):
+                res[n] = res[n].next()
+        return res
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self.alpha = self._assert_iterator(self.init_vals['alpha'])
 
     def reset(self):
         self.reset_trace()
@@ -882,7 +893,8 @@ class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
 
         self.b += rho * self.z * r
         self.i += 1
-        theta += self.alpha.next() * np.dot(self.N, (self.b - np.dot(self.A, theta)))
+        theta += self.alpha.next(
+        ) * np.dot(self.N, (self.b - np.dot(self.A, theta)))
         self.theta = theta
         self.z = self.gamma * self.lam * rho * self.z + f1
         self._toc()
