@@ -522,11 +522,11 @@ class GPTDP(LinearValueFunctionPredictor):
             print "Warning, setting theta by hand is not valid"
 
         df = f0 - self.gamma * f1
-        c = self.gamma * self.sinv * self.sigma ** 2
+        c = self.gamma * self.sinv * (self.sigma ** 2)
         a = c * self.p
         self.p = a + np.dot(self.P, df)
         self.d = c * self.d + r - np.inner(df, self.theta)
-        s = self.sigma ** 2 + self.gamma ** 2 * self.sigma ** 2 - self.sigma * self.gamma * c + \
+        s = self.sigma ** 2 + self.gamma ** 2 * self.sigma ** 2 - self.sigma **2 * self.gamma * c + \
             np.inner(a + self.p, df)
         self.sinv = 1. / s
         self.theta += self.sinv * self.d * self.p
