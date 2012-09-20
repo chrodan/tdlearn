@@ -8,7 +8,7 @@ import policies
 from task import LinearLQRValuePredictionTask
 import pickle
 
-gamma = 0.9
+gamma = 0.99
 sigma = np.array([0.] * 3 + [0.01])
 #sigma = 0.
 dt = 0.1
@@ -116,7 +116,7 @@ methods.append(gptdp)
 
 l = 50000
 error_every = 500
-n_indep = 4
+n_indep = 50
 n_eps = 1
 criterion = "RMSPBE"
 name = "lqr_full_onpolicy" + criterion
@@ -125,6 +125,6 @@ title = "4-dim. State Pole Balancing Onpolicy"
 
 if __name__ == "__main__":
     from experiments import *
-    mean, std, raw = run_experiment(n_jobs=2, **globals())
-    #save_results(**globals())
-    plot_errorbar(**globals())
+    mean, std, raw = run_experiment(n_jobs=-1, **globals())
+    save_results(**globals())
+    #plot_errorbar(**globals())
