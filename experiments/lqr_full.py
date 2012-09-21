@@ -40,49 +40,55 @@ methods = []
 #for alpha in [0.01, 0.005]:
 #    for mu in [0.05, 0.1, 0.2, 0.01]:
 #alpha = 0.1
-alpha = 0.005
-mu = 0.1
+alpha = 0.0005
+mu = 0.01
 gtd = td.GTD(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
 methods.append(gtd)
 
-#for alpha in [.005,0.01,0.02]:
-#    for mu in [0.01, 0.1]:
-alpha, mu = 0.01, 0.1
+alpha, mu = 0.004, 0.5
 gtd = td.GTD2(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
-
-#for alpha in [0.005, 0.01, 0.02, 0.03, 0.04]:
 alpha = .01
-td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
-td0.name = r"TD(0) $\alpha$={}".format(alpha)
+lam = .2
+td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
+td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
-#for alpha in [0.005, 0.01, 0.02]:
-#    for mu in [0.01, 0.1]:
-for alpha, mu in [(.01, 0.1)]:
-    tdc = td.TDC(alpha=alpha, beta=alpha * mu, phi=phi, gamma=gamma)
-    tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
-    tdc.color = "b"
-    methods.append(tdc)
+lam = 0.2
+alpha = 0.003
+mu = 0.5
+tdc = td.TDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
+tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
+tdc.color = "b"
+methods.append(tdc)
 
-#methods = []
-#for eps in np.power(10,np.arange(-1,4)):
+alpha = 1.
+lam = 0.
+lstd = td.RecursiveLSPELambda(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
+lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
+lstd.color = "g"
+methods.append(lstd)
+
 eps = 100
 lstd = td.RecursiveLSTDLambda(lam=0, eps=eps, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({}) $\epsilon$={}".format(0, eps)
 lstd.color = "g"
 methods.append(lstd)
 #
-#methods = []
-#for alpha in [0.01, 0.02, 0.03]:
-#alpha = .2
-alpha = .01
+alpha = 0.1
+lam = 0.
+lstd = td.FPKF(lam=lam, alpha = alpha, phi=phi, gamma=gamma)
+lstd.name = r"FPKF({}) $\alpha$={}".format(lam, alpha)
+lstd.color = "g"
+methods.append(lstd)[]
+
+alpha = .02
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
@@ -92,10 +98,10 @@ reward_noise = 1e-1
 ktd = td.KTD(phi=phi, gamma=gamma, theta_noise=None, eta=1e-5, P_init=1.,
              reward_noise=reward_noise)
 ktd.name = r"KTD $r_n={}$".format(reward_noise)
-methods.append(ktd)
+#methods.append(ktd)
 
 
-sigma = 1e-8
+sigma = 1e-5
 gptdp = td.GPTDP(phi=phi, sigma=sigma)
 gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
 methods.append(gptdp)
