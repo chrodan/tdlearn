@@ -14,8 +14,8 @@ def make_slice(l, u, n):
     return slice(l, u + float(u - l) / (n - 1) / 2., float(u - l) / (n - 1))
 
 mdp = examples.PendulumSwingUpCartPole(
-    dt=dt, Sigma=np.array([0., 0.005, 0.005, 0.]))
-n_slices = [3, 4, 6, 10]
+    dt=dt, Sigma=np.zeros(4)) #np.array([0., 0.005, 0.005, 0.]))
+n_slices = [3, 5, 7, 10]
 bounds = [[0, 20], [-3, 4], [-12, 12], [-3, 3]]
 s = [make_slice(b[0], b[1], n) for b, n in zip(bounds, n_slices)]
 bounds = np.array(bounds, dtype="float")
@@ -30,7 +30,7 @@ n_feat = len(phi(np.zeros(mdp.dim_S)))
 print "Number of features:", n_feat
 theta_p = np.array([-0.1, 0., 0., 0.])
 
-policy = policies.MarcsPolicy()  # noise=np.array([[0.1]]))
+policy = policies.MarcsPolicy(noise=np.array([0.1]))
 theta0 = 0. * np.ones(n_feat)
 
 task = LinearContinuousValuePredictionTask(
@@ -105,7 +105,7 @@ name = "swingup_" + str(n_slices[0]) + "-" + \
     str(n_slices[1]) + "-" + str(n_slices[2]) + "-" + str(n_slices[3]
                                                           ) + "_gauss_onpolicy"
 title = "Cartpole Swingup Onpolicy"
-n_indep = 5
+n_indep = 1
 criterion = "RMSPBE"
 
 if __name__ == "__main__":

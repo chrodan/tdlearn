@@ -8,7 +8,7 @@ import policies
 from task import LinearLQRValuePredictionTask
 import pickle
 
-gamma = 0.9
+gamma = 0.99
 sigma = np.array([0.] * 3 + [0.01])
 #sigma = 0.
 dt = 0.1
@@ -80,6 +80,7 @@ lstd = td.RecursiveLSTDLambda(lam=0, eps=eps, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({}) $\epsilon$={}".format(0, eps)
 lstd.color = "g"
 methods.append(lstd)
+<<<<<<< HEAD
 #
 alpha = 0.1
 lam = 0.
@@ -89,6 +90,27 @@ lstd.color = "g"
 methods.append(lstd)[]
 
 alpha = .02
+=======
+
+eps = 100
+alpha = 1.
+lspe = td.RecursiveLSPELambda(
+    lam=0, alpha=alpha, eps=eps, phi=phi, gamma=gamma)
+lspe.name = r"LSPE({}) $\epsilon$={} $\alpha$={}".format(0, eps, alpha)
+lspe.color = "g"
+methods.append(lspe)
+
+eps = 100
+lspe = td.FPKF(lam=0, alpha=alpha, eps=eps, phi=phi, gamma=gamma)
+lspe.name = r"FPKF({}) $\epsilon$={} $\alpha$={}".format(0, eps, alpha)
+lspe.color = "g"
+methods.append(lspe)
+
+#methods = []
+#for alpha in [0.01, 0.02, 0.03]:
+#alpha = .2
+alpha = .01
+>>>>>>> origin/master
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
@@ -107,16 +129,16 @@ gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
 methods.append(gptdp)
 
 l = 50000
-error_every = 2000
+error_every = 500
 n_indep = 50
 n_eps = 1
-name = "lqr_full_onpolicy"
+criterion = "RMSPBE"
+name = "lqr_full_onpolicy" + criterion
 title = "4-dim. State Pole Balancing Onpolicy"
 
-criterion = "RMSPBE"
 
 if __name__ == "__main__":
     from experiments import *
-    mean, std, raw = run_experiment(n_jobs=2, **globals())
-    #save_results(**globals())
-    plot_errorbar(**globals())
+    mean, std, raw = run_experiment(n_jobs=-1, **globals())
+    save_results(**globals())
+    #plot_errorbar(**globals())
