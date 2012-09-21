@@ -24,9 +24,7 @@ print theta_p
 theta_p = np.array(theta_p).flatten()
 
 policy = policies.LinearContinuous(theta=theta_p, noise=np.zeros(1))
-#theta0 =  10*np.ones(n_feat)
 theta0 = 0. * np.ones(n_feat)
-#theta0 = np.array([-0.54868151,  0.15515481, -0.60829876, -0.45364255])
 task = LinearLQRValuePredictionTask(
     mdp, gamma, phi, theta0, policy=policy, normalize_phi=True)
 task.seed = 0
@@ -100,7 +98,7 @@ P_init = 1.
 ktd = td.KTD(phi=phi, gamma=1., P_init=P_init, theta_noise=None, eta=eta,
              reward_noise=reward_noise)
 ktd.name = r"KTD $\eta$={}, $\sigma^2$={}".format(eta, reward_noise)
-methods.append(ktd)
+#methods.append(ktd)
 
 eta = 0.0001
 reward_noise = 0.001
@@ -109,16 +107,21 @@ ktd = td.KTD(phi=phi, gamma=1., P_init=P_init, theta_noise=None, eta=eta,
 ktd.name = r"KTD $\eta$={}, $\sigma^2$={}".format(eta, reward_noise)
 methods.append(ktd)
 
+sigma = 1
+gptdp = td.GPTDP(phi=phi, sigma=sigma)
+gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
+methods.append(gptdp)
+
 l = 16000
 error_every = 200
 n_indep = 50
 n_eps = 1
-name = "lqr_imp_onpolicy"
 title = "4-dim. State Pole Balancing Onpolicy Diagonal Features"
-criterion = "RMSPBE"
+criterion = "RMSE"
+name = "lqr_imp_onpolicy_" + criterion
 
 if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
     save_results(**globals())
-    plot_errorbar(**globals())
+    #plot_errorbar(**globals())

@@ -13,9 +13,20 @@ from joblib import Parallel, delayed
 from matplotlib.colors import LogNorm
 import pickle
 
-from experiments.cartpole import *
+from experiments.lqr_full import *
 
 error_every = int(l * n_eps / 20)
+n_indep = 3
+
+ls_alphas = [0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 1.0]
+alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(
+    np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5]
+mus = [0.0001, 0.001, 0.01, 0.01, 0.1, 0.5, 1, 2, 4, 8, 16]
+lambdas = np.linspace(0., 1., 6)
+sigmas = np.power(10, np.arange(-5., 2, .5))
+reward_noises = np.power(10, np.arange(-5., 0, 1))
+P_inits = [1., 10., 100.]
+etas = [None, 1e-5, 1e-3]
 
 
 def load_result_file(fn, maxerr=5):
@@ -45,192 +56,56 @@ def plot_2d_error_grid(val, alphas, mus, maxerr=5):
     plt.colorbar()
 
 
-def run_2d(alpha, mu, cls):
-    np.seterr(all="ignore")
-    m = cls(alpha=alpha, beta=mu * alpha, phi=task.phi, gamma=gamma)
-    mean, std, raw = task.avg_error_traces([m], n_indep=3, n_eps=n_eps, n_samples=l, error_every=error_every, criterion="RMSPBE", verbose=False)
-    val = np.mean(mean)
-    return val
-
-
-def run_1d(alpha, cls):
-    np.seterr(all="ignore")
-    m = cls(alpha=alpha, phi=task.phi, gamma=gamma)
-    mean, std, raw = task.avg_error_traces([m], n_indep=3, n_eps=n_eps, n_samples=l, error_every=error_every, criterion="RMSPBE", verbose=False)
-    val = np.mean(mean)
-    return val
-
-
 def run(cls, param):
     np.seterr(all="ignore")
     m = cls(phi=task.phi, gamma=gamma, **param)
-    mean, std, raw = task.avg_error_traces([m], n_indep=3, n_samples=l, n_eps=n_eps, error_every=error_every, criterion="RMSPBE", verbose=False)
+    mean, std, raw = task.avg_error_traces(
+        [m], n_indep=n_indep, n_samples=l, n_eps=n_eps,
+        error_every=error_every, criterion=criterion, verbose=False)
     val = np.mean(mean)
     return val
 
 
-def run_lambda_1d(lam, cls):
-    np.seterr(all="ignore")
-    m = cls(lam=lam, phi=task.phi, gamma=gamma)
-    mean, std, raw = task.avg_error_traces([m], n_indep=3, n_samples=l, n_eps=n_eps, error_every=error_every, criterion="RMSPBE", verbose=False)
-    val = np.mean(mean)
-    return val
-
-
-def run_lambda_2d(lam, alpha, cls):
-    np.seterr(all="ignore")
-    m = cls(lam=lam, alpha=alpha, phi=task.phi, gamma=gamma)
-    mean, std, raw = task.avg_error_traces([m], n_indep=3, n_samples=l, n_eps=n_eps, error_every=error_every, criterion="RMSPBE", verbose=False)
-    val = np.mean(mean)
-    return val
-
-
-def run_lambda_3d(lam, alpha, mu, cls):
-    np.seterr(all="ignore")
-    m = cls(lam=lam, alpha=alpha, beta=mu * alpha, phi=task.phi, gamma=gamma)
-    mean, std, raw = task.avg_error_traces([m], n_indep=3, n_samples=l, n_eps=n_eps, error_every=error_every, criterion="RMSPBE", verbose=False)
-    val = np.mean(mean)
-    return val
-
-
-def gridsearch_2d():
-    methods = [td.TDC, td.GeriTDC, td.GTD, td.GTD2]
-    if not os.path.exists("data/{name}".format(name=name)):
-        os.makedirs("data/{name}".format(name=name))
-    alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(
-        np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5]
-    mus = [0.0001, 0.001, 0.01, 0.01, 0.1, 0.5, 1, 2, 4, 8, 16]
-    params = list(itertools.product(alphas, mus))
-
-    for m in methods:
-        k = (delayed(run_2d)(*(list(p) + [m])) for p in params)
-        res = Parallel(n_jobs=-1, verbose=11)(k)
-
-        res = np.array(res).reshape(len(alphas), -1)
-        with open("data/{}/{}_gs.pck".format(name, m.__name__), "w") as f:
-            pickle.dump(
-                dict(params=params, alphas=alphas, mus=mus, res=res), f)
-
-
-def gridsearch_lambda():
-    methods = [td.RecursiveLSTDLambda]
-
-    alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(
-        np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5]
-    mus = [0.0001, 0.001, 0.01, 0.01, 0.1, 0.5, 1, 2, 4, 8, 16]
-    lambdas = np.linspace(0., 1., 10)
-    params = lambdas
-    if not os.path.exists("data/{name}".format(name=name)):
-        os.makedirs("data/{name}".format(name=name))
-
-    for m in methods:
-        k = (delayed(run_lambda_1d)(p, m) for p in params)
-        res = Parallel(n_jobs=-1, verbose=11)(k)
-
-        res = np.array(res).reshape(len(lambdas), -1)
-        with open("data/{}/{}_gs_lam.pck".format(name, m.__name__), "w") as f:
-            pickle.dump(dict(params=params, lambdas=lambdas, res=res), f)
-
-    methods = [td.LinearTDLambda]
-
-    params = list(itertools.product(lambdas, alphas))
-
-    for m in methods:
-        k = (delayed(run_lambda_2d)(*(list(p) + [m])) for p in params)
-        res = Parallel(n_jobs=-1, verbose=11)(k)
-
-        res = np.array(res).reshape(len(lambdas), -1)
-        with open("data/{}/{}_gs_lam.pck".format(name, m.__name__), "w") as f:
-            pickle.dump(dict(
-                params=params, alphas=alphas, lambdas=lambdas, res=res), f)
-
-    methods = [td.TDCLambda]
-    lambdas = np.linspace(0., 1., 6)
-    params = list(itertools.product(lambdas, alphas, mus))
-
-    for m in methods:
-        k = (delayed(run_lambda_3d)(*(list(p) + [m])) for p in params)
-        res = Parallel(n_jobs=-1, verbose=11)(k)
-
-        res = np.array(res).reshape(len(lambdas), len(alphas), -1)
-        if not os.path.exists("data/{name}".format(name=name)):
-            os.makedirs("data/{name}".format(name=name))
-        with open("data/{}/{}_gs_lam.pck".format(name, m.__name__), "w") as f:
-            pickle.dump(dict(params=params, alphas=alphas,
-                        lambdas=lambdas, mus=mus, res=res), f)
-
-
-def gridsearch_1d():
-    methods = [td.LinearTD0, td.ResidualGradient]
-
-    alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.]
-    params = alphas
-
-    for m in methods:
-        k = (delayed(run_1d)(p, m) for p in params)
-        res = Parallel(n_jobs=-1, verbose=11)(k)
-
-        res = np.array(res).reshape(len(alphas), -1)
-        if not os.path.exists("data/{name}".format(name=name)):
-            os.makedirs("data/{name}".format(name=name))
-        with open("data/{}/{}_gs.pck".format(name, m.__name__), "w") as f:
-            pickle.dump(dict(params=params, alphas=alphas, res=res), f)
-
-
-def gridsearch_rmalpha():
-    methods = [td.LinearTD0, td.ResidualGradient]
-    td.RMalpha
-    c = list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 5, 10, 30]
-    t = [0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.5]
+def make_rmalpha():
+    c = list(np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5,
+                                            0.6, 0.7, 0.8, 0.9, 1, 5, 10, 30]
+    t = [0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.5]
     l = list(itertools.product(c, t))
     params = [td.RMalpha(ct, tt) for ct, tt in l]
-    for m in methods:
-        k = (delayed(run)(m, dict(alpha=p)) for p in params)
-        res = Parallel(n_jobs=-1, verbose=11)(k)
-
-        res = np.array(res).reshape(len(c), -1)
-        if not os.path.exists("data/{name}".format(name=name)):
-            os.makedirs("data/{name}".format(name=name))
-        with open("data/{}/{}_rm_gs.pck".format(name, m.__name__), "w") as f:
-            pickle.dump(dict(params=params, c=c, t=t, res=res), f)
+    return params
 
 
-def gridsearch_ktd():
-    #theta_noises= [None, 0.0001, 0.001, 0.01, 0.1, 1]
-    reward_noises = np.power(10, np.arange(-5., 0, 1))
-    P_init = [1., 10., 100.]
-    eta = [None, 1e-5, 1e-3]
-    params = list(itertools.product(P_init, reward_noises, eta))
-    names = ["P_init", "reward_noise", "eta"]
-    m = td.KTD
-    k = (delayed(run)(m, dict(zip(names, list(p)))) for p in params)
-    res = Parallel(n_jobs=-1, verbose=11)(k)
-
-    res = np.array(res).reshape(len(reward_noises), len(P_init), -1)
+def gridsearch(method, gs_name="", n_jobs=-1, **params):
+    if gs_name != "":
+        gs_name = "_" + gs_name
+    param_names = params.keys()
+    param_list = list(itertools.product(*[params[k] for k in param_names]))
+    param_lengths = [len(params[k]) for k in param_names]
+    k = (delayed(run)(method, dict(zip(param_names, p))) for p in param_list)
+    res = Parallel(n_jobs=n_jobs, verbose=11)(k)
+    res = np.array(res).reshape(*param_lengths)
     if not os.path.exists("data/{name}".format(name=name)):
         os.makedirs("data/{name}".format(name=name))
-    with open("data/{}/{}_gs.pck".format(name, m.__name__), "w") as f:
-        pickle.dump(dict(params=params, P_init=P_init,
-                    reward_noises=reward_noises, eta=eta, res=res), f)
-
-
-def gridsearch_gptdp():
-    #theta_noises= [None, 0.0001, 0.001, 0.01, 0.1, 1]
-    sigma = np.power(10, np.arange(-5., 0, 1))
-    params = sigma
-    m = td.GPTDP
-    k = (delayed(run)(m, dict(sigma=p)) for p in params)
-    res = Parallel(n_jobs=-1, verbose=11)(k)
-
-    res = np.array(res).reshape(len(sigma), -1)
-    if not os.path.exists("data/{name}".format(name=name)):
-        os.makedirs("data/{name}".format(name=name))
-    with open("data/{}/{}_gs.pck".format(name, m.__name__), "w") as f:
-        pickle.dump(dict(params=params, sigma=sigma, res=res), f)
+        with open("data/{}/{}{}.pck".format(name, method.__name__, gs_name), "w") as f:
+            pickle.dump(dict(res=res, param_names=param_names, **params), f)
+    print "Finished {}{}".format(method.__name__, gs_name)
 
 if __name__ == "__main__":
-    #gridsearch_1d()
-    #gridsearch_2d()
-    #gridsearch_lambda()
-    gridsearch_rmalpha()
-    grdsearch_gptdp()
+    gridsearch(td.ResidualGradient, alpha=alphas)
+    gridsearch(td.LinearTDLambda, alpha=alphas, lam=lambdas)
+
+    gridsearch(td.TDCLambda, alpha=alphas, mu=mus, lam=lambdas)
+    gridsearch(td.GTD, alpha=alphas, mu=mus)
+    gridsearch(td.GTD2, alpha=alphas, mu=mus)
+    gridsearch(td.TDC, alpha=alphas, mu=mus)
+
+    gridsearch(td.RecursiveLSTDLambda, lam=lambdas)
+    gridsearch(td.RecursiveLSPELambda, lam=lambdas, alpha=ls_alphas)
+    gridsearch(td.FPKF, lam=lambdas, alpha=ls_alphas)
+
+    gridsearch(td.GPTDP, sigma=sigmas)
+    #gridsearch(td.KTD, reward_noise=reward_noises, eta=etas, P_init=P_inits)
+
+    if task.off_policy:
+        gridsearch(td.GeriTDC, alpha=alphas, mu=mus)
+        gridsearch(td.RecursiveLSTDLambdaJP, lam=lambdas)
