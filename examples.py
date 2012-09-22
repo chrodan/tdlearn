@@ -82,6 +82,9 @@ class PoleBalancingMDP(mdp.LQRMDP):
     x is the position of the cart / hand
     """
 
+    def __repr__(self):
+        return "<PoleBalancingMDP(" + repr([self.length, self.dt, self.A, self.B, self.Q, self.R, self.Sigma]) + ")>"
+
     def __init__(self, mass=1., length=5., dt=.01, sigma=0.):
         """
         mass: point mass of the pendulum
@@ -207,7 +210,7 @@ class PendulumSwingUpCartPole(mdp.ContinuousMDP):
         self.b = b
 
         mdp.ContinuousMDP.__init__(self, self.statefun, self.rewardfun, 4,
-                                   1, self.__class__.randstart(), Sigma=Sigma)
+                                   1, self.__class__.randstart, Sigma=Sigma)
 
     def __repr__(self):
         return "<PendulumSwingUpCartPole(" + repr([self.l, self.M, self.m, self.dt, self.b, self.Sigma]) + ")>"
