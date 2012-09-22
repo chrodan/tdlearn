@@ -145,7 +145,7 @@ class OffPolicyValueFunctionPredictor(ValueFunctionPredictor):
 class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
     """ Base class for GTD, GTD2 and TDC algorithm """
 
-    def __init__(self, alpha, beta, **kwargs):
+    def __init__(self, alpha, beta=None, mu=None, **kwargs):
         """
             alpha:  step size. This can either be a constant number or
                     an iterable object providing step sizes
@@ -157,7 +157,10 @@ class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
 
         self.init_vals['alpha'] = alpha
-        self.init_vals['beta'] = beta
+        if beta is not None:
+            self.init_vals['beta'] = beta
+        else:
+            self.init_vals["beta"] = alpha * mu
 
         self.reset()
 

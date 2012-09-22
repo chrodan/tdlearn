@@ -86,7 +86,7 @@ class LinearValuePredictionTask(object):
             for seed in range(n_indep):
                 kwargs = kwargs.copy()
                 kwargs['seed'] = seed
-                #self.projection_operator()
+                self.projection_operator()
                 #del self.Pi
                 if kind == "ergodic":
                     jobs.append((tmp, [self, methods], kwargs))
@@ -702,6 +702,7 @@ class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
 
     def MSPBE(self, theta):
         """ Mean Squared Projected Bellman Error """
+#       return LinearContinuousValuePredictionTask.MSPBE(self, theta)
         V = np.matrix((theta * np.asarray(self.mu_phi)).sum(axis=1)).T
         theta_trans = features.squared_tri(self.mdp.dim_S).param_forward(
             *self.bellman_operator(*self.phi.param_back(theta)))

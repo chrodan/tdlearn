@@ -33,7 +33,9 @@ def load_result_file(fn, maxerr=5):
     with open(fn) as f:
         d = pickle.load(f)
     print np.nanargmin(d["res"])
-    print d["params"][np.nanargmin(d["res"])]
+    best =  d["params"][np.nanargmin(d["res"])]
+    for n,v in zip(d["param_names"], best):
+        print n,v
     return d
 
 
@@ -86,11 +88,12 @@ def gridsearch(method, gs_name="", n_jobs=-1, **params):
     res = np.array(res).reshape(*param_lengths)
     if not os.path.exists("data/{name}".format(name=name)):
         os.makedirs("data/{name}".format(name=name))
-        with open("data/{}/{}{}.pck".format(name, method.__name__, gs_name), "w") as f:
-            pickle.dump(dict(res=res, param_names=param_names, **params), f)
+    with open("data/{}/{}{}.pck".format(name, method.__name__, gs_name), "w") as f:
+        pickle.dump(dict(res=res, params = param_list, param_names=param_names, **params), f)
     print "Finished {}{}".format(method.__name__, gs_name)
 
 if __name__ == "__main__":
+    task.mu
     gridsearch(td.ResidualGradient, alpha=alphas)
     gridsearch(td.LinearTDLambda, alpha=alphas, lam=lambdas)
 

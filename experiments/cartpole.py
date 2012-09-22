@@ -105,7 +105,7 @@ name = "swingup_" + str(n_slices[0]) + "-" + \
     str(n_slices[1]) + "-" + str(n_slices[2]) + "-" + str(n_slices[3]
                                                           ) + "_gauss_onpolicy"
 title = "Cartpole Swingup Onpolicy"
-n_indep = 1
+n_indep = 9
 criterion = "RMSPBE"
 
 if __name__ == "__main__":
