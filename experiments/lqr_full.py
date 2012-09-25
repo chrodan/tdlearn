@@ -111,7 +111,7 @@ error_every = 500
 n_indep = 50
 n_eps = 1
 criterion = "RMSPBE"
-name = "lqr_full_onpolicy" + criterion
+name = "lqr_full_onpolicy_" + criterion
 title = "4-dim. State Pole Balancing Onpolicy"
 
 

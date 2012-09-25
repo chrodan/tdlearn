@@ -13,7 +13,7 @@ from joblib import Parallel, delayed
 from matplotlib.colors import LogNorm
 import pickle
 
-from experiments.lqr_full import *
+from experiments.lqr_imp_offpolicy import *
 
 error_every = int(l * n_eps / 20)
 n_indep = 3
@@ -64,7 +64,8 @@ def run(cls, param):
     mean, std, raw = task.avg_error_traces(
         [m], n_indep=n_indep, n_samples=l, n_eps=n_eps,
         error_every=error_every, criterion=criterion, verbose=False)
-    val = np.mean(mean)
+    weights = np.linspace(1., 2., len(mean))
+    val = (mean*weights).sum() / weights.sum()
     return val
 
 
@@ -96,6 +97,7 @@ if __name__ == "__main__":
     task.mu
     gridsearch(td.ResidualGradient, alpha=alphas)
     gridsearch(td.LinearTDLambda, alpha=alphas, lam=lambdas)
+    gridsearch(td.LinearTD0, alpha=make_rmalpha(), gs_name="rm")
 
     gridsearch(td.TDCLambda, alpha=alphas, mu=mus, lam=lambdas)
     gridsearch(td.GTD, alpha=alphas, mu=mus)

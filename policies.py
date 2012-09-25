@@ -2,6 +2,12 @@ __author__ = "Christoph Dann <cdann@cdann.de>"
 import numpy as np
 import util
 
+@util.memory.cache(hashfun={"policy": repr})
+def mean_action_trajectory(policy, states):
+    ret = np.empty((states.shape[0], policy.dim_A))
+    for i in xrange(states.shape[0]):
+        ret[i] = policy.mean(states[i])
+    return ret
 
 class NoisyContinuous(object):
 
@@ -24,8 +30,8 @@ class NoisyContinuous(object):
         else:
             return m + noise
 
-    def p(self, s, a):
-        m_a = self.mean(s) - a
+    def p(self, s, a, mean=None):
+        m_a = mean -a if mean is not None else self.mean(s) - a
         return np.exp(-.5 * (m_a * m_a * self.precision).sum()) / \
             ((2 * np.pi) ** (float(self.dim_A) / 2)) / np.sqrt(
                 self.approx_noise.sum())
@@ -72,6 +78,7 @@ class DiscreteUniform(Discrete):
         self.dim_S, self.dim_A = dim_S, dim_A
 
 
+
 class MarcsPolicy(NoisyContinuous):
 
     def __init__(self, filename="./mlab_cartpole/policy.mat", noise=None, dim_A=1):
@@ -98,12 +105,23 @@ class MarcsPolicy(NoisyContinuous):
         self.__dict__ = state
         try:
             from mlabwrap import mlab
+
             self.mlab = mlab
             self.mlab._autosync_dirs = False
             self.mlab.addpath("./mlab_cartpole")
             self.mlab.load(self.filename)
         except Exception:
-            self.mlab = None
+            try:
+                import mlabwrap
+                self.mlab = mlabwrap.MlabWrap()
+                self.mlab._autosync_dirs = False
+                self.mlab.addpath("./mlab_cartpole")
+                self.mlab.load(self.filename)
+            except Exception, e:
+                print e
+                print mlab._session
+                self.mlab = None
+
 
     def mean(self, s):
         lst = [str(a) for a in s[:-1]] + [str(np.sin(s[-1])), str(

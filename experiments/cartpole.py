@@ -14,7 +14,7 @@ def make_slice(l, u, n):
     return slice(l, u + float(u - l) / (n - 1) / 2., float(u - l) / (n - 1))
 
 mdp = examples.PendulumSwingUpCartPole(
-    dt=dt, Sigma=np.zeros(4)) #np.array([0., 0.005, 0.005, 0.]))
+    dt=dt, Sigma=np.zeros(4))  # np.array([0., 0.005, 0.005, 0.]))
 n_slices = [3, 5, 7, 10]
 bounds = [[0, 20], [-3, 4], [-12, 12], [-3, 3]]
 s = [make_slice(b[0], b[1], n) for b, n in zip(bounds, n_slices)]
@@ -43,7 +43,7 @@ task = LinearContinuousValuePredictionTask(
 methods = []
 
 alpha = .5
-mu = 0.1  # optimal
+mu = 0.01  # optimal
 gtd = td.GTD(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
@@ -56,21 +56,29 @@ gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
-alpha = .8
+alpha = .5
 td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
 td0.name = r"TD(0) $\alpha$={}".format(alpha)
 td0.color = "k"
 methods.append(td0)
 
-c = .3
-mu = 0.05
+c = 10.
+mu = 0.25
 alpha = td.RMalpha(c=c, mu=mu)
 td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
 td0.name = r"TD(0) $\alpha={}\exp(-{}t)$".format(c, mu)
 td0.color = "k"
 methods.append(td0)
 
-alpha, mu = (.5, 4.)
+alpha = .5
+mu = 8.
+lam = .2
+tdc = td.TDCLambda(alpha=alpha, lam=lam, mu=mu, phi=phi, gamma=gamma)
+tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
+tdc.color = "b"
+methods.append(tdc)
+
+alpha, mu = (.5, 8.)
 tdc = td.TDC(alpha=alpha, beta=alpha * mu, phi=phi, gamma=gamma)
 tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
 tdc.color = "b"
@@ -81,7 +89,21 @@ lstd.name = r"LSTD({})".format(0)
 lstd.color = "g"
 methods.append(lstd)
 
-alpha = .8
+alpha = .5
+lam = 0.
+lstd = td.RecursiveLSPELambda(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
+lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
+lstd.color = "g"
+methods.append(lstd)
+
+alpha = 1.
+lam = 0.
+lstd = td.FPKF(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
+lstd.name = r"FPKF({}) $\alpha$={}".format(lam, alpha)
+lstd.color = "g"
+methods.append(lstd)
+
+alpha = .5
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
@@ -93,10 +115,10 @@ ktd = td.KTD(phi=phi, gamma=gamma, theta_noise=None, eta=1e-5, P_init=1.,
 ktd.name = r"KTD $r_n={}$".format(reward_noise)
 #methods.append(ktd)
 
-sigma = 1e-6
+sigma = 0.2
 gptdp = td.GPTDP(phi=phi, sigma=sigma)
 gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
-#methods.append(gptdp)
+methods.append(gptdp)
 
 l = 200
 n_eps = 1000
@@ -105,11 +127,11 @@ name = "swingup_" + str(n_slices[0]) + "-" + \
     str(n_slices[1]) + "-" + str(n_slices[2]) + "-" + str(n_slices[3]
                                                           ) + "_gauss_onpolicy"
 title = "Cartpole Swingup Onpolicy"
-n_indep = 9
+n_indep = 20
 criterion = "RMSPBE"
 
 if __name__ == "__main__":
     from experiments import *
-    mean, std, raw = run_experiment(n_jobs=1, **globals())
+    mean, std, raw = run_experiment(n_jobs=-1, **globals())
     save_results(**globals())
     #plot_errorbar(**globals())

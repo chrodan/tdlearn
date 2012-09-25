@@ -41,10 +41,12 @@ def samples_cached(mymdp, policy, n_iter=1000, n_restarts=100,
     return states, actions, rewards, states_next, restarts
 
 
-@memory.cache(hashfun={"mymdp": repr, "policy": repr})
-def samples_distribution(mymdp, policy, phi, n_subsample=1, n_iter=1000, n_restarts=100, n_next=20, seed=1):
+@memory.cache(hashfun={"mymdp": repr, "policy": repr, "policy_traj": repr})
+def samples_distribution(mymdp, policy, phi, policy_traj=None, n_subsample=1, n_iter=1000, n_restarts=100, n_next=20, seed=1):
     assert(n_subsample == 1)  # not implemented, do that if you need it
     states = np.ones([n_restarts * n_iter, mymdp.dim_S])
+    if policy_traj is None:
+        policy_traj = policy
     states_next = np.ones([n_restarts * n_iter, mymdp.dim_S])
     feat = np.zeros((n_restarts * n_iter, phi.dim))
     feat_next = np.zeros_like(feat)
@@ -65,7 +67,7 @@ def samples_distribution(mymdp, policy, phi, n_subsample=1, n_iter=1000, n_resta
         feat_next[k, :] = np.mean(fn, axis=0)
         states_next[k, :] = np.mean(s1, axis=0)
         rewards[k] = np.mean(r)
-        s = s1[-1]
+        _, _, s, _ = mymdp.sample_step(s, policy=policy_traj, n_samples=1)
         c += 1
 
     return states, rewards, states_next, feat, feat_next

@@ -2,8 +2,8 @@ import numpy as np
 from joblib import Memory
 
 
-memory = Memory(cachedir="./cache", verbose=0)
-#memory = Memory(cachedir="/BS/latentCRF/nobackup/td", verbose=50)
+#memory = Memory(cachedir="./cache", verbose=0)
+memory = Memory(cachedir="/BS/latentCRF/nobackup/td", verbose=1)
 
 
 class cached_property(object):

@@ -266,6 +266,9 @@ class LinearValuePredictionTask(object):
                                                          n_restarts=n_eps,
                                                          policy=self.behavior_policy,
                                                          seed=seed)
+        if self.off_policy:
+            m_a_beh = policies.mean_action_trajectory(self.behavior_policy, s)
+            m_a_tar = policies.mean_action_trajectory(self.target_policy, s)
         #import ipdb; ipdb.set_trace()
         for i in xrange(n_samples * n_eps):
             f0 = self.phi(s[i])
@@ -276,10 +279,9 @@ class LinearValuePredictionTask(object):
 
             for k, m in enumerate(methods):
                 if self.off_policy:
-                    m.update_V_offpolicy(s[i], s_n[i], r[i], a[i],
-                                         self.behavior_policy,
-                                         self.target_policy,
-                                         f0=f0, f1=f1)
+                    m.update_V(s[i], s_n[i], r[i],
+                               rho=self.target_policy.p(s[i], a[i], mean=m_a_tar[i]) / self.behavior_policy.p(s[i], a[i], mean=m_a_beh[i]),
+                               f0=f0, f1=f1)
                 else:
                     m.update_V(s[i], s_n[i], r[i], f0=f0, f1=f1)
                 if i % error_every == 0:
@@ -351,6 +353,16 @@ class LinearValuePredictionTask(object):
             err_f = lambda x: np.sqrt(err_o(x))
         elif criterion == "RMSBE":
             err_o = self.MSBE
+            err_f = lambda x: np.sqrt(err_o(x))
+        elif criterion == "MSPBE_tar":
+            err_f = self.MSPBE_tar
+        elif criterion == "MSBE_tar":
+            err_f = self.MSBE_tar
+        elif criterion == "RMSPBE_tar":
+            err_o = self.MSPBE_tar
+            err_f = lambda x: np.sqrt(err_o(x))
+        elif criterion == "RMSBE_tar":
+            err_o = self.MSBE_tar
             err_f = lambda x: np.sqrt(err_o(x))
 
         return err_f
@@ -546,6 +558,16 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         """
         if name == "mu" or name == "mu_next" or name == "mu_r" or name == "mu_phi" or name == "mu_phi_next":
             self.mu, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next = mdp.samples_distribution(self.mdp, policy=self.target_policy,
+                                                                                                       policy_traj=self.behavior_policy,
+                                                                                                       phi=self.phi,
+                                                                                                       n_next=self.mu_n_next,
+                                                                                                       n_iter=self.mu_iter,
+                                                                                                       n_restarts=self.mu_restarts,
+                                                                                                       seed=self.mu_seed,
+                                                                                                       n_subsample=self.mu_subsample)
+            return self.__dict__[name]
+        elif name == "mu_tar" or name == "mu_next_tar" or name == "mu_r_tar" or name == "mu_phi_tar" or name == "mu_phi_next_tar":
+            self.mu, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next = mdp.samples_distribution(self.mdp, policy=self.target_policy,
                                                                                                        phi=self.phi,
                                                                                                        n_next=self.mu_n_next,
                                                                                                        n_iter=self.mu_iter,
@@ -557,18 +579,28 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         else:
             raise AttributeError(name)
 
+    def MSPBE_tar(self, theta):
+        """ Mean Squared Bellman Error """
+        V = np.array((theta * self.mu_phi_tar).sum(axis=1))
+        V2 = self.gamma * np.array((theta * self.mu_phi_next_tar).sum(axis=1))
+        return np.mean(np.array((V - np.dot(self.projection_operator(), V2 + self.mu_r_tar))) ** 2)
+
     def MSPBE(self, theta):
         """ Mean Squared Bellman Error """
         V = np.array((theta * self.mu_phi).sum(axis=1))
         V2 = self.gamma * np.array((theta * self.mu_phi_next).sum(axis=1))
         return np.mean(np.array((V - np.dot(self.projection_operator(), V2 + self.mu_r))) ** 2)
 
+    def MSBE_tar(self, theta):
+        """ Mean Squared Bellman Error """
+        V = np.array((theta * self.mu_phi_tar).sum(axis=1))
+        V2 = self.gamma * np.array((theta * self.mu_phi_next_tar).sum(axis=1))
+        return np.mean((V - V2 - self.mu_r_tar) ** 2)
+
     def MSBE(self, theta):
         """ Mean Squared Bellman Error """
         V = np.array((theta * self.mu_phi).sum(axis=1))
         V2 = self.gamma * np.array((theta * self.mu_phi_next).sum(axis=1))
-        #import ipdb
-        #ipdb.set_trace()
         return np.mean((V - V2 - self.mu_r) ** 2)
 
 
@@ -685,7 +717,6 @@ class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
         Pn = C
         bn = np.trace((R) * np.matrix(noise))
         return Pn, bn
-
 
     def MSE(self, theta):
         p = features.squared_tri(self.mdp.dim_S).param_forward(*self.phi.param_back(theta)) -\
