@@ -679,7 +679,9 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
     def reset(self):
         self.reset_trace()
 
-        self.init_vals["C"] = self.init_theta * np.eye(len(
+        self.init_vals["C1"] = self.init_theta * np.eye(len(
+            self.init_vals["theta"]))
+        self.init_vals["C2"] = self.init_theta * np.eye(len(
             self.init_vals["theta"]))
         self.init_vals["b"] = -self.init_vals["theta"] * self.init_theta
         for k, v in self.init_vals.items():
@@ -690,7 +692,7 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
 
     @property
     def theta(self):
-        return -np.dot(np.linalg.pinv(self.C), self.b)
+        return -np.dot(np.linalg.pinv(self.C1 + self.C2), self.b)
 
     @theta.setter
     def theta_set(self, val):
@@ -712,8 +714,9 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         alpha = 1. / (1 + self.t + 1)
         self.t += 1
         self.b = (1 - alpha) * self.b + alpha * self.z * rho * r
-        self.C = (1 - alpha) * self.C + alpha * np.outer(self.z,
-                                                         self.gamma * rho * f1 - f0)
+        self.C1 = (1 - alpha) * self.C1 + alpha * np.outer(self.z,- f0)
+        self.C2 = (1 - alpha) * self.C2 + alpha * np.outer(self.z,
+                                                         self.gamma * rho * f1)
  #       self.k1 = (1 - alpha) * self.k1 + alpha * np.outer(f0, rho * f0)
  #       self.k2 = (1 - alpha) * self.k2 + alpha * np.outer(f0, f0)
         self._toc()
@@ -748,8 +751,9 @@ class LSTDLambdaJP(LSTDLambda):
         alpha = 1. / (1 + self.t + 1)
         self.t += 1
         self.b = (1 - alpha) * self.b + alpha * self.z * rho * r
-        self.C = (1 - alpha) * self.C + alpha * rho * np.outer(
-            self.z, self.gamma * f1 - f0)
+        self.C2 = (1 - alpha) * self.C2 + alpha * rho * np.outer(self.z,
+                                                         self.gamma * f1)
+        self.C1 = (1 - alpha) * self.C1 + alpha * rho * np.outer(self.z, - f0)
 
         self._toc()
         #print self.C
