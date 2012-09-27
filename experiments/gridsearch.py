@@ -1,19 +1,13 @@
 import td
 import os
-import examples
 import numpy as np
 import matplotlib.pyplot as plt
-import dynamic_prog as dp
-import util
-import features
-import policies
 import itertools
-from task import LinearLQRValuePredictionTask
 from joblib import Parallel, delayed
 from matplotlib.colors import LogNorm
 import pickle
 
-from experiments.lqr_imp_offpolicy import *
+from experiments.cartpole_off import *
 
 error_every = int(l * n_eps / 20)
 n_indep = 3
@@ -33,9 +27,9 @@ def load_result_file(fn, maxerr=5):
     with open(fn) as f:
         d = pickle.load(f)
     print np.nanargmin(d["res"])
-    best =  d["params"][np.nanargmin(d["res"])]
-    for n,v in zip(d["param_names"], best):
-        print n,v
+    best = d["params"][np.nanargmin(d["res"])]
+    for n, v in zip(d["param_names"], best):
+        print n, v
     return d
 
 
@@ -64,8 +58,8 @@ def run(cls, param):
     mean, std, raw = task.avg_error_traces(
         [m], n_indep=n_indep, n_samples=l, n_eps=n_eps,
         error_every=error_every, criterion=criterion, verbose=False)
-    weights = np.linspace(1., 2., len(mean))
-    val = (mean*weights).sum() / weights.sum()
+    weights = np.linspace(1., 2., mean.shape[1])
+    val = (mean * weights).sum() / weights.sum()
     return val
 
 
@@ -90,7 +84,8 @@ def gridsearch(method, gs_name="", n_jobs=-1, **params):
     if not os.path.exists("data/{name}".format(name=name)):
         os.makedirs("data/{name}".format(name=name))
     with open("data/{}/{}{}.pck".format(name, method.__name__, gs_name), "w") as f:
-        pickle.dump(dict(res=res, params = param_list, param_names=param_names, **params), f)
+        pickle.dump(dict(res=res, params=param_list,
+                    param_names=param_names, **params), f)
     print "Finished {}{}".format(method.__name__, gs_name)
 
 if __name__ == "__main__":
@@ -99,7 +94,8 @@ if __name__ == "__main__":
     gridsearch(td.LinearTDLambda, alpha=alphas, lam=lambdas)
     gridsearch(td.LinearTD0, alpha=make_rmalpha(), gs_name="rm")
 
-    gridsearch(td.TDCLambda, alpha=alphas, mu=mus, lam=lambdas)
+    #gridsearch(td.TDCLambda, alpha=alphas, mu=mus, lam=lambdas)
+    gridsearch(td.TDC, alpha=alphas, mu=mus)
     gridsearch(td.GTD, alpha=alphas, mu=mus)
     gridsearch(td.GTD2, alpha=alphas, mu=mus)
     gridsearch(td.TDC, alpha=alphas, mu=mus)
@@ -108,9 +104,12 @@ if __name__ == "__main__":
     gridsearch(td.RecursiveLSPELambda, lam=lambdas, alpha=ls_alphas)
     gridsearch(td.FPKF, lam=lambdas, alpha=ls_alphas)
 
-    gridsearch(td.GPTDP, sigma=sigmas)
+    #gridsearch(td.GPTDP, sigma=sigmas)
     #gridsearch(td.KTD, reward_noise=reward_noises, eta=etas, P_init=P_inits)
 
     if task.off_policy:
         gridsearch(td.GeriTDC, alpha=alphas, mu=mus)
         gridsearch(td.RecursiveLSTDLambdaJP, lam=lambdas)
+    else:
+        gridsearch(td.GPTDP, sigma=sigmas)
+        #gridsearch(td.KTD, reward_noise=reward_noises, eta=etas, P_init=P_inits)
