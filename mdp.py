@@ -182,18 +182,12 @@ class ContinuousMDP(object):
                         break
                     else:
                         return
-                if no_next_noise:
-                    a = policy.mean(s0)
-                else:
-                    a = policy(s0)
+                a = policy(s0)
                 mean = self.sf(s0, a)
                 s1 = mean + rands[i]
 
                 r = self.rf(s0, a)
-                if no_next_noise:
-                    yield (s0, a, np.array(mean).flatten(), r)
-                else:
-                    yield (s0, a, s1, r)
+                yield (s0, a, s1, r)
                 i += 1
                 s0 = s1
 

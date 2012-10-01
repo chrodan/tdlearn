@@ -710,13 +710,15 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
             theta = self.theta
         if not hasattr(self, "z"):
             self.z = np.zeros_like(f0)
-        self.z = self.gamma * self.lam * rho * self.z + f0
-        alpha = 1. / (1 + self.t + 1)
+        else:
+            self.z = self.gamma * self.lam * self.oldrho * self.z + f0
+        alpha = 1. / (self.t + 1)
         self.t += 1
         self.b = (1 - alpha) * self.b + alpha * self.z * rho * r
         self.C1 = (1 - alpha) * self.C1 + alpha * np.outer(self.z,- f0)
         self.C2 = (1 - alpha) * self.C2 + alpha * np.outer(self.z,
                                                          self.gamma * rho * f1)
+        self.oldrho = rho
  #       self.k1 = (1 - alpha) * self.k1 + alpha * np.outer(f0, rho * f0)
  #       self.k2 = (1 - alpha) * self.k2 + alpha * np.outer(f0, f0)
         self._toc()
@@ -747,14 +749,15 @@ class LSTDLambdaJP(LSTDLambda):
             theta = self.theta
         if not hasattr(self, "z"):
             self.z = np.zeros_like(f0)
-        self.z = self.gamma * self.lam * rho * self.z + f0
-        alpha = 1. / (1 + self.t + 1)
+        else:
+            self.z = self.gamma * self.lam * self.oldrho * self.z + f0
+        alpha = 1. / (self.t + 1)
         self.t += 1
         self.b = (1 - alpha) * self.b + alpha * self.z * rho * r
         self.C2 = (1 - alpha) * self.C2 + alpha * rho * np.outer(self.z,
                                                          self.gamma * f1)
         self.C1 = (1 - alpha) * self.C1 + alpha * rho * np.outer(self.z, - f0)
-
+        self.oldrho = rho
         self._toc()
         #print self.C
         #print self.b

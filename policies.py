@@ -58,16 +58,20 @@ class LinearContinuous(NoisyContinuous):
 
 class Discrete(object):
     def __repr__(self):
-        return "Discrete(" + repr(self.prop_table) + ")"
+        return "Discrete(" + repr(self.tab) + ")"
 
     def __init__(self, prop_table):
         self.tab = prop_table
+        prop_table /= prop_table.sum(axis=1)[:,None]
         self.dim_S, self.dim_A = self.tab.shape
 
     def __call__(self, s):
         return  util.multinomial_sample(1, self.tab[int(s), :])
 
-    def p(self, s, a):
+    def mean(self, s):
+        return np.sum(self.tab[int(s),:] * np.arange(self.dim_A))
+
+    def p(self, s, a, mean=None):
         return self.tab[int(s), int(a)]
 
 
