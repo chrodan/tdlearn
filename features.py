@@ -148,6 +148,31 @@ class squared_tri(object):
             r *= self.normalization
         return r
 
+class eye(object):
+
+    def __init__(self, dim_S):
+
+        self.dim = dim_S
+
+    def __call__(self, state):
+        ret = np.zeros(self.dim)
+        ret[int(state)] = 1
+        return ret
+
+class lin_random(object):
+    def __repr__(self):
+        return "lin_random(" + repr(self.A) + ")"
+
+    def __init__(self, dim, dim_S, seed=1):
+
+        self.dim = dim
+        self.dim_S = dim_S
+        self.seed = seed
+        np.random.seed(seed)
+        self.A = np.random.rand(dim_S, dim)
+
+    def __call__(self, state):
+        return self.A[int(state)]
 
 class squared_diag(object):
 

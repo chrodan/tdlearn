@@ -45,8 +45,8 @@ def plot_errorbar(title, methods, mean, std, l, error_every, criterion, n_eps, *
     plt.xlabel("Timesteps")
     plt.title(title)
     colormap = plt.cm.gist_ncar
-    plt.gca().set_color_cycle(
-        [colormap(i) for i in np.linspace(0, 0.9, len(methods))])
+    #plt.gca().set_color_cycle(
+    #    [colormap(i) for i in np.linspace(0, 0.9, len(methods))])
 
     for i, m in enumerate(methods):
         if hasattr(m, "hide") and m.hide:

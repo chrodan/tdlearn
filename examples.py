@@ -160,7 +160,7 @@ class RandomMDP(mdp.MDP):
     reward function.
     """
 
-    def __init__(self, n_states, seed=None):
+    def __init__(self, n_states, n_actions, seed=None):
         """
             n_states: number of states
             seed: random seed to generate the transition and reward function
@@ -168,15 +168,16 @@ class RandomMDP(mdp.MDP):
         if seed is not None:
             np.random.seed(seed)
         n_s = n_states
-        actions = [0, ]
+        n_a = n_actions
+        actions = range(n_a)
         states = range(n_s)
 
         d0 = np.random.rand(n_s) + 1e-5
         d0 = d0 / d0.sum()
 
-        r = np.random.rand(n_s, 1, n_s)
-        r[:, :, n_s - 1] = 1
-        P = np.random.rand(n_s, 1, n_s) + 1e-5
+        r = np.random.rand(n_s, n_a, n_s)
+        #r[:, :, n_s - 1] = 1
+        P = np.random.rand(n_s, n_a, n_s) + 1e-5
         P /= P.sum(axis=2)[:, :, np.newaxis]
 
         mdp.MDP.__init__(self, states, actions, r, P, d0)

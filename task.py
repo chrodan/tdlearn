@@ -269,6 +269,8 @@ class LinearValuePredictionTask(object):
         if self.off_policy:
             m_a_beh = policies.mean_action_trajectory(self.behavior_policy, s)
             m_a_tar = policies.mean_action_trajectory(self.target_policy, s)
+            rhos = np.zeros_like(r)
+            self.rhos = rhos
         #import ipdb; ipdb.set_trace()
         for i in xrange(n_samples * n_eps):
             f0 = self.phi(s[i])
@@ -279,8 +281,9 @@ class LinearValuePredictionTask(object):
 
             for k, m in enumerate(methods):
                 if self.off_policy:
+                    rhos[i] = self.target_policy.p(s[i], a[i], mean=m_a_tar[i]) / self.behavior_policy.p(s[i], a[i], mean=m_a_beh[i])
                     m.update_V(s[i], s_n[i], r[i],
-                               rho=self.target_policy.p(s[i], a[i], mean=m_a_tar[i]) / self.behavior_policy.p(s[i], a[i], mean=m_a_beh[i]),
+                               rho=rhos[i],
                                f0=f0, f1=f1)
                 else:
                     m.update_V(s[i], s_n[i], r[i], f0=f0, f1=f1)
@@ -398,11 +401,11 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
         """
         if name == "mu":
             self.mu = self.mdp.stationary_distribution(
-                seed=50, iterations=100000, policy=self.target_policy)
+                seed=1000, iterations=100000, policy=self.target_policy)
             return self.mu
         elif name == "beh_mu":
             self.beh_mu = self.mdp.stationary_distribution(
-                seed=50, iterations=100000, policy=self.behavior_policy)
+                seed=1000, iterations=100000, policy=self.behavior_policy)
             return self.beh_mu
         elif name == "V_true":
             self.V_true = dynamic_prog.estimate_V_discrete(
@@ -470,20 +473,20 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
         return R + self.gamma * np.dot(P, V)
 
     def MSE(self, theta):
-        return np.sum(((theta * np.asarray(self.Phi)).sum(axis=1) - self.V_true) ** 2 * self.mu)
+        return np.sum(((theta * np.asarray(self.Phi)).sum(axis=1) - self.V_true) ** 2 * self.beh_mu)
 
     def MSBE(self, theta):
 
         V = (theta * np.asarray(self.Phi)).sum(axis=1)
         v = np.asarray(V - self.bellman_operator(V))
-        return np.sum(v ** 2 * self.mu)
+        return np.sum(v ** 2 * self.beh_mu)
 
     def MSPBE(self, theta):
 
         V = (theta * np.asarray(self.Phi)).sum(axis=1)
         v = np.asarray(
             V - np.dot(self.projection_operator(), self.bellman_operator(V)))
-        return np.sum(v ** 2 * self.mu)
+        return np.sum(v ** 2 * self.beh_mu)
 
 
 class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
@@ -567,13 +570,13 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
                                                                                                        n_subsample=self.mu_subsample)
             return self.__dict__[name]
         elif name == "mu_tar" or name == "mu_next_tar" or name == "mu_r_tar" or name == "mu_phi_tar" or name == "mu_phi_next_tar":
-            self.mu, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next = mdp.samples_distribution(self.mdp, policy=self.target_policy,
-                                                                                                       phi=self.phi,
-                                                                                                       n_next=self.mu_n_next,
-                                                                                                       n_iter=self.mu_iter,
-                                                                                                       n_restarts=self.mu_restarts,
-                                                                                                       seed=self.mu_seed,
-                                                                                                       n_subsample=self.mu_subsample)
+            self.mu_tar, self.mu_r_tar, self.mu_next_tar, self.mu_phi_tar, self.mu_phi_next_tar = mdp.samples_distribution(self.mdp, policy=self.target_policy,
+                                                                                                                           phi=self.phi,
+                                                                                                                           n_next=self.mu_n_next,
+                                                                                                                           n_iter=self.mu_iter,
+                                                                                                                           n_restarts=self.mu_restarts,
+                                                                                                                           seed=self.mu_seed,
+                                                                                                                           n_subsample=self.mu_subsample)
             return self.__dict__[name]
 
         else:
