@@ -12,12 +12,15 @@ import examples
 from task import LinearDiscreteValuePredictionTask
 import numpy as np
 import matplotlib.pyplot as plt
+import features
 
 n = 14
 n_feat = 4
 mdp = examples.BoyanChain(n, n_feat)
-phi = mdp.phi
-task = LinearDiscreteValuePredictionTask(mdp, 1, phi, np.zeros(n_feat))
+phi = features.spikes(n_feat, n)
+gamma = 1.
+p0 = np.zeros(n_feat)
+task = LinearDiscreteValuePredictionTask(mdp, gamma, phi, p0)
 
 # define the methods to examine
 gtd2 = td.GTD2(alpha=0.5, beta=0.5, phi=phi)
@@ -64,20 +67,15 @@ for alpha, mu in[(0.7, 0.01)]:
 
 #methods = []
 #for eps in np.power(10,np.arange(-1,4)):
-lstd = td.RecursiveLSTDLambda(lam=0, phi=phi)
+lstd = td.LSTDLambda(lam=0, phi=phi)
 lstd.name = r"LSTD({})".format(0)
 lstd.color = "b"
 methods.append(lstd)
 
-lstd = td.RecursiveLSPELambda(lam=0, phi=phi)
-lstd.name = r"LSPE({})".format(0)
-lstd.color = "b"
-methods.append(lstd)
-
-#lstd = td.LSTDLambda(lam=1, phi=phi)
-#lstd.name = r"LSTD({})".format(1)
-#lstd.color = "b"
-#methods.append(lstd)
+brm = td.BRM(phi=phi)
+brm.name = "BRM"
+brm.color = "b"
+methods.append(brm)
 
 #methods = []
 #for alpha in np.linspace(0.01,1,10):
@@ -96,23 +94,6 @@ ktd.name = r"KTD $\eta$={}, $\sigma^2$={} $P_0$={}".format(
     eta, reward_noise, P_init)
 methods.append(ktd)
 
-nu = 0.0001
-sigma0 = 1.
-gptd = td.GPTD(phi=phi, nu=nu, sigma0=sigma0)
-gptd.name = r"GPTD $\nu$={}, $\sigma_0$={}".format(nu, sigma0)
-#methods.append(gptd)
-
-
-nu = 0.
-sigma0 = 1.
-gptd = td.GPTD(phi=phi, nu=nu, sigma0=sigma0)
-gptd.name = r"GPTD $\nu$={}, $\sigma_0$={}".format(nu, sigma0)
-#methods.append(gptd)
-
-sigma = .5
-gptdp = td.GPTDP(phi=phi, sigma=sigma)
-gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
-#methods.append(gptdp)
 
 
 sigma = 1.
@@ -122,17 +103,17 @@ methods.append(gptdp)
 
 
 l = 20
-n_eps = 500
-n_indep = 5
-
+n_eps = 150
+episodic = True
 error_every = 1
 name = "boyan"
+n_indep = 4
 title = "{}-State Boyan Chain ({} trials)".format(n, n_indep)
-n_indep = 5
 criterion = "RMSPBE"
+criteria = ["RMSPBE", "RMSBE", "RMSE"]
 
 if __name__ == "__main__":
     from experiments import *
-    mean, std, raw = run_experiment(n_jobs=1, **globals())
+    mean, std, raw = run_experiment(n_jobs=-1, **globals())
     save_results(**globals())
     plot_errorbar(**globals())

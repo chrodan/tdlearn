@@ -399,8 +399,9 @@ class MDP(object):
         return mu
 
     def samples_cached(self, policy, n_iter=1000, n_restarts=100,
-                       no_next_noise=False, seed=1):
-
+                       no_next_noise=False, seed=None):
+        if seed is not None:
+            np.random.seed(seed)
         assert (not no_next_noise)
         assert(seed is not None)
         states = np.ones([n_restarts * n_iter, self.dim_S])
@@ -413,8 +414,7 @@ class MDP(object):
         while k < n_restarts * n_iter:
             restarts[k] = True
             for s, a, s_n, r in self.sample_transition(
-                n_iter, policy, with_restart=False,
-                    seed=seed):
+                n_iter, policy, with_restart=False):
                 states[k, :] = s
                 states_next[k, :] = s_n
                 rewards[k] = r

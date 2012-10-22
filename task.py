@@ -18,7 +18,7 @@ import mdp
 
 
 def tmp(cl, *args, **kwargs):
-    return cl.ergodic_error_traces(*args, **kwargs)
+    return cl.error_traces(*args, **kwargs)
 
 
 def tmp2(cl, *args, **kwargs):
@@ -64,8 +64,7 @@ class LinearValuePredictionTask(object):
 
         return min_errors
 
-    def avg_error_traces(self, methods, n_indep, verbose=False, n_jobs=1, kind="ergodic", **kwargs):
-
+    def avg_error_traces(self, methods, n_indep, verbose=False, n_jobs=1, **kwargs):
         res = []
         if n_jobs == 1:
             with ProgressBar(enabled=verbose) as p:
@@ -74,27 +73,17 @@ class LinearValuePredictionTask(object):
                     p.update(
                         seed, n_indep, "{} of {} seeds".format(seed, n_indep))
                     kwargs['seed'] = seed
-
-                    if kind == "ergodic":
-                        res.append(
-                            self.ergodic_error_traces(methods, **kwargs))
-                    else:
-                        res.append(
-                            self.episodic_error_traces(methods, **kwargs))
+                    res.append(self.error_traces(methods, **kwargs))
         else:
             jobs = []
             for seed in range(n_indep):
                 kwargs = kwargs.copy()
                 kwargs['seed'] = seed
                 self.projection_operator()
-                #del self.Pi
-                if kind == "ergodic":
-                    jobs.append((tmp, [self, methods], kwargs))
-                else:
-                    jobs.append((tmp2, [self, methods], kwargs))
+                jobs.append((tmp, [self, methods], kwargs))
             res = Parallel(n_jobs=n_jobs, verbose=verbose)(jobs)
-        res = np.array(res).swapaxes(0, 1)
-        return np.mean(res, axis=1), np.std(res, axis=1), res
+            res = np.array(res)
+        return np.mean(res, axis=0), np.std(res, axis=0), res
 
     def deterministic_error_traces(self, methods, n_samples, criterion="MSPBE"):
 
@@ -252,16 +241,25 @@ class LinearValuePredictionTask(object):
                                                              policy=self.behavior_policy,
                                                              seed=seed)
 
-    def ergodic_error_traces(self, methods, n_samples=1000, n_eps=1,
-                             seed=1, criterion="MSE", error_every=1):
-        #return 1
+    def error_traces(self, methods, n_samples=1000, n_eps=1,
+                             seed=1, criteria=["RMSBE"], error_every=1, episodic=False):
+
+        # Intialization
         self._init_methods(methods)
-        err_f = self._init_error_fun(criterion)
-        err_f_gen = self._init_error_fun(criterion, general=True)
-        errors = np.ones((int(np.ceil(
-            float(n_samples * n_eps) / error_every)), len(methods))) * np.inf
+        err_f = [self._init_error_fun(criterion) for criterion in criteria]
+        err_f_gen = [self._init_error_fun(criterion, general=True) for criterion in criteria]
+
+        if episodic:
+            n_e = n_eps
+            k_e = 0
+        else:
+            n_e = int(np.ceil(float(n_samples * n_eps) / error_every))
+
+        errors = np.ones((len(methods), len(criteria), n_e)) * np.inf
         for m in methods:
             m.reset_trace()
+
+        # Generate trajectories
         s, a, r, s_n, restarts = self.mdp.samples_cached(n_iter=n_samples,
                                                          n_restarts=n_eps,
                                                          policy=self.behavior_policy,
@@ -271,12 +269,73 @@ class LinearValuePredictionTask(object):
             m_a_tar = policies.mean_action_trajectory(self.target_policy, s)
             rhos = np.zeros_like(r)
             self.rhos = rhos
-        #import ipdb; ipdb.set_trace()
+
+        # Method learning
         for i in xrange(n_samples * n_eps):
             f0 = self.phi(s[i])
             f1 = self.phi(s_n[i])
             if restarts[i]:
-                for m in methods:
+                for k, m in enumerate(methods):
+                    m.reset_trace()
+                    if episodic:
+                        cur_theta = m.theta
+                        for i_e in range(len(criteria)):
+                            if isinstance(m, td.LinearValueFunctionPredictor):
+                                errors[k, i_e, k_e] = err_f[i_e](cur_theta)
+                            else:
+                                errors[k, i_e, k_e] = err_f_gen[i_e](m.V)
+
+                if episodic:
+                    k_e += 1
+                    if k_e >= n_e:
+                        break
+
+            for k, m in enumerate(methods):
+                if self.off_policy:
+                    rhos[i] = self.target_policy.p(s[i], a[i], mean=m_a_tar[i]) / self.behavior_policy.p(s[i], a[i], mean=m_a_beh[i])
+                    m.update_V(s[i], s_n[i], r[i],
+                               rho=rhos[i],
+                               f0=f0, f1=f1)
+                else:
+                    m.update_V(s[i], s_n[i], r[i], f0=f0, f1=f1)
+                if i % error_every == 0 and not episodic:
+                    cur_theta = m.theta
+                    for i_e in range(len(criteria)):
+                        if isinstance(m, td.LinearValueFunctionPredictor):
+                            errors[k, i_e, int(i / error_every)] = err_f[i_e](cur_theta)
+                        else:
+                            errors[k, i_e, int(i / error_every)] = err_f_gen[i_e](m.V)
+
+        return errors
+
+    def regularization_paths(self, methods, n_samples=1000, n_eps=1,
+                             seed=1, criteria=["RMSBE"]):
+
+        # Intialization
+        self._init_methods(methods)
+        err_f = [self._init_error_fun(criterion) for criterion in criteria]
+
+        errors = dict([(crit, [[] for m in methods]) for crit in criteria])
+        for m in methods:
+            m.reset_trace()
+
+        # Generate trajectories
+        s, a, r, s_n, restarts = self.mdp.samples_cached(n_iter=n_samples,
+                                                         n_restarts=n_eps,
+                                                         policy=self.behavior_policy,
+                                                         seed=seed)
+        if self.off_policy:
+            m_a_beh = policies.mean_action_trajectory(self.behavior_policy, s)
+            m_a_tar = policies.mean_action_trajectory(self.target_policy, s)
+            rhos = np.zeros_like(r)
+            self.rhos = rhos
+
+        # Method learning
+        for i in xrange(n_samples * n_eps):
+            f0 = self.phi(s[i])
+            f1 = self.phi(s_n[i])
+            if restarts[i]:
+                for k, m in enumerate(methods):
                     m.reset_trace()
 
             for k, m in enumerate(methods):
@@ -287,59 +346,13 @@ class LinearValuePredictionTask(object):
                                f0=f0, f1=f1)
                 else:
                     m.update_V(s[i], s_n[i], r[i], f0=f0, f1=f1)
-                if i % error_every == 0:
-                    if isinstance(m, td.LinearValueFunctionPredictor):
-                        cur_theta = m.theta
-                        errors[int(i / error_every), k] = err_f(cur_theta)
-                    else:
-                        errors[int(i / error_every), k] = err_f_gen(m.V)
+        for i,m in enumerate(methods):
+            v = m.regularization_path()
+            for tau, theta in v:
+                for i_e, crit in enumerate(criteria):
+                    errors[crit][i].append((tau, theta, err_f[i_e](theta)))
 
-        i += 1
-        return errors[:i, :].T
-
-    def episodic_error_traces(self, methods, n_eps=10000, error_every=1, n_samples=1000, seed=None, criterion="MSE"):
-
-        self._init_methods(methods)
-        err_f = self._init_error_fun(criterion)
-        errors = np.ones(
-            (int(np.ceil(n_samples / error_every)), len(methods))) * np.inf
-        err_f_gen = self._init_error_fun(criterion, general=True)
-
-        s, a, r, s_n, restarts, f0, f1 = self.mdp.samples_featured(
-            phi=self.phi, n_iter=n_samples,
-            n_restarts=n_eps,
-            policy=self.behavior_policy,
-            seed=seed)
-
-        for i in xrange(n_eps * n_samples):
-            if restarts[i]:
-                for m in methods:
-                    m.reset_trace()
-            for m in methods:
-                m.reset_trace()
-            cur_seed = i + n_samples * seed if seed is not None else None
-            for s, a, s_n, r in self.mdp.sample_transition(n_samples,
-                                                           policy=self.behavior_policy,
-                                                           with_restart=False,
-                                                           seed=cur_seed):
-                f0 = self.phi(s)
-                f1 = self.phi(s_n)
-                for k, m in enumerate(methods):
-                    if self.off_policy:
-                        m.update_V_offpolicy(s, s_n, r, a,
-                                             self.behavior_policy,
-                                             self.target_policy,
-                                             f0=f0, f1=f1)
-                    else:
-                        m.update_V(s, s_n, r, f0=f0, f1=f1)
-                    if i % error_every == 0:
-                        if isinstance(m, td.LinearValueFunctionPredictor):
-                            cur_theta = m.theta
-                            errors[int(i / error_every), k] = err_f(cur_theta)
-                        else:
-                            errors[int(i / error_every), k] = err_f_gen(m.V)
-
-        return errors.T
+        return errors
 
     def _init_error_fun(self, criterion, general=False):
         if criterion == "MSE":
@@ -435,7 +448,10 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
         if not hasattr(self, "Phi_"):
             Phil = []
             for s in self.mdp.states:
-                f = self.phi(s)
+                if hasattr(self.phi, "expectation"):
+                    f = self.phi.expectation(s)
+                else:
+                    f = self.phi(s)
                 Phil.append(f)
             Phi = np.matrix(np.vstack(Phil))
             self.Phi_ = Phi

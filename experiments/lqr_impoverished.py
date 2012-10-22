@@ -75,7 +75,13 @@ eps = 100
 lstd = td.RecursiveLSTDLambda(lam=0, eps=eps, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({}) $\epsilon$={}".format(0, eps)
 lstd.color = "g"
-methods.append(lstd)  # methods = []
+methods.append(lstd)
+
+brm = td.BRM(phi=phi, gamma=gamma)
+brm.name = "BRM"
+methods.append(brm)
+
+# methods = []
 #for eps in np.power(10,np.arange(-1,4)):
 eps = 100
 lspe = td.RecursiveLSPELambda(lam=0, alpha=1., eps=eps, phi=phi, gamma=gamma)
@@ -114,14 +120,15 @@ methods.append(gptdp)
 
 l = 16000
 error_every = 200
-n_indep = 50
+n_indep = 4
 n_eps = 1
 title = "4-dim. State Pole Balancing Onpolicy Diagonal Features"
 criterion = "RMSE"
+criteria = ["RMSE", "RMSBE", "RMSPBE"]
 name = "lqr_imp_onpolicy_" + criterion
 
 if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
     save_results(**globals())
-    #plot_errorbar(**globals())
+    plot_errorbar(**globals())

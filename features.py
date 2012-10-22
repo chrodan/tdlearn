@@ -148,6 +148,46 @@ class squared_tri(object):
             r *= self.normalization
         return r
 
+
+class corrupted_rbfs(object):
+
+    def __init__(self, n_S, n_random, n_rbfs):
+        self.n_S = n_S
+        self.n_random = n_random
+        self.n_rbfs = n_rbfs
+        self.dim = n_rbfs + 1 + n_random
+        self.rbf_mean = np.linspace(0, n_S, n_rbfs)
+        self.rbf_sigma = n_S / (n_rbfs - 1.)
+
+    def __call__(self, state):
+        phi = np.empty(self.dim)
+        phi[0] = 1.
+        rbf = np.exp(-np.power(state - self.rbf_mean, 2)
+                     / (self.rbf_sigma ** 2) / 2.)
+        phi[1:1 + self.n_rbfs] = rbf / np.sum(rbf)
+        phi[1 + self.n_rbfs:] = np.random.normal(size=self.n_random)
+        return phi
+
+    def expectation(self, state):
+        phi = self(state)
+        phi[1 + self.n_rbfs:] = 0.
+        return phi
+
+class spikes(object):
+
+    def __init__(self, n, dim_S):
+
+        self.dim = dim_S
+        self.n = n
+
+    def __call__(self, state):
+        n = self.dim
+        a = (n - 1.) / (self.n - 1)
+        r = 1 - abs((state + 1 - np.linspace(1, n, self.n)) / a)
+        r[r < 0] = 0
+        return r
+
+
 class eye(object):
 
     def __init__(self, dim_S):
@@ -158,6 +198,7 @@ class eye(object):
         ret = np.zeros(self.dim)
         ret[int(state)] = 1
         return ret
+
 
 class lin_random(object):
     def __repr__(self):
@@ -173,6 +214,7 @@ class lin_random(object):
 
     def __call__(self, state):
         return self.A[int(state)]
+
 
 class squared_diag(object):
 

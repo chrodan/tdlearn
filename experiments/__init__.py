@@ -3,25 +3,37 @@ import pickle
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-
+plt.ion()
 
 def run_experiment(task, methods, n_indep, l, error_every, name, n_eps,
-                   mdp, phi, title, criterion="RMSPBE", verbose=True, n_jobs=1, **kwargs):
-    return task.avg_error_traces(methods, n_indep=n_indep, n_eps=n_eps,
-                                 n_samples=l, error_every=error_every,
-                                 criterion=criterion,
-                                 verbose=verbose, n_jobs=n_jobs)
+                   mdp, phi, title, verbose=True, n_jobs=1, criteria=None,
+                   episodic=False, **kwargs):
+    a, b, c = task.avg_error_traces(methods, n_indep=n_indep, n_eps=n_eps,
+                                    n_samples=l, error_every=error_every,
+                                    criteria=criteria,
+                                    verbose=verbose, n_jobs=n_jobs, episodic=episodic)
+    return a, b, c
 
+def plot_path(path, method_id, methods, criterion, title):
+    plt.figure(figsize=(15,10))
+    plt.ylabel(criterion)
+    plt.xlabel("Regularization Parameter")
+    plt.title(title + " " + methods[method_id].name)
 
-def save_results(name, l, criterion, error_every, n_indep, n_eps, methods,
-                 mdp, phi, title, mean, std, raw, gamma, **kwargs):
+    par, theta, err = zip(*path[criterion][method_id])
+    plt.plot(par, err)
+    plt.show()
+
+def save_results(name, l, criteria, error_every, n_indep, n_eps, methods,
+                 mdp, phi, title, mean, std, raw, gamma, episodic=False, **kwargs):
     if not os.path.exists("data/{name}".format(name=name)):
         os.makedirs("data/{name}".format(name=name))
 
     with open("data/{name}/setting.pck".format(name=name), "w") as f:
-        pickle.dump(dict(l=l, criterion=criterion, gamma=gamma,
+        pickle.dump(dict(l=l, criteria=criteria, gamma=gamma,
                          error_every=error_every,
                          n_indep=n_indep,
+                         episodic=episodic,
                          n_eps=n_eps,
                          methods=methods,
                          mdp=mdp, phi=phi, title=title, name=name), f)
@@ -39,19 +51,22 @@ def load_results(name):
     return d
 
 
-def plot_errorbar(title, methods, mean, std, l, error_every, criterion, n_eps, **kwargs):
+def plot_errorbar(title, methods, mean, std, l, error_every, criterion, criteria, n_eps, episodic=False, **kwargs):
     plt.figure(figsize=(15, 10))
     plt.ylabel(criterion)
     plt.xlabel("Timesteps")
     plt.title(title)
-    colormap = plt.cm.gist_ncar
-    #plt.gca().set_color_cycle(
-    #    [colormap(i) for i in np.linspace(0, 0.9, len(methods))])
+
+    k = criteria.index(criterion)
+    x = range(0, l * n_eps, error_every) if not episodic else range(n_eps)
+    ee = int(l * n_eps / error_every / 8) if not episodic else 1
+    if ee < 1:
+        ee = 1
 
     for i, m in enumerate(methods):
         if hasattr(m, "hide") and m.hide:
             continue
-        plt.errorbar(range(0, l * n_eps, error_every), mean[i, :], yerr=std[i,
-                     :], errorevery=l * n_eps / error_every / 8, label=m.name)
+        plt.errorbar(x, mean[i, k, :], yerr=std[i, k, :],
+                     errorevery=ee, label=m.name)
     plt.legend()
     plt.show()

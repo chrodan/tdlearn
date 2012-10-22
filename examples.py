@@ -304,6 +304,38 @@ class PendulumSwingUpCartPole(mdp.ContinuousMDP):
         return ani
 
 
+class CorruptedChain(mdp.MDP):
+    """ Corrupted Chain example
+        from Kolter & Ng: Regularized Least Squares Temporal Difference Learning (2009)
+    """
+
+    def __init__(self, n_states):
+        n = n_states
+        states = range(n)
+        actions = ["l", "r"]
+        d0 = np.ones(n)
+        d0 /= d0.sum()
+        r = np.zeros((n, 2, n))
+        r[-1] = 1
+        r[0] = 1
+        P = np.zeros((n, 2, n))
+        P[0, 0, 0] = 0.9
+        P[0, 0, 1] = 0.1
+        P[0, 1, 0] = 0.1
+        P[0, 1, 1] = 0.9
+        P[-1, 0, -1] = 0.1
+        P[-1, 0, -2] = 0.9
+        P[-1, 1, -1] = 0.9
+        P[-1, 1, -2] = 0.1
+
+        for s in states[1:-1]:
+            P[s, 0, s - 1] = 0.9
+            P[s, 1, s + 1] = 0.9
+            P[s, 0, s + 1] = 0.1
+            P[s, 1, s - 1] = 0.1
+        mdp.MDP.__init__(self, states, actions, r, P, d0)
+
+
 class RandomWalkChain(mdp.MDP):
     """ Random Walk chain example MDP """
     # TODO: explain + reference
@@ -362,15 +394,14 @@ class BoyanChain(mdp.MDP):
     a reward of -3 except going from second to last to last state (-2)
     """
 
-    def __init__(self, n_states, n_feat, additional_terminal=False):
+    def __init__(self, n_states, n_feat):
         """
             n_states: number of states including terminal ones
             n_feat: number of features used to represent the states
                     n_feat <= n_states
         """
         assert n_states >= n_feat
-        #assert (n_states - 1) % (n_feat - 1) == 0
-        n_s = n_states if not additional_terminal else n_states + 1
+        n_s = n_states
         self.n_feat = n_feat
         states = range(n_s)
         actions = [0, ]
@@ -381,9 +412,6 @@ class BoyanChain(mdp.MDP):
         r[n_states - 1:, :, :] = 0
         P = np.zeros((n_s, 1, n_s))
         P[-1, :, -1] = 1
-        if additional_terminal:
-            P[-2, :, -2] = 4 / 5.
-            P[-2, :, -1] = 1 / 5.
         P[n_states - 2, :, n_states - 1] = 1
         for s in np.arange(n_states - 2):
             P[s, :, s + 1] = 0.5
@@ -391,21 +419,6 @@ class BoyanChain(mdp.MDP):
 
         mdp.MDP.__init__(self, states, actions, r, P, d0)
 
-    def phi(self, state):
-        n = len(self.states)
-        a = (n - 1.) / (self.n_feat - 1)
-        r = 1 - abs((state + 1 - np.linspace(1, n, self.n_feat)) / a)
-        r[r < 0] = 0
-        return r
-
-    def phi_sp(self, state):
-        if state == self.states[-1]:
-            state = state -1
-        n = len(self.states)-1
-        a = (n - 1.) / (self.n_feat - 1)
-        r = 1 - abs((state + 1 - np.linspace(1, n, self.n_feat)) / a)
-        r[r < 0] = 0
-        return r
 
 class BairdStarExample(mdp.MDP):
     """

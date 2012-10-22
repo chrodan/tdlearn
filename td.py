@@ -14,8 +14,6 @@ import copy
 import time
 import util
 
-#logging.basicConfig(level=logging.DEBUG)
-
 
 class ValueFunctionPredictor(object):
     """
@@ -658,7 +656,7 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
          An Analysis Under General Conditions. (8)+(9)+(10)
     """
 
-    def __init__(self, init_theta=0., **kwargs):
+    def __init__(self, tau=0., **kwargs):
         """
             lam: lambda in [0, 1] specifying the tradeoff between bootstrapping
                     and MC sampling
@@ -667,9 +665,7 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         LinearValueFunctionPredictor.__init__(self, **kwargs)
         OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
         LambdaValueFunctionPredictor.__init__(self, **kwargs)
-        self.init_theta = init_theta
-        #import ipdb; ipdb.set_trace()
-        #self.init_vals["C"] = np.zeros(len(self.init_vals["theta"]))
+        self.tau = tau
         self.reset()
 
     def clone(self):
@@ -678,12 +674,10 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
 
     def reset(self):
         self.reset_trace()
-
-        self.init_vals["C1"] = self.init_theta * np.eye(len(
-            self.init_vals["theta"]))
-        self.init_vals["C2"] = self.init_theta * np.eye(len(
-            self.init_vals["theta"]))
-        self.init_vals["b"] = -self.init_vals["theta"] * self.init_theta
+        n = len(self.init_vals["theta"])
+        self.init_vals["C1"] = np.zeros((n,n))
+        self.init_vals["C2"] = np.zeros((n,n))
+        self.init_vals["b"] = np.zeros(n)
         for k, v in self.init_vals.items():
             if k == "theta":
                 continue
@@ -692,7 +686,25 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
 
     @property
     def theta(self):
-        return -np.dot(np.linalg.pinv(self.C1 + self.C2), self.b)
+        try:
+            self._tic()
+            n = self.C1.shape[0]
+            return -np.dot(np.linalg.pinv(self.C1 + self.C2 + self.tau * np.eye(n)), self.b)
+        except np.linalg.LinAlgError, e:
+            print e
+            return np.zeros_like(self.b)
+        finally:
+            self._toc()
+
+    def regularization_path(self):
+        taus = np.linspace(0, 1.5, 10)
+        res = []
+        old_tau = self.tau
+        for tau in taus:
+            self.tau = tau
+            res.append((tau, self.theta))
+        self.tau = old_tau
+        return res
 
     @theta.setter
     def theta_set(self, val):
@@ -706,25 +718,18 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
             f0 = self.phi(s0)
             f1 = self.phi(s1)
         self._tic()
-        if theta is None:
-            theta = self.theta
         if not hasattr(self, "z"):
-            self.z = np.zeros_like(f0)
+            self.z = f0
         else:
             self.z = self.gamma * self.lam * self.oldrho * self.z + f0
         alpha = 1. / (self.t + 1)
         self.t += 1
         self.b = (1 - alpha) * self.b + alpha * self.z * rho * r
-        self.C1 = (1 - alpha) * self.C1 + alpha * np.outer(self.z,- f0)
+        self.C1 = (1 - alpha) * self.C1 + alpha * np.outer(self.z, - f0)
         self.C2 = (1 - alpha) * self.C2 + alpha * np.outer(self.z,
-                                                         self.gamma * rho * f1)
+                                                           self.gamma * rho * f1)
         self.oldrho = rho
- #       self.k1 = (1 - alpha) * self.k1 + alpha * np.outer(f0, rho * f0)
- #       self.k2 = (1 - alpha) * self.k2 + alpha * np.outer(f0, f0)
         self._toc()
-        #print self.C
-        #print self.b
-
 
 class LSTDLambdaJP(LSTDLambda):
     """
@@ -745,22 +750,18 @@ class LSTDLambdaJP(LSTDLambda):
             f0 = self.phi(s0)
             f1 = self.phi(s1)
         self._tic()
-        if theta is None:
-            theta = self.theta
         if not hasattr(self, "z"):
-            self.z = np.zeros_like(f0)
+            self.z = f0
         else:
             self.z = self.gamma * self.lam * self.oldrho * self.z + f0
         alpha = 1. / (self.t + 1)
         self.t += 1
         self.b = (1 - alpha) * self.b + alpha * self.z * rho * r
         self.C2 = (1 - alpha) * self.C2 + alpha * rho * np.outer(self.z,
-                                                         self.gamma * f1)
+                                                                 self.gamma * f1)
         self.C1 = (1 - alpha) * self.C1 + alpha * rho * np.outer(self.z, - f0)
         self.oldrho = rho
         self._toc()
-        #print self.C
-        #print self.b
 
 
 class RecursiveLSTDLambdaJP(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
@@ -1341,3 +1342,60 @@ class TabularTDLambda(ValueFunctionPredictor):
         self.z = z
         self._toc()
         return V
+
+
+class BRM(OffPolicyValueFunctionPredictor, LinearValueFunctionPredictor):
+
+    """
+        Bellman Residual Minimization
+    """
+
+    def __init__(self, init_theta=0., **kwargs):
+        """
+            gamma:  discount factor
+        """
+        LinearValueFunctionPredictor.__init__(self, **kwargs)
+        OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
+        self.init_theta = init_theta
+        self.reset()
+
+    def clone(self):
+        o = self.__class__(lam=self.lam, gamma=self.gamma, phi=self.phi)
+        return o
+
+    def reset(self):
+        self.reset_trace()
+
+        self.init_vals["C"] = self.init_theta * np.eye(len(
+            self.init_vals["theta"]))
+        self.init_vals["b"] = -self.init_vals["theta"] * self.init_theta
+        for k, v in self.init_vals.items():
+            if k == "theta":
+                continue
+            self.__setattr__(k, copy.copy(v))
+        self.t = 0
+
+    @property
+    def theta(self):
+        return -np.dot(np.linalg.pinv(self.C), self.b)
+
+    @theta.setter
+    def theta_set(self, val):
+        pass
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+        self._tic()
+        if theta is None:
+            theta = self.theta
+        alpha = 1. / (self.t + 1)
+        self.t += 1
+        df = self.gamma * f1 - f0
+        self.b = (1 - alpha) * self.b + alpha * df * rho * r
+        self.C = (1 - alpha) * self.C + alpha * np.outer(df, df)
+        self._toc()
