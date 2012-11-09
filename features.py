@@ -158,6 +158,9 @@ class corrupted_rbfs(object):
         self.dim = n_rbfs + 1 + n_random
         self.rbf_mean = np.linspace(0, n_S, n_rbfs)
         self.rbf_sigma = n_S / (n_rbfs - 1.)
+        self.intercept = 0
+        self.offset = np.zeros(self.dim)
+        self.scaling = np.ones(self.dim)
 
     def __call__(self, state):
         phi = np.empty(self.dim)
@@ -166,12 +169,23 @@ class corrupted_rbfs(object):
                      / (self.rbf_sigma ** 2) / 2.)
         phi[1:1 + self.n_rbfs] = rbf / np.sum(rbf)
         phi[1 + self.n_rbfs:] = np.random.normal(size=self.n_random)
-        return phi
+        return (phi-self.offset) / self.scaling
+
+    def normalization(self, samples):
+        rbfs = np.exp(-np.power(samples - self.rbf_mean[None,:], 2)
+                      / (self.rbf_sigma[None,:] ** 2) / 2.)
+        rbfs = rbfs / np.sum(rbfs, axis=1)[:,None]
+        #self.offset[0] = -1.
+        self.offset = np.zeros(self.dim)
+        self.scaling = np.ones(self.dim)
+        self.offset[1,1+self.n_rbfs] = np.mean(rbfs, axis=0)
+        rbfs -=  np.mean(rbfs, axis=0)
+        self.scaling[1, 1+self.n_rbfs] = np.std(rbfs, axis=0)
 
     def expectation(self, state):
         phi = self(state)
         phi[1 + self.n_rbfs:] = 0.
-        return phi
+        return (phi - self.offset) / self.scaling
 
 class spikes(object):
 
@@ -204,13 +218,17 @@ class lin_random(object):
     def __repr__(self):
         return "lin_random(" + repr(self.A) + ")"
 
-    def __init__(self, dim, dim_S, seed=1):
+    def __init__(self, dim, dim_S, seed=1, constant=False):
 
         self.dim = dim
         self.dim_S = dim_S
         self.seed = seed
         np.random.seed(seed)
-        self.A = np.random.rand(dim_S, dim)
+        if constant:
+            self.A = np.ones((dim_S, dim))
+            self.A[:,:-1] = np.random.rand(dim_S, dim-1)
+        else:
+            self.A = np.random.rand(dim_S, dim)
 
     def __call__(self, state):
         return self.A[int(state)]

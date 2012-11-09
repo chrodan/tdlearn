@@ -10,8 +10,91 @@ import mdp
 import numpy as np
 import scipy.integrate
 import matplotlib.animation as animation
-
+import re
 import matplotlib.pyplot as plt
+
+
+class GridWorld(mdp.MDP):
+    """
+    Gridworld for paper plot
+    """
+
+    def __init__(self):
+        world = """       W
+G
+
+       WW
+     WWWWWW
+
+
+ WWW
+WWWW
+WWWWWWWW
+            WW
+W            W
+             W
+           A
+
+"""
+        world = ["{:<15}".format(l) for l in world.splitlines()]
+        self.world = world
+        n = 15
+        actions = ["l", "u", "r", "d"]
+        states = range(n ** 2)
+        s = "".join(world)
+        assert(len(s) == n ** 2)
+
+        d0 = np.zeros(n ** 2)
+        d0[s.find("A")] = 1.
+
+        r = np.ones((n ** 2, 4, n ** 2)) * (-.0)
+        g = s.find("G")
+        r[:, :, g] = 10.
+        r[g, :, :] = 0.
+
+        gi = int(g / n)
+        gj = g % n
+
+        self.pol = np.zeros((n, n, 4))
+        for i in range(n):
+            for j in range(n):
+                if i == gi and j == gj:
+                    self.pol[i, j, :] = .25
+                    continue
+                if gi < i:
+                    self.pol[i, j, 1] = 1.
+                elif gi > i:
+                    self.pol[i, j, 3] = 1.
+                if gj < j:
+                    self.pol[i, j, 0] = 1.
+                elif gj > j:
+                    self.pol[i, j, 2] = 1.
+                self.pol[i, j, :] /= self.pol[i, j, :].sum()
+        self.pol = self.pol.reshape(n ** 2, 4)
+
+        for m in re.finditer('W',s):
+            r[:, :, m.start()] = -2.
+
+        P = np.zeros((n, n, 4, n, n))
+        for i in range(n):
+            for j in range(n):
+                k = -1
+                for d in [(0, -1, 0), (-1, 0, 1), (0, 1, 2), (1, 0, 3)]:
+                    ni = min(n - 1, max(i + d[0], 0))
+                    nj = min(n - 1, max(j + d[1], 0))
+                    #print i,j,ni,nj
+                    P[i, j, :, ni, nj] = 0.2 / 3
+                    P[i, j, d[2], ni, nj] = .8
+                    if ni == i and nj == j:
+                        if k > -1:
+                            P[i, j, k, ni, nj] = .8
+                            P[i, j, :, ni, nj] += 0.2 / 3
+                        else:
+                            k = d[2]
+        P = P.reshape(n ** 2, 4, n ** 2)
+        P[g, :, :] = 0
+        P[g, :, g] = 1.
+        mdp.MDP.__init__(self, states, actions, r, P, d0)
 
 
 class MiniLQMDP(mdp.LQRMDP):
@@ -174,8 +257,8 @@ class RandomMDP(mdp.MDP):
 
         d0 = np.random.rand(n_s) + 1e-5
         d0 = d0 / d0.sum()
-
-        r = np.random.rand(n_s, n_a, n_s)
+        r = np.ones((n_s, n_a, n_s))
+        r *= np.random.rand(n_a, n_s)[None, :, :]
         #r[:, :, n_s - 1] = 1
         P = np.random.rand(n_s, n_a, n_s) + 1e-5
         P /= P.sum(axis=2)[:, :, np.newaxis]
