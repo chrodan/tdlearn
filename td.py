@@ -668,9 +668,6 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         self.tau = tau
         self.reset()
 
-    def clone(self):
-        o = self.__class__(lam=self.lam, gamma=self.gamma, phi=self.phi)
-        return o
 
     def reset(self):
         self.reset_trace()
@@ -735,31 +732,6 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         self.oldrho = rho
         self._toc()
 
-class LSTDLambdaBiased(LSTDLambda):
-
-
-    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
-        """
-            rho: weight for this sample in case of off-policy learning
-        """
-        if f0 is None or f1 is None:
-            f0 = self.phi(s0)
-            f1 = self.phi(s1)
-        self._tic()
-        if not hasattr(self, "z"):
-            self.z = f0
-        else:
-            self.z = self.gamma * self.lam * self.oldrho * self.z + f0
-        alpha = 1. / (self.t + 1)
-        self.t += 1
-        self.b = (1 - alpha) * self.b + alpha * self.z * rho * r
-        a = f0.copy()
-        a[-1] = 0
-        self.C1 = (1 - alpha) * self.C1 + alpha * np.outer(self.z, - a)
-        self.C2 = (1 - alpha) * self.C2 + alpha * np.outer(self.z,
-                                                           self.gamma * rho * f1)
-        self.oldrho = rho
-        self._toc()
 
 class LSTDLambdaJP(LSTDLambda):
     """
