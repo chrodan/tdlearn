@@ -7,7 +7,7 @@ from joblib import Parallel, delayed
 from matplotlib.colors import LogNorm
 import pickle
 
-from experiments.cartpole_off import *
+from experiments.boyan import *
 
 error_every = int(l * n_eps / 20)
 n_indep = 3
@@ -88,8 +88,36 @@ def gridsearch(method, gs_name="", n_jobs=-1, **params):
                     param_names=param_names, **params), f)
     print "Finished {}{}".format(method.__name__, gs_name)
 
+
+def gridsearch_cluster(method, experiment, filename=None, gs_name="", batchsize=3, **params):
+    param_names = params.keys()
+    param_list = list(itertools.product(*[params[k] for k in param_names]))
+    param_lengths = [len(params[k]) for k in param_names]
+    #k = (delayed(run)(method, dict(zip(param_names, p))) for p in param_list)
+    if filename is None:
+        filename = experiment + "_" + method.__name__
+    if gs_name != "":
+        filename += "_" + gs_name
+    filename += "_joblist.sh"
+    i = 0
+    basestr = "python experiments/gs_cluster.py {method} -e {exp}".format(method=method.__name__,
+                                                                          exp=experiment)
+    param_l = zip(*param_list)
+    with open(filename, "w") as f:
+
+        while i < len(param_list):
+            curstr = basestr
+            curstr += " " + " ".join(["--id"] +
+                                     [str(c) for c in range(i, min(i + batchsize, len(param_list)))])
+            for j in range(len(param_names)):
+                curstr += " " + " ".join(["--" + param_names[j]] +
+                                         [repr(param_l[j][c]) for c in range(i, min(i + batchsize, len(param_list)))])
+            print curstr
+            f.write(curstr + "\n")
+            i += batchsize
+
+
 if __name__ == "__main__":
-    task.mu
     gridsearch(td.ResidualGradient, alpha=alphas)
     gridsearch(td.LinearTDLambda, alpha=alphas, lam=lambdas)
     gridsearch(td.LinearTD0, alpha=make_rmalpha(), gs_name="rm")
