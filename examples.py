@@ -129,6 +129,9 @@ class NLinkPendulumMDP(mdp.LQRMDP):
 
     """
 
+    def __repr__(self):
+        return "<NLinkPendulumMDP(" + repr([self.masses, self.lengths, self.dt,
+                                            self.n, self.Sigma, self.R, self.Q]) + ")>"
     def __init__(self, masses, lengths, dt=.01, sigma=0.01, penalty=0.01, action_penalty=0.):
         self.lengths = lengths
         self.dt = dt

@@ -5,6 +5,8 @@ import os.path
 sys.path[0] = os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir))
 import td
 import time
+import sqlite3
+
 
 basepath="/tmp/"
 
@@ -90,7 +92,7 @@ except Error:
 
 def run(cls, param):
     np.seterr(all="ignore")
-    m = cls(phi=task.phi, gamma=gamma, **param)
+    m = [cls(phi=task.phi, gamma=gamma, **p) for p in param]
     mean, std, raw = task.avg_error_traces(
         [m], n_indep=n_indep, n_samples=l, n_eps=n_eps,
         error_every=error_every, episodic=episodic, verbose=False)
@@ -104,17 +106,42 @@ def store_result(fn,d):
         f.write(repr(d)+"\n")
     print repr(d)
 
+param = []
+con = sqlite3.connect('test.db')
+with:
+    cur = con.cursor()
+    cur.execute("""create table if not exists {tabname}
+(method text, alpha real, mu real, lam real, val real, id integer)
+""".format(tabname=tabname)
+    con.commit()
 
-for i in range(len(args.id)):
-    d = {}
-    if args.alpha is not None:
-        d["alpha"] = args.alpha[i]
-    if args.mu is not None:
-        d["mu"] = args.mu[i]
-    if args.lam is not None:
-        d["lam"] = args.lam[i]
+    for i in range(len(args.id)):
+        d = {}
+        if args.alpha is not None:
+            d["alpha"] = args.alpha[i]
+        if args.mu is not None:
+            d["mu"] = args.mu[i]
+        if args.lam is not None:
+            d["lam"] = args.lam[i]
+        d["id"] = args.id[i]
+        d["method"] = args.method.__name__
+        c.execute("SELECT val FROM {tabname} WHERE method=? AND id=?".format(tabname=tabname),
+                  d["method"], d["id"])
+        a = c.fetchone()
+        if a == None:
+            param.append(d)
+        else:
+            print a
 
-    val = run(args.method, d)
-    d["id"] = args.id[i]
+np.seterr(all="ignore")
+m = args.method(phi=task.phi, gamma=gamma, **p) for p in param]
+mean, std, raw = task.avg_error_traces(
+    [m], n_indep=n_indep, n_samples=l, n_eps=n_eps,
+    error_every=error_every, episodic=episodic, verbose=False)
+weights = np.linspace(1., 2., mean.shape[2])
+val = (mean * weights).sum() / weights.sum()
+
+
+for i in range(len(param)):
     d["val"] = val
     store_result(os.path.join(basepath, gs_name + ".txt"), d)

@@ -242,12 +242,13 @@ class LinearValuePredictionTask(object):
                                                              seed=seed)
 
     def error_traces(self, methods, n_samples=1000, n_eps=1,
-                             seed=1, criteria=["RMSBE"], error_every=1, episodic=False):
+                     seed=1, criteria=["RMSBE"], error_every=1, episodic=False):
 
         # Intialization
         self._init_methods(methods)
         err_f = [self._init_error_fun(criterion) for criterion in criteria]
-        err_f_gen = [self._init_error_fun(criterion, general=True) for criterion in criteria]
+        err_f_gen = [self._init_error_fun(
+            criterion, general=True) for criterion in criteria]
 
         if episodic:
             n_e = n_eps
@@ -264,16 +265,22 @@ class LinearValuePredictionTask(object):
                                                          n_restarts=n_eps,
                                                          policy=self.behavior_policy,
                                                          seed=seed)
+        a2, r2, s_n2 = self.mdp.samples_cached_transitions(
+            policy=self.behavior_policy,
+            states=s, seed=seed)
+
         if self.off_policy:
             m_a_beh = policies.mean_action_trajectory(self.behavior_policy, s)
             m_a_tar = policies.mean_action_trajectory(self.target_policy, s)
             rhos = np.zeros_like(r)
+            rhos2 = np.zeros_like(r2)
             self.rhos = rhos
 
         # Method learning
         for i in xrange(n_samples * n_eps):
             f0 = self.phi(s[i])
             f1 = self.phi(s_n[i])
+            f1t = self.phi(s_n2[i])
             if restarts[i]:
                 for k, m in enumerate(methods):
                     m.reset_trace()
@@ -293,18 +300,22 @@ class LinearValuePredictionTask(object):
             for k, m in enumerate(methods):
                 if self.off_policy:
                     rhos[i] = self.target_policy.p(s[i], a[i], mean=m_a_tar[i]) / self.behavior_policy.p(s[i], a[i], mean=m_a_beh[i])
+                    rhos2[i] = self.target_policy.p(s[i], a2[i], mean=m_a_tar[i]) / self.behavior_policy.p(s[i], a2[i], mean=m_a_beh[i])
                     m.update_V(s[i], s_n[i], r[i],
-                               rho=rhos[i],
-                               f0=f0, f1=f1)
+                               rho=rhos[i], rhot=rhos2[i],
+                               f0=f0, f1=f1, f1t=f1t, s1t=s_n[i], rt=r2[i])
                 else:
-                    m.update_V(s[i], s_n[i], r[i], f0=f0, f1=f1)
+                    m.update_V(s[i], s_n[i], r[i],
+                               f0=f0, f1=f1, s1t=s_n2[i], f1t=f1t, rt=r2[i])
                 if i % error_every == 0 and not episodic:
                     cur_theta = m.theta
                     for i_e in range(len(criteria)):
                         if isinstance(m, td.LinearValueFunctionPredictor):
-                            errors[k, i_e, int(i / error_every)] = err_f[i_e](cur_theta)
+                            errors[k, i_e, int(
+                                i / error_every)] = err_f[i_e](cur_theta)
                         else:
-                            errors[k, i_e, int(i / error_every)] = err_f_gen[i_e](m.V)
+                            errors[k, i_e, int(
+                                i / error_every)] = err_f_gen[i_e](m.V)
 
         return errors
 
@@ -346,7 +357,7 @@ class LinearValuePredictionTask(object):
                                f0=f0, f1=f1)
                 else:
                     m.update_V(s[i], s_n[i], r[i], f0=f0, f1=f1)
-        for i,m in enumerate(methods):
+        for i, m in enumerate(methods):
             v = m.regularization_path()
             for tau, theta in v:
                 for i_e, crit in enumerate(criteria):
@@ -513,7 +524,7 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
 
     def __init__(
         self, mdp, gamma, phi, theta0, policy, target_policy=None, normalize_phi=False, mu_iter=1000,
-            mu_restarts=5, mu_seed=1000, mu_subsample=1, mu_next=20):
+            mu_restarts=5, mu_seed=1000, mu_subsample=1, mu_next=50):
         self.mdp = mdp
         self.mu_n_next = mu_next
         self.mu_iter = mu_iter

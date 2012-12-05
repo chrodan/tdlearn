@@ -97,6 +97,7 @@ class GrowingMat(object):
                 newdata = np.zeros(new_capacity)
                 newdata[:self.shape[0], :self.shape[1]] = self.data
                 self.capacity = new_capacity
+                self.data = newdata
 
             self.data[self.shape[0]:new_shape[0], :self.shape[1]] = rows
             self.data[:self.shape[0], self.shape[1]:new_shape[1]] = cols
@@ -116,6 +117,7 @@ class GrowingMat(object):
                 newdata = np.zeros(new_capacity)
                 newdata[:self.shape[0], :self.shape[1]] = self.data
                 self.capacity = new_capacity
+                self.data = newdata
 
             self.data[:self.shape[0], self.shape[1]:new_shape[1]] = cols
             self.shape = new_shape
@@ -132,6 +134,7 @@ class GrowingMat(object):
                 # grow array
                 newdata = np.zeros(new_capacity)
                 newdata[:self.shape[0], :self.shape[1]] = self.data
+                self.data = newdata
                 self.capacity = new_capacity
 
             self.data[self.shape[0]:new_shape[0], :self.shape[1]] = rows
@@ -170,6 +173,7 @@ class GrowingVector(object):
             newdata = np.zeros(new_capacity)
             newdata[:self.size] = self.data
             self.capacity = new_capacity
+            self.data = newdata
 
         self.data[self.size:new_size] = rows
         self.size = new_size

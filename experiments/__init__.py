@@ -51,7 +51,8 @@ def load_results(name):
     return d
 
 
-def plot_errorbar(title, methods, mean, std, l, error_every, criterion, criteria, n_eps, episodic=False, **kwargs):
+def plot_errorbar(title, methods, mean, std, l, error_every, criterion,
+                  criteria, n_eps, episodic=False, ncol=1, **kwargs):
     plt.figure(figsize=(15, 10))
     plt.ylabel(criterion)
     plt.xlabel("Timesteps")
@@ -59,14 +60,20 @@ def plot_errorbar(title, methods, mean, std, l, error_every, criterion, criteria
 
     k = criteria.index(criterion)
     x = range(0, l * n_eps, error_every) if not episodic else range(n_eps)
-    ee = int(l * n_eps / error_every / 8) if not episodic else 1
+    if episodic:
+        ee = int(n_eps / 8.)
+    else:
+        ee = int(l * n_eps / error_every / 8.)
     if ee < 1:
         ee = 1
 
     for i, m in enumerate(methods):
         if hasattr(m, "hide") and m.hide:
             continue
+        ls = "-"
+        if hasattr(m, "ls"):
+            ls = m.ls
         plt.errorbar(x, mean[i, k, :], yerr=std[i, k, :],
-                     errorevery=ee, label=m.name)
-    plt.legend()
+                     errorevery=ee, label=m.name, ls=ls)
+    plt.legend(ncol=ncol)
     plt.show()

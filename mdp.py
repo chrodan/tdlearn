@@ -8,7 +8,7 @@ Created on Fri Dec  9 19:01:41 2011
 """
 import numpy as np
 from util import multinomial_sample, memory, apply_rowise
-
+from util.progressbar import ProgressBar
 
 def _false(x):
     return False
@@ -41,8 +41,28 @@ def samples_cached(mymdp, policy, n_iter=1000, n_restarts=100,
     return states, actions, rewards, states_next, restarts
 
 
-@memory.cache(hashfun={"mymdp": repr, "policy": repr, "policy_traj": repr})
-def samples_distribution(mymdp, policy, phi, policy_traj=None, n_subsample=1, n_iter=1000, n_restarts=100, n_next=20, seed=1):
+@memory.cache(hashfun={"mymdp": repr, "policy": repr})
+def samples_cached_transitions(mymdp, policy, states, seed=1):
+    assert(seed is not None)
+    n = states.shape[0]
+    states_next = np.ones([n, mymdp.dim_S])
+    actions = np.ones([n, mymdp.dim_A])
+    rewards = np.ones(n)
+    np.random.seed(seed)
+
+    for k in xrange(n):
+        _, a, s_n, r = mymdp.sample_step(states[k], policy=policy)
+        states_next[k, :] = s_n
+        rewards[k] = r
+        actions[k, :] = a
+
+    return actions, rewards, states_next
+
+
+
+@memory.cache(hashfun={"mymdp": repr, "policy": repr, "policy_traj": repr}, ignore=["verbose"])
+def samples_distribution(mymdp, policy, phi, policy_traj=None, n_subsample=1,
+        n_iter=1000, n_restarts=100, n_next=20, seed=1, verbose=True):
     assert(n_subsample == 1)  # not implemented, do that if you need it
     states = np.ones([n_restarts * n_iter, mymdp.dim_S])
     if policy_traj is None:
@@ -56,19 +76,21 @@ def samples_distribution(mymdp, policy, phi, policy_traj=None, n_subsample=1, n_
     k = 0
     s = mymdp.start()
     c = 0
-    for k in xrange(n_restarts * n_iter):
-        if mymdp.terminal_f(s) or c >= n_iter:
-            s = mymdp.start()
-            c = 0
-        s0, a, s1, r = mymdp.sample_step(s, policy=policy, n_samples=n_next)
-        states[k, :] = s0
-        feat[k, :] = phi(s0)
-        fn = apply_rowise(phi, s1)
-        feat_next[k, :] = np.mean(fn, axis=0)
-        states_next[k, :] = np.mean(s1, axis=0)
-        rewards[k] = np.mean(r)
-        _, _, s, _ = mymdp.sample_step(s, policy=policy_traj, n_samples=1)
-        c += 1
+    with ProgressBar(enabled=verbose) as p:
+        for k in xrange(n_restarts * n_iter):
+            if mymdp.terminal_f(s) or c >= n_iter:
+                s = mymdp.start()
+                c = 0
+            p.update(k, n_restarts * n_iter, "Sampling MDP Distribution")
+            s0, a, s1, r = mymdp.sample_step(s, policy=policy, n_samples=n_next)
+            states[k, :] = s0
+            feat[k, :] = phi(s0)
+            fn = apply_rowise(phi, s1)
+            feat_next[k, :] = np.mean(fn, axis=0)
+            states_next[k, :] = np.mean(s1, axis=0)
+            rewards[k] = np.mean(r)
+            _, _, s, _ = mymdp.sample_step(s, policy=policy_traj, n_samples=1)
+            c += 1
 
     return states, rewards, states_next, feat, feat_next
 
@@ -131,6 +153,9 @@ class ContinuousMDP(object):
 
     def samples_cached(self, *args, **kwargs):
         return samples_cached(self, *args, **kwargs)
+
+    def samples_cached_transitions(self, *args, **kwargs):
+        return samples_cached_transitions(self, *args, **kwargs)
 
     def samples_featured(self, phi, policy, n_iter=1000, n_restarts=100,
                          n_next=1, seed=None, n_subsample=1):
@@ -405,6 +430,7 @@ class MDP(object):
         assert (not no_next_noise)
         assert(seed is not None)
         states = np.ones([n_restarts * n_iter, self.dim_S])
+
         states_next = np.ones([n_restarts * n_iter, self.dim_S])
         actions = np.ones([n_restarts * n_iter, self.dim_A])
         rewards = np.ones(n_restarts * n_iter)
@@ -424,6 +450,17 @@ class MDP(object):
                 if k >= n_restarts * n_iter:
                     break
         return states, actions, rewards, states_next, restarts
+
+    def samples_cached_transitions(self, policy, states, seed=None):
+        n = states.shape[0]
+        sn = np.zeros_like(states)
+        a = np.ones([n, self.dim_A])
+        r = np.ones(n)
+        for i in xrange(n):
+            a[i] = policy(states[i])
+            sn[i] = multinomial_sample(1, self.P[int(states[i]), int(a[i])])
+            r[i] = self.r[int(states[i]), int(a[i]), int(sn[i])]
+        return a,r,sn
 
     def samples_featured(self, phi, policy, n_iter=1000, n_restarts=100,
                          no_next_noise=False, seed=1, n_subsample=1):

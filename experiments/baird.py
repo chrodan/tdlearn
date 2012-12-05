@@ -34,33 +34,32 @@ task = LinearDiscreteValuePredictionTask(mdp, gamma, phi,
                                          policy=beh_pol,
                                          target_policy=target_pol)
 
-alpha = 0.003
-mu = 8  # optimal
+alpha = 0.004
+mu = 4
 gtd = td.GTD(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
 methods.append(gtd)
 
-#for alpha in [.005,0.01,0.02]:
-#    for mu in [0.01, 0.1]:
-alpha, mu = 0.005, 8.  # optimal
+alpha = 0.005
+mu = 4.
 gtd = td.GTD2(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
 
-alpha = .005
-td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
-td0.name = r"TD(0) $\alpha$={}".format(alpha)
-td0.color = "m"
+alpha = .00002
+lam = 1.
+td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
+td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 methods.append(td0)
 
 
-alpha = 0.005
-mu = 8
+alpha = 0.006
+mu = 16
 tdc = td.TDC(alpha=alpha, beta=alpha * mu, phi=phi, gamma=gamma)
-tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
+tdc.name = r"TDC(0) $\alpha$={} $\mu$={}".format(alpha, mu)
 tdc.color = "b"
 methods.append(tdc)
 
@@ -72,36 +71,52 @@ tdc.name = r"GeriTDC $\alpha$={} $\mu$={}".format(alpha, mu)
 tdc.color = "c"
 methods.append(tdc)
 
-
-#
-#methods = []
-#for alpha in [0.01, 0.02, 0.03]:
-#alpha = .2
 alpha = .02
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
-lstd = td.RecursiveLSTDLambda(lam=0, phi=phi, gamma=gamma)
-lstd.name = r"LSTD({})".format(0)
+lam = 1.
+lstd = td.RecursiveLSTDLambda(lam=lam, phi=phi, gamma=gamma)
+lstd.name = r"LSTD({})".format(lam)
 lstd.color = "k"
-#methods.append(lstd)
+methods.append(lstd)
 
+lam = 1.
+alpha = 1.
+lspe = td.RecursiveLSPELambda(lam=lam, alpha=alpha, phi=phi)
+lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
+methods.append(lstd)
 
-lstd = td.RecursiveLSTDLambdaJP(lam=0, phi=phi, gamma=gamma)
+lam = 1.
+alpha = 1.
+lstd = td.FPKF(lam=lam, alpha=alpha, phi=phi)
+lstd.name = r"FPKF({}) $\alpha={}$".format(lam, alpha)
+methods.append(lstd)
+
+brm = td.BRM(phi=phi)
+brm.name = "BRM"
+brm.color = "b"
+methods.append(brm)
+
+lam = 1.
+lstd = td.RecursiveLSTDLambdaJP(lam=lam, phi=phi, gamma=gamma)
 lstd.name = r"LSTD-JP({})".format(0)
 lstd.color = "k"
-#methods.append(lstd)
+methods.append(lstd)
 
 
 l = 1000
 error_every = 1
-n_indep = 50
+n_indep = 200
 n_eps = 1
+episodic=False
 name = "baird"
 title = "Baird Star"
 criterion = "RMSPBE"
+criteria = ["RMSPBE", "RMSBE", "RMSE"]
+gs_errorevery=20
 
 if __name__ == "__main__":
     from experiments import *

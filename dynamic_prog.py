@@ -69,7 +69,7 @@ def bellman_operator(mdp, P, b, theta, noise=0., gamma=1.):
     Sigma = np.matrix(np.diag(mdp.Sigma))
     theta = np.matrix(theta)
     if noise == 0.:
-        noise = np.zeros((theta.shape[0], theta.shape[0]))
+        noise = np.zeros((theta.shape[0]))
     S = A + B * theta
     C = Q + theta.T * R * theta
 
@@ -87,6 +87,7 @@ def solve_LQR(lqmdp, n_iter=100000, gamma=1., eps=1e-14):
         V* = s^T P* s and policy a = theta* s
 
         returns (theta*, P*)"""
+
 
     P = np.matrix(np.zeros((lqmdp.dim_S, lqmdp.dim_S)))
     R = np.matrix(lqmdp.R)

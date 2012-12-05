@@ -32,42 +32,37 @@ target_policy = policies.LinearContinuous(theta=theta_p, noise=np.eye(dim)*0.05)
 #theta0 =  10*np.ones(n_feat)
 theta0 =  0.*np.ones(n_feat)
 
-task = LinearLQRValuePredictionTask(mdp, gamma, phi, theta0, policy=policy, target_policy=target_policy, mu_iter=10000, normalize_phi=True)
+task = LinearLQRValuePredictionTask(mdp, gamma, phi, theta0, policy=policy,
+                                    target_policy=target_policy, normalize_phi=True)
 
 
 methods = []
 
-alpha = 0.004
-mu = 16 #optimal
+alpha = 0.0005
+mu = 2 #optimal
 gtd = td.GTD(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
-methods.append(gtd)
+#methods.append(gtd)
 
 
-alpha, mu = 0.5, 0.001 #optimal
+alpha, mu = 0.0005, 2 #optimal
 gtd = td.GTD2(alpha=alpha, beta=mu*alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
-methods.append(gtd)
+#methods.append(gtd)
 
-alpha = .07
+alpha = .005
 td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
 td0.name = r"TD(0) $\alpha$={}".format(alpha)
 td0.color = "k"
 methods.append(td0)
 
-alpha, mu = (.1,0.1)
-tdc = td.GeriTDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
-tdc.name = r"GeriTDC $\alpha$={} $\mu$={}".format(alpha, mu)
-tdc.color = "b"
-methods.append(tdc)
-
-alpha, mu = (.07,0.01)
+alpha, mu = (.001,0.5)
 tdc = td.TDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
 tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
 tdc.color = "b"
-methods.append(tdc)
+#methods.append(tdc)
 
 lstd = td.LSTDLambda(lam=0, phi=phi, gamma=gamma, eps=1000)
 lstd.name = r"LSTD({})".format(0)
@@ -79,7 +74,7 @@ lstd.name = r"LSTD-JP({})".format(0)
 lstd.color = "g"
 methods.append(lstd)
 
-alpha=.1
+alpha=.008
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
@@ -93,6 +88,6 @@ title="Impoverished 20-Link Pole Balancing Off-policy"
 name="20link_imp_offpolicy"
 if __name__ =="__main__":
     from experiments import *
-    mean, std, raw = run_experiment(n_jobs=-1, **globals())
+    mean, std, raw = run_experiment(n_jobs=1, **globals())
     save_results(**globals())
     #plot_errorbar(**globals())

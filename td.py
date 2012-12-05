@@ -379,6 +379,35 @@ class TDCLambda(GTDBase, LambdaValueFunctionPredictor):
         self._toc()
         return theta
 
+class GeriTDCLambda(TDCLambda):
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        w = self.w
+        if theta is None:
+            theta = self.theta
+
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+
+        if not hasattr(self, "z"):
+            self.z = np.zeros_like(f0)
+        self._tic()
+        self.z = rho * (f0 + self.gamma * self.lam * self.z)
+
+        delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
+        a = np.dot(f0, w)
+
+        theta += self.alpha.next() * (delta * self.z - self.gamma *
+                                      (1 - self.lam) * np.dot(self.z, w) * f1)
+        w += self.beta.next() * (delta * self.z - rho * a * f0)
+        self.w = w
+        self.theta = theta
+        self._toc()
+        return theta
 
 class GeriTDC(TDC):
     """
@@ -534,6 +563,66 @@ class GPTDP(LinearValueFunctionPredictor):
         self.P -= self.sinv * np.outer(self.p, self.p)
         self._toc()
 
+class GPTDPLambda(LinearValueFunctionPredictor, LambdaValueFunctionPredictor):
+    def __init__(self, tau=0., **kwargs):
+        """
+            lam: lambda in [0, 1] specifying the tradeoff between bootstrapping
+                    and MC sampling
+            gamma:  discount factor
+        """
+        LinearValueFunctionPredictor.__init__(self, **kwargs)
+        LambdaValueFunctionPredictor.__init__(self, **kwargs)
+        self.tau = tau
+        self.reset()
+
+    def reset(self):
+        self.reset_trace()
+        n = len(self.init_vals["theta"])
+        self.init_vals["C1"] = np.zeros((n, n))
+        self.init_vals["C2"] = np.zeros((n, n))
+        self.init_vals["b"] = np.zeros(n)
+        self.init_vals["phi_m"] = np.zeros(n)
+        self.init_vals["phi_v"] = np.zeros(n)
+        for k, v in self.init_vals.items():
+            if k == "theta":
+                continue
+            self.__setattr__(k, copy.copy(v))
+        self.t = 0
+
+    @property
+    def theta(self):
+        try:
+            self._tic()
+            n = self.C1.shape[0]
+            r =  np.dot(np.linalg.pinv(np.dot(self.C1, np.dot(self.C2, self.C1.T)) + self.tau * np.eye(n)), self.C1)
+            r = np.dot(r, np.dot(self.C2, self.b))
+            return r
+        except np.linalg.LinAlgError, e:
+            print e
+            return np.zeros_like(self.b)
+        finally:
+            self._toc()
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+        self._tic()
+        if not hasattr(self, "z"):
+            self.z = f0
+        else:
+            self.z = self.gamma * self.lam * self.z + f0
+        alpha = 1. / (self.t + 1)
+        df = f0 - self.gamma * f1
+        self.t += 1
+        self.b += self.z * rho * r
+        self.C1 += np.outer(df, self.z)
+        self.C2 += np.outer(f0, f0)
+        self._toc()
+
 
 class GPTD(ValueFunctionPredictor):
     """
@@ -668,12 +757,11 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         self.tau = tau
         self.reset()
 
-
     def reset(self):
         self.reset_trace()
         n = len(self.init_vals["theta"])
-        self.init_vals["C1"] = np.zeros((n,n))
-        self.init_vals["C2"] = np.zeros((n,n))
+        self.init_vals["C1"] = np.zeros((n, n))
+        self.init_vals["C2"] = np.zeros((n, n))
         self.init_vals["b"] = np.zeros(n)
         self.init_vals["phi_m"] = np.zeros(n)
         self.init_vals["phi_v"] = np.zeros(n)
@@ -724,7 +812,7 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
         alpha = 1. / (self.t + 1)
         self.t += 1
         self.phi_m += f0
-        self.phi_v += np.power(f0,2)
+        self.phi_v += np.power(f0, 2)
         self.b = (1 - alpha) * self.b + alpha * self.z * rho * r
         self.C1 = (1 - alpha) * self.C1 + alpha * np.outer(self.z, - f0)
         self.C2 = (1 - alpha) * self.C2 + alpha * np.outer(self.z,
@@ -759,7 +847,7 @@ class LSTDLambdaJP(LSTDLambda):
         alpha = 1. / (self.t + 1)
         self.t += 1
         self.phi_m += f0
-        self.phi_v += np.power(f0,2)
+        self.phi_v += np.power(f0, 2)
         self.b = (1 - alpha) * self.b + alpha * self.z * rho * r
         self.C2 = (1 - alpha) * self.C2 + alpha * rho * np.outer(self.z,
                                                                  self.gamma * f1)
@@ -959,6 +1047,7 @@ class FPKF(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, Linear
         self.reset_trace()
         n = len(self.init_vals["theta"])
         self.init_vals["N"] = np.eye(n) * self.eps
+        self.i = 0
         for k, v in self.init_vals.items():
             self.__setattr__(k, copy.copy(v))
         self.alpha = self._assert_iterator(self.init_vals['alpha'])
@@ -983,7 +1072,7 @@ class FPKF(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, Linear
         deltaf = f0 - self.gamma * rho * f1
         self.i += 1
         theta += self.alpha.next(
-        ) * np.dot(self.N, (self.z * rho * r - np.dot(self.Z, deltaf)))
+        ) * self.i * np.dot(self.N, (self.z * rho * r - np.dot(self.Z, deltaf)))
         self.theta = theta
         self.z = self.gamma * self.lam * rho * self.z + f1
         self.Z = self.gamma * self.lam * rho * self.Z + np.outer(
@@ -1016,10 +1105,6 @@ class RecursiveLSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
         self.init_vals["C"] = np.eye(len(self.init_vals["theta"])) * eps
         self.reset()
 
-    def clone(self):
-        o = self.__class__(
-            eps=self.eps, lam=self.lam, gamma=self.gamma, phi=self.phi)
-        return o
 
     def reset(self):
         self.reset_trace()
@@ -1134,6 +1219,12 @@ class RMalpha(object):
     step size generator of the form
         alpha = c*t^{-mu}
     """
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        return "RMAlpha({}, {})".format(self.c, self.mu)
+
     def __init__(self, c, mu):
         self.mu = mu
         self.c = c
@@ -1202,6 +1293,28 @@ class ResidualGradient(OffPolicyValueFunctionPredictor, LinearValueFunctionPredi
         self.__dict__ = state
         self.alpha = self._assert_iterator(self.init_vals['alpha'])
 
+class ResidualGradientDS(ResidualGradient):
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, f1t=None, s1t=None, rho2=None, theta=None, rho=1, **kwargs):
+
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+        if s1t is None:
+            s1t = s1
+            f1t = f1
+        if f1t is None:
+            f1t = self.phi(s1t)
+        if theta is None:
+            theta = self.theta
+
+        self._tic()
+        delta = r + self.gamma * np.dot(theta, f1) \
+            - np.dot(theta, f0)
+        theta += self.alpha.next() * delta * rho * (f0 - self.gamma * f1t)
+        self.theta = theta
+        self._toc()
+        return theta
 
 class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
     """
@@ -1381,8 +1494,10 @@ class BRM(OffPolicyValueFunctionPredictor, LinearValueFunctionPredictor):
 
     @property
     def theta(self):
-        return -np.dot(np.linalg.pinv(self.C), self.b)
-
+        self._tic()
+        r =  -np.dot(np.linalg.pinv(self.C), self.b)
+        self._toc()
+        return r
     @theta.setter
     def theta_set(self, val):
         pass
@@ -1401,5 +1516,70 @@ class BRM(OffPolicyValueFunctionPredictor, LinearValueFunctionPredictor):
         self.t += 1
         df = self.gamma * f1 - f0
         self.b = (1 - alpha) * self.b + alpha * df * rho * r
-        self.C = (1 - alpha) * self.C + alpha * np.outer(df, df)
+        self.C = (1 - alpha) * self.C + alpha * rho * np.outer(df, df)
         self._toc()
+
+class BRMDS(BRM):
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, f1t=None, s1t=None, rt=None, theta=None, rho=1., rhot=1., **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        if f0 is None or f1 is None or f1t is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+            f1t = self.phi(s1t)
+
+        self._tic()
+        if theta is None:
+            theta = self.theta
+        alpha = 1. / (self.t + 1)
+        self.t += 1
+        df = self.gamma * f1 - f0
+        dft = self.gamma * f1t - f0
+        self.b = (1 - alpha) * self.b + alpha * (df * rho * rhot * rt + dft * rho * rhot * r) / 2.
+        self.C = (1 - alpha) * self.C + alpha * rho * rhot *  np.outer(df, dft)
+        self._toc()
+
+class RecursiveBRMDS(OffPolicyValueFunctionPredictor,LinearValueFunctionPredictor):
+    """
+    recursive implementation of Bellman Residual Minimization with double sampling
+    """
+
+    def __init__(self, eps=100, **kwargs):
+        """
+            gamma:  discount factor
+        """
+        LinearValueFunctionPredictor.__init__(self, **kwargs)
+        OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
+        self.eps = eps
+        self.reset()
+
+    def reset(self):
+        self.reset_trace()
+        self.init_vals["C"] = np.eye(len(self.init_vals["theta"])) * self.eps
+        self.init_vals["b"] = np.zeros(len(self.init_vals["theta"]))
+        for k, v in self.init_vals.items():
+            self.__setattr__(k, copy.copy(v))
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, f1t=None, s1t=None, rt=None, theta=None, rho=1., rhot=1., **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        if f0 is None or f1 is None or f1t is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+            f1t = self.phi(s1t)
+
+        self._tic()
+        if theta is None:
+            theta = self.theta
+        df = - self.gamma * f1 + f0
+        dft = - self.gamma * f1t + f0
+        A = np.dot(self.C, df)
+        B = np.dot(dft, self.C)
+        self.b += (df * rho * rhot * rt + dft * rho * rhot * r) / 2.
+        self.C -=  np.outer(A, B) / (1. / rho / rhot + np.dot(B, df))
+        self.theta = np.dot(self.C, self.b)
+        self._toc()
+

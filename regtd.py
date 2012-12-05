@@ -2,6 +2,7 @@ import td
 import util
 import cvxopt as co
 import cvxopt.solvers as solv
+import gurobipy as grb
 import numpy as np
 import copy
 import sklearn.linear_model as lm
@@ -17,9 +18,10 @@ class DLSTD(td.LSTDLambdaJP):
         Geist M., Scherrer B., ... (ICML 2012)
     """
 
-    def __init__(self, tau, **kwargs):
+    def __init__(self, tau, nonreg_ids, **kwargs):
         td.LSTDLambdaJP.__init__(self, **kwargs)
         self.tau = tau
+        self.nonreg_ids = nonreg_ids
         #solv.options['featol'] = 1e-4
 
     def reset(self):
@@ -40,22 +42,46 @@ class DLSTD(td.LSTDLambdaJP):
     @property
     def theta(self):
         self._tic()
-        A = self.C1 + self.C2
+        A = -(self.C1 + self.C2)
         n = A.shape[0]
-        self.G[2 * n:3 * n, n:] = +A
-        self.G[3 * n:, n:] = -A
-        self.h[2 * n:3 * n] = -self.b + self.tau
-        self.h[3 * n:] = self.b + self.tau
+        m = grb.Model("DLSTD")
+        u = []
+        thetas = []
+        for i in range(n):
+            u.append(m.addVar(obj=1., name="u_{}".format(i), lb=0.))
+            thetas.append(m.addVar(obj=0., name="theta_{}".format(i), lb=-grb.GRB.INFINITY))
+        m.update()
+        for i in range(n):
+            if i not in self.nonreg_ids:
+                m.addConstr(thetas[i]  <= u[i], "c_pos_{}".format(i))
+                m.addConstr(thetas[i]  >= -u[i], "c_neg_{}".format(i))
+            e = grb.quicksum([thetas[j]*A[i,j] for j in range(n)])
+            m.addConstr(e - self.b[i] <= self.tau, "tau_pos{}".format(i))
+            m.addConstr(e - self.b[i] >= -self.tau, "tau_neg{}".format(i))
+        m.update()
+        m.setParam( 'OutputFlag', False )
+        m.optimize()
+        #print m.status
+        res = np.array([v.x for v in thetas])
+
+
+
+        #self.G[2 * n:3 * n, n:] = +A
+        #self.G[3 * n:, n:] = -A
+        #self.h[2 * n:3 * n] = -self.b + self.tau
+        #self.h[3 * n:] = self.b + self.tau
+
         #import ipdb
         #ipdb.set_trace()
-        #print "G Rank", np.array(self.G).shape, np.linalg.matrix_rank(np.array(self.G))
-        res = solv.lp(self.c, self.G, self.h)  # , solver="glpk")
+        ##print "G Rank", np.array(self.G).shape, np.linalg.matrix_rank(np.array(self.G))
+        #res = solv.lp(self.c, self.G, self.h)  # , solver="glpk")
         self._toc()
-        if res['status'] != "optimal":
+        #if res['status'] != "optimal":
             #import ipdb
             #ipdb.set_trace()
-            pass
-        return np.array(res["x"][n:]).flatten()
+        #    pass
+        #return np.array(res["x"][n:]).flatten()
+        return res
 
     def regularization_path(self):
         taus = np.logspace(-10, 0, num=20)
@@ -199,12 +225,13 @@ class LSTDl1(td.LSTDLambdaJP):
     def reset(self):
 
         td.LSTDLambdaJP.reset(self)
+        interc = hasattr(self.phi, "intercept")
         if not self.lars:
             self.lasso = lm.Lasso(
-                alpha=self.tau, warm_start=True, fit_intercept=False,
-                normalize=False, max_iter=3000)
+                alpha=self.tau, warm_start=True, fit_intercept=interc,
+                normalize=False, max_iter=50000)
         else:
-            self.lasso = lm.LassoLars(alpha=self.tau, fit_intercept=False,
+            self.lasso = lm.LassoLars(alpha=self.tau, fit_intercept=interc,
                                       normalize=False)
 
     def regularization_path(self):
@@ -220,10 +247,21 @@ class LSTDl1(td.LSTDLambdaJP):
     @property
     def theta(self):
         self._tic()
+
+        interc = hasattr(self.phi, "intercept")
         A = -(self.C1 + self.C2)
         b = self.b
-        self.lasso.fit(A, b)
-        theta = self.lasso.coef_.flatten()
+        if interc:
+            A = A[1:,1:]
+            b = b[1:]
+            s = 1
+        else:
+            s = 0
+        self.lasso.fit(A,b)
+        theta = np.zeros_like(self.b)
+        if interc:
+            theta[0] = self.lasso.intercept_
+        theta[s:] = self.lasso.coef_.flatten()
         self._toc()
         return theta
 
