@@ -44,6 +44,7 @@ def load_result_file(fn, maxerr=5):
     with open(fn) as f:
         d = pickle.load(f)
     for i in range(d["res"].shape[-1]):
+        print d["criteria"][i], np.nanmin(d["res"][...,i])
         best = d["params"][np.nanargmin(d["res"][...,i])]
         for n, v in zip(d["param_names"], best):
             print n, v
@@ -163,8 +164,8 @@ if __name__ == "__main__":
     gridsearch(td.LinearTDLambda, alpha=alphas, lam=lambdas, batchsize=batchsize, njobs=njobs)
     gridsearch(td.LinearTD0, alpha=make_rmalpha(), gs_name="rm", batchsize=batchsize, njobs=njobs)
 
-    gridsearch(td.TDCLambda, alpha=alphas, mu=mus, lam=lambdas, batchsize=batchsize, njobs=njobs)
-    #gridsearch(td.TDC, alpha=alphas, mu=mus)
+    #gridsearch(td.TDCLambda, alpha=alphas, mu=mus, lam=lambdas, batchsize=batchsize, njobs=njobs)
+    gridsearch(td.TDC, alpha=alphas, mu=mus)
     gridsearch(td.GTD, alpha=alphas, mu=mus, batchsize=batchsize, njobs=njobs)
     gridsearch(td.GTD2, alpha=alphas, mu=mus, batchsize=batchsize, njobs=njobs)
 
@@ -181,5 +182,5 @@ if __name__ == "__main__":
         gridsearch(td.RecursiveLSTDLambdaJP, lam=lambdas, batchsize=batchsize, njobs=njobs)
     else:
         gridsearch(td.GPTDPLambda, tau=sigmas, lam=lambdas, batchsize=batchsize, njobs=njobs)
-        gridsearch(td.GPTDP, sigma=sigmas, batchsize=batchsize, njobs=njobs)
+        #gridsearch(td.GPTDP, sigma=sigmas, batchsize=batchsize, njobs=njobs)
         #gridsearch(td.KTD, reward_noise=reward_noises, eta=etas, P_init=P_inits)

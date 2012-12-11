@@ -21,53 +21,51 @@ theta_p, _, _ = dp.solve_LQR(mdp, gamma=gamma)
 theta_p = np.array(theta_p)
 theta_o = theta_p.copy()
 beh_policy = policies.LinearContinuous(theta=theta_p, noise=np.ones(dim)*0.4)
-target_policy = policies.LinearContinuous(theta=theta_p, noise=np.ones(dim)*0.1)
-target_policy=beh_policy
 theta0 = 0. * np.ones(n_feat)
 
 task = LinearLQRValuePredictionTask(mdp, gamma, phi, theta0,
-                                    policy=beh_policy, target_policy=target_policy,
+                                    policy=beh_policy,
                                     normalize_phi=True, mu_next=1000)
 
 
 
 methods = []
-alpha = 0.006
-mu = .1
+alpha = 0.0005
+mu = 2.
 gtd = td.GTD(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
 methods.append(gtd)
 
-alpha, mu = 0.01, 0.1
+alpha, mu = 0.0005, 1.
 gtd = td.GTD2(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
-alpha = td.RMalpha(0.5, 0.5)
+alpha = td.RMalpha(0.06, 0.5)
 lam = .0
-td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
-td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
-td0.color = "k"
-#methods.append(td0)
-
-alpha = .0005
-lam = .2
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
-lam = 0.2
-alpha = 0.002
-mu = 0.0001
+alpha = .0005
+lam = .0
+td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
+td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
+td0.color = "k"
+methods.append(td0)
+
+lam = 0.0
+alpha = 0.0002
+mu = 4.
 tdc = td.TDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
 tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "b"
 methods.append(tdc)
 
-alpha = .1
+alpha = .5
 lam = 0.0
 lstd = td.RecursiveLSPELambda(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
 lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
@@ -83,7 +81,7 @@ lstd.ls = "-."
 methods.append(lstd)
 #
 alpha = 0.0005
-lam = .0
+lam = .2
 lstd = td.FPKF(lam=lam, alpha = alpha, phi=phi, gamma=gamma)
 lstd.name = r"FPKF({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
@@ -103,6 +101,12 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
+lam = .0
+sigma = 31.
+gptdp = td.GPTDPLambda(phi=phi, tau=sigma, lam=lam)
+gptdp.name = r"GPTDP({}) $\sigma$={}".format(lam,sigma)
+gptdp.ls="--"
+methods.append(gptdp)
 
 brm = td.RecursiveBRMDS(phi=phi)
 brm.name = "BRMDS"
@@ -128,6 +132,6 @@ title = "20 link Pole Balancing Diagonal Features"
 
 if __name__ == "__main__":
     from experiments import *
-    mean, std, raw = run_experiment(n_jobs=1, **globals())
+    mean, std, raw = run_experiment(n_jobs=-1, **globals())
     save_results(**globals())
     plot_errorbar(**globals())

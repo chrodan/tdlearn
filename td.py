@@ -594,7 +594,7 @@ class GPTDPLambda(LinearValueFunctionPredictor, LambdaValueFunctionPredictor):
         try:
             self._tic()
             n = self.C1.shape[0]
-            r =  np.dot(np.linalg.pinv(np.dot(self.C1, np.dot(self.C2, self.C1.T)) + self.tau * np.eye(n)), self.C1)
+            r =  np.dot(np.linalg.pinv(np.dot(self.C1, np.dot(self.C2, self.C1.T)) + self.tau * self.tau * np.eye(n)), self.C1)
             r = np.dot(r, np.dot(self.C2, self.b))
             return r
         except np.linalg.LinAlgError, e:
