@@ -1010,7 +1010,7 @@ class FPKF(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, Linear
             Algorithm 2
     """
 
-    def __init__(self, alpha=1, eps=100, **kwargs):
+    def __init__(self, alpha=1., beta=1000., eps=100, mins=0, **kwargs):
         """
             lam: lambda in [0, 1] specifying the tradeoff between bootstrapping
                     and MC sampling
@@ -1021,9 +1021,11 @@ class FPKF(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, Linear
         OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
         LambdaValueFunctionPredictor.__init__(self, **kwargs)
         self.eps = eps
+        self.mins = mins
         n = len(self.init_vals["theta"])
         self.init_vals["N"] = np.eye(n) * eps
         self.init_vals['alpha'] = alpha
+        self.init_vals["beta"] = beta
         self.init_vals["i"] = 0
         self.reset()
 
@@ -1051,6 +1053,7 @@ class FPKF(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, Linear
         for k, v in self.init_vals.items():
             self.__setattr__(k, copy.copy(v))
         self.alpha = self._assert_iterator(self.init_vals['alpha'])
+        self.beta = self._assert_iterator(self.init_vals['beta'])
 
     def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
         """
@@ -1071,8 +1074,11 @@ class FPKF(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, Linear
         self.N -= np.outer(np.dot(self.N, f0), L) / (1 + np.dot(L, f0))
         deltaf = f0 - self.gamma * rho * f1
         self.i += 1
-        theta += self.alpha.next(
-        ) * self.i * np.dot(self.N, (self.z * rho * r - np.dot(self.Z, deltaf)))
+        a = self.alpha.next()
+        if self.i < self.mins:
+            a = 0.
+        b = self.beta.next()
+        theta += a * b * self.i / (b + self.i) * np.dot(self.N, (self.z * rho * r - np.dot(self.Z, deltaf)))
         self.theta = theta
         self.z = self.gamma * self.lam * rho * self.z + f1
         self.Z = self.gamma * self.lam * rho * self.Z + np.outer(

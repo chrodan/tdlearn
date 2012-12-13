@@ -77,10 +77,11 @@ lstd.color = "g"
 lstd.ls = "-."
 methods.append(lstd)
 #
-alpha = 0.0002
+alpha = .01
+beta = 1000.
 lam = .4
-lstd = td.FPKF(lam=lam, alpha = alpha, phi=phi, gamma=gamma)
-lstd.name = r"FPKF({}) $\alpha$={}".format(lam, alpha)
+lstd = td.FPKF(lam=lam, alpha = alpha, beta=beta, mins=0, eps=1,phi=phi, gamma=gamma)
+lstd.name = r"FPKF({}) $\alpha$={} $\beta={}$".format(lam, alpha, beta)
 lstd.color = "g"
 lstd.ls = "-."
 methods.append(lstd)
@@ -98,11 +99,6 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
-reward_noise = 1e-1
-ktd = td.KTD(phi=phi, gamma=gamma, theta_noise=None, eta=1e-5, P_init=1.,
-             reward_noise=reward_noise)
-ktd.name = r"KTD $r_n={}$".format(reward_noise)
-#methods.append(ktd)
 
 brm = td.BRMDS(phi=phi)
 brm.name = "BRMDS"
@@ -118,7 +114,7 @@ methods.append(brm)
 sigma = 0.031
 gptdp = td.GPTDP(phi=phi, sigma=sigma)
 gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
-methods.append(gptdp)
+#methods.append(gptdp)
 
 lam = .2
 sigma = 1e-5
@@ -143,7 +139,7 @@ if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
     save_results(**globals())
-    plot_errorbar(**globals())
+    #plot_errorbar(**globals())
 
 
 

@@ -24,9 +24,12 @@ alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(
     np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5]
 mus = [0.0001, 0.001, 0.01, 0.05, 0.1, 0.5, 1, 2, 4, 8, 16]
 lambdas = np.linspace(0., 1., 6)
-sigmas = np.power(10, np.arange(-5., 2, .5))
+sigmas = np.power(10, np.arange(-5., 4, .75))
 reward_noises = np.power(10, np.arange(-5., 0, 1))
 P_inits = [1., 10., 100.]
+mins = [0, 500, 1000]
+fpkf_alphas = [0.01, 0.1, 0.2, 0.3, 0.5, 0.8, 0.9, 1.0]
+fpkf_beta = [1, 10, 100, 1000, 1000000]
 etas = [None, 1e-5, 1e-3]
 
 try:
@@ -165,13 +168,14 @@ if __name__ == "__main__":
     gridsearch(td.LinearTD0, alpha=make_rmalpha(), gs_name="rm", batchsize=batchsize, njobs=njobs)
 
     #gridsearch(td.TDCLambda, alpha=alphas, mu=mus, lam=lambdas, batchsize=batchsize, njobs=njobs)
-    gridsearch(td.TDC, alpha=alphas, mu=mus)
+    #gridsearch(td.TDC, alpha=alphas, mu=mus)
     gridsearch(td.GTD, alpha=alphas, mu=mus, batchsize=batchsize, njobs=njobs)
     gridsearch(td.GTD2, alpha=alphas, mu=mus, batchsize=batchsize, njobs=njobs)
 
     gridsearch(td.RecursiveLSTDLambda, lam=lambdas, batchsize=batchsize, njobs=njobs)
     gridsearch(td.RecursiveLSPELambda, lam=lambdas, alpha=ls_alphas, batchsize=batchsize, njobs=njobs)
-    gridsearch(td.FPKF, lam=lambdas, alpha=alphas, batchsize=batchsize, njobs=njobs)
+
+    gridsearch(td.FPKF, lam=lambdas, alpha=fpkf_alphas, beta= fpkf_beta, mins=mins, batchsize=batchsize, njobs=njobs)
 
     #gridsearch(td.GPTDP, sigma=sigmas)
     #gridsearch(td.KTD, reward_noise=reward_noises, eta=etas, P_init=P_inits)
