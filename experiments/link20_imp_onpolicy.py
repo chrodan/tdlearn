@@ -58,8 +58,8 @@ td0.color = "k"
 methods.append(td0)
 
 lam = 0.0
-alpha = 0.0002
-mu = 4.
+alpha = 0.0005
+mu = .05
 tdc = td.TDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
 tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "b"
