@@ -515,6 +515,14 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
             V - np.dot(self.projection_operator(), self.bellman_operator(V)))
         return np.sum(v ** 2 * self.beh_mu)
 
+    def AMSE(self, tau, theta):
+        V = (theta * np.asarray(self.Phi)).sum(axis=1)
+        V2 = (tau * np.asarray(self.Phi)).sum(axis=1)
+        v = np.asarray(
+            V - np.dot(self.projection_operator(), self.bellman_operator(V2)))
+        return np.sum(v ** 2 * self.beh_mu)
+
+
 
 class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
     """

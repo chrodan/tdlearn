@@ -15,15 +15,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import examples
 import scipy.optimize
-
+import features
 
 n = 7
 n_feat = 2
 n_iter = 100
 mdp = examples.BoyanChain(n, n_feat)
-phi=mdp.phi
+phi = features.spikes(n_feat, n)
 task = task.LinearDiscreteValuePredictionTask(mdp, 1, phi, np.array([50.,0.]))
-
+crit = "MSE"
 
 methods = []
 
@@ -40,7 +40,7 @@ for alpha, mu in[(1, 0.1)]:
     tdc.color = "r"
     methods.append(tdc)
 
-err_f = task._init_error_fun("RMSPBE")
+err_f = task._init_error_fun("R"+crit)
 param_sgd = task.parameter_traces(methods, n_samples=500)
 
 # Ordinary Gradient Descent
@@ -77,11 +77,12 @@ plt.imshow(s, extent=extends, origin="lower")
 plt.xlabel(r"$\theta_1$")
 plt.ylabel(r"$\theta_2$")
 plt.autoscale(tight=True)
-plt.colorbar().ax.set_ylabel(r"$\sqrt{MSPBE}$")
+plt.colorbar().ax.set_ylabel(r"$\sqrt{{ {} }}$".format(crit))
 
-plt.plot(param[:, 0, 0], param[:, 0, 1], 'w', linewidth=2, label="TD(0)")
-plt.plot(param[:, 1, 0], param[:, 1, 1], 'm', linewidth=2, label="TDC")
-plt.plot(param[:, 2, 0], param[:, 2, 1], '#ff2277', linewidth=2, label="Grad. Desc.")
+plt.plot(param[:, 0, 0], param[:, 0, 1], 'w', linewidth=2, label=r"$\mathrm{TD(0)}$")
+plt.plot(param[:, 1, 0], param[:, 1, 1], 'm', linewidth=2, label=r"$\mathrm{TDC}$")
+plt.plot(param[:, 2, 0], param[:, 2, 1], '#ff2277', linewidth=2, linestyle="--", label=r"$\mathrm{{Batch \, GD}}\, \nabla\mathrm{{ {} }}$".format(crit))
+
 lg = plt.legend(loc="lower right")
 lg.get_frame().set_facecolor('#cccccc')
 

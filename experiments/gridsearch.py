@@ -167,7 +167,7 @@ if __name__ == "__main__":
     gridsearch(td.LinearTDLambda, alpha=alphas, lam=lambdas, batchsize=batchsize, njobs=njobs)
     gridsearch(td.LinearTD0, alpha=make_rmalpha(), gs_name="rm", batchsize=batchsize, njobs=njobs)
 
-    #gridsearch(td.TDCLambda, alpha=alphas, mu=mus, lam=lambdas, batchsize=batchsize, njobs=njobs)
+    gridsearch(td.TDCLambda, alpha=alphas, mu=mus, lam=lambdas, batchsize=batchsize, njobs=njobs)
     #gridsearch(td.TDC, alpha=alphas, mu=mus)
     gridsearch(td.GTD, alpha=alphas, mu=mus, batchsize=batchsize, njobs=njobs)
     gridsearch(td.GTD2, alpha=alphas, mu=mus, batchsize=batchsize, njobs=njobs)

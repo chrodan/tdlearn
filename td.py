@@ -1036,13 +1036,14 @@ class FPKF(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, Linear
 
     def __getstate__(self):
         res = self.__dict__
-        for n in ["alpha"]:
+        for n in ["alpha", "beta"]:
             if isinstance(res[n], itertools.repeat):
                 res[n] = res[n].next()
         return res
 
     def __setstate__(self, state):
         self.__dict__ = state
+        self.beta = self._assert_iterator(self.init_vals['beta'])
         self.alpha = self._assert_iterator(self.init_vals['alpha'])
 
     def reset(self):
@@ -1501,7 +1502,10 @@ class BRM(OffPolicyValueFunctionPredictor, LinearValueFunctionPredictor):
     @property
     def theta(self):
         self._tic()
-        r =  -np.dot(np.linalg.pinv(self.C), self.b)
+        try:
+            r =  -np.dot(np.linalg.pinv(self.C), self.b)
+        except np.linalg.LinAlgError, e:
+            r = -np.dot(np.linalg.pinv(self.C + 0.01*np.eye(self.C.shape[0])), self.b)
         self._toc()
         return r
     @theta.setter
