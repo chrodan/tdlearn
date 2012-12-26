@@ -1,8 +1,14 @@
 import td
 import util
-import cvxopt as co
-import cvxopt.solvers as solv
-import gurobipy as grb
+try:
+    import cvxopt as co
+    import cvxopt.solvers as solv
+    import gurobipy as grb
+except Exception,e:
+    print e
+    co = None
+    solv = None
+    grb = None
 import numpy as np
 import copy
 import sklearn.linear_model as lm

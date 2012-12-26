@@ -142,4 +142,4 @@ if __name__ =="__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
     #save_results(**globals())
-    plot_errorbar(**globals())
+    #plot_errorbar(**globals())

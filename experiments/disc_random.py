@@ -27,35 +27,35 @@ task = LinearDiscreteValuePredictionTask(mdp, gamma, phi, np.zeros(phi.dim),
 
 
 methods = []
-alpha = 0.0005
-mu = .05
+alpha = 0.007
+mu = .0001
 gtd = td.GTD(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
 methods.append(gtd)
 
-alpha, mu = 0.003, 2
+alpha, mu = 0.002, 2
 gtd = td.GTD2(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
-alpha = td.RMalpha(0.08, 0.25)
+alpha = td.RMalpha(0.01, 0.1)
 lam = .0
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
-alpha = .01
-lam = .4
+alpha = .004
+lam = .2
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
 lam = 0.
-alpha = 0.006
+alpha = 0.002
 mu = 0.05
 tdc = td.TDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
 tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
@@ -63,7 +63,7 @@ tdc.color = "b"
 methods.append(tdc)
 
 lam = 0.
-alpha = 0.006
+alpha = 0.003
 mu = 0.05
 tdc = td.GeriTDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
 tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
@@ -93,24 +93,24 @@ lstd.color = "g"
 lstd.ls = "-."
 methods.append(lstd)
 #
-alpha = 0.2
-lam = .2
-beta = 10
-mins = 500
+alpha = 0.1
+lam = .6
+beta = 1.
+mins = 1000
 lstd = td.FPKF(lam=lam, alpha = alpha, beta=beta, phi=phi, gamma=gamma)
 lstd.name = r"FPKF({}) $\alpha={} \beta={}$".format(lam, alpha, beta)
 lstd.color = "g"
 lstd.ls = "-."
 methods.append(lstd)
 
-alpha = .01
+alpha = .005
 rg = td.ResidualGradientDS(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG DS $\alpha$={}".format(alpha)
 rg.color = "brown"
 rg.ls = "--"
 methods.append(rg)
 
-alpha = .006
+alpha = .005
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
@@ -128,11 +128,6 @@ brm.name = "BRM"
 brm.color = "b"
 methods.append(brm)
 
-tau=0.1
-lstd = regtd.DLSTD(tau=tau, lam=0, nonreg_ids=[], phi=phi)
-lstd.name = r"D-LSTD({}) $\tau={}$".format(0,tau)
-lstd.color = "b"
-#methods.append(lstd)
 
 tau=0.0001
 lstd = regtd.LSTDl1(tau=tau, lam=0, phi=phi)
@@ -140,18 +135,18 @@ lstd.name = r"LSTD-l1({}) $\tau={}$".format(0,tau)
 lstd.color = "b"
 methods.append(lstd)
 
-tau=0.1
+tau=0.05
 lstd = regtd.LarsTD(tau=tau, lam=0, phi=phi)
 lstd.name = r"LarsTD({}) $\tau={}$".format(0,tau)
 lstd.color = "b"
 methods.append(lstd)
 
-l = 7000
+l = 8000
 n_eps = 1
-n_indep = 50
+n_indep = 200
 
 episodic = False
-error_every = 70
+error_every = 80
 name = "disc_random"
 title = "{}-State Random MDP ({} trials)".format(n, n_indep)
 criterion = "RMSPBE"
