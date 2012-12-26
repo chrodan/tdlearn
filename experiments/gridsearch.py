@@ -19,7 +19,7 @@ if args.experiment != None:
 else:
     from experiments.lqr_full_offpolicy import *
 
-ls_alphas = [0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 1.0]
+ls_alphas = [0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 1.0]
 alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(
     np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5]
 mus = [0.0001, 0.001, 0.01, 0.05, 0.1, 0.5, 1, 2, 4, 8, 16]

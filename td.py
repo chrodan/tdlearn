@@ -1593,3 +1593,43 @@ class RecursiveBRMDS(OffPolicyValueFunctionPredictor,LinearValueFunctionPredicto
         self.theta = np.dot(self.C, self.b)
         self._toc()
 
+class RecursiveBRM(OffPolicyValueFunctionPredictor,LinearValueFunctionPredictor):
+    """
+    recursive implementation of Bellman Residual Minimization without double sampling
+    """
+
+    def __init__(self, eps=100, **kwargs):
+        """
+            gamma:  discount factor
+        """
+        LinearValueFunctionPredictor.__init__(self, **kwargs)
+        OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
+        self.eps = eps
+        self.reset()
+
+    def reset(self):
+        self.reset_trace()
+        self.init_vals["C"] = np.eye(len(self.init_vals["theta"])) * self.eps
+        self.init_vals["b"] = np.zeros(len(self.init_vals["theta"]))
+        for k, v in self.init_vals.items():
+            self.__setattr__(k, copy.copy(v))
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1., **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+
+        self._tic()
+        if theta is None:
+            theta = self.theta
+        df = - self.gamma * f1 + f0
+        A = np.dot(self.C, df)
+        B = np.dot(df, self.C)
+        self.b += df * rho * r
+        self.C -=  np.outer(A, B) / (1. / rho+ np.dot(B, df))
+        self.theta = np.dot(self.C, self.b)
+        self._toc()
+

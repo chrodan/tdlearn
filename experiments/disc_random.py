@@ -16,12 +16,10 @@ n_a = 10
 n_feat = 200
 mdp = examples.RandomMDP(n, n_a)
 phi = features.lin_random(n_feat, n, constant=True)
-#phi = features.eye(n)
 gamma = .95
 np.random.seed(3)
 beh_pol = policies.Discrete(np.random.rand(n, n_a))
 tar_pol = policies.Discrete(np.random.rand(n, n_a))
-#tar_pol=beh_pol
 task = LinearDiscreteValuePredictionTask(mdp, gamma, phi, np.zeros(phi.dim),
                                          policy=beh_pol, target_policy=tar_pol)
 
@@ -66,11 +64,11 @@ lam = 0.
 alpha = 0.003
 mu = 0.05
 tdc = td.GeriTDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
-tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
+tdc.name = r"TDC({})-CO $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "b"
 methods.append(tdc)
 
-alpha = .1
+alpha = .001
 lam = .0
 lstd = td.RecursiveLSPELambda(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
 lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
@@ -97,8 +95,8 @@ alpha = 0.1
 lam = .6
 beta = 1.
 mins = 1000
-lstd = td.FPKF(lam=lam, alpha = alpha, beta=beta, phi=phi, gamma=gamma)
-lstd.name = r"FPKF({}) $\alpha={} \beta={}$".format(lam, alpha, beta)
+lstd = td.FPKF(lam=lam, alpha = alpha, mins=mins, beta=beta, phi=phi, gamma=gamma)
+lstd.name = r"FPKF({}) $\alpha={}$ $\beta={}$ m={}".format(lam, alpha, beta, mins)
 lstd.color = "g"
 lstd.ls = "-."
 methods.append(lstd)
@@ -117,13 +115,13 @@ rg.color = "brown"
 methods.append(rg)
 
 
-brm = td.BRMDS(phi=phi)
+brm = td.RecursiveBRMDS(phi=phi)
 brm.name = "BRMDS"
 brm.color = "b"
 brm.ls = "--"
 methods.append(brm)
 
-brm = td.BRM(phi=phi)
+brm = td.RecursiveBRM(phi=phi)
 brm.name = "BRM"
 brm.color = "b"
 methods.append(brm)
@@ -141,6 +139,14 @@ lstd.name = r"LarsTD({}) $\tau={}$".format(0,tau)
 lstd.color = "b"
 methods.append(lstd)
 
+tau=0.05
+beta=0.05
+lstd = regtd.LSTDl21(tau=tau,beta=beta, lam=0, phi=phi)
+lstd.name = r"LSTD({}) $\ell_{{21}}$ $\tau={}$, $\beta={}$".format(0,tau, beta)
+lstd.color = "b"
+#methods.append(lstd)
+
+
 l = 8000
 n_eps = 1
 n_indep = 200
@@ -154,8 +160,5 @@ criteria = ["RMSPBE", "RMSBE", "RMSE"]
 if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
-
-    for m in methods:
-        print m.name, m.theta[-1]
     save_results(**globals())
     #plot_errorbar(**globals())

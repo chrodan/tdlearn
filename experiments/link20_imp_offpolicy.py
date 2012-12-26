@@ -14,15 +14,13 @@ gamma=0.95
 dt = 0.1
 dim = 20
 sigma = np.ones(2*dim)*0.01
-mdp = examples.NLinkPendulumMDP(np.ones(dim), np.ones(dim)*5, sigma=sigma, dt=dt)
+mdp = examples.NLinkPendulumMDP(np.ones(dim), np.ones(dim)*5, penalty=20, sigma=sigma, dt=dt)
 phi = features.squared_diag(2*dim)
 
 
 n_feat = len(phi(np.zeros(mdp.dim_S)))
 theta_p,_,_ = dp.solve_LQR(mdp, gamma=gamma)
 theta_p = np.array(theta_p)
-theta_p[:,-2] = -200
-theta_p[:,-1] = -200
 policy = policies.LinearContinuous(theta=theta_p, noise=np.ones(dim)*0.01)
 target_policy = policies.LinearContinuous(theta=theta_p, noise=np.ones(dim)*0.005)
 theta0 =  0.*np.ones(n_feat)
@@ -124,14 +122,14 @@ brm.color = "b"
 brm.ls = "--"
 methods.append(brm)
 
-brm = td.BRM(phi=phi)
+brm = td.RecursiveBRM(phi=phi)
 brm.name = "BRM"
 brm.color = "b"
 #methods.append(brm)
 
-l=30000
+l=50000
 error_every=500
-n_indep=2
+n_indep=50
 n_eps = 1
 episodic=False
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
@@ -141,5 +139,5 @@ name="link20_imp_offpolicy"
 if __name__ =="__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
-    #save_results(**globals())
+    save_results(**globals())
     #plot_errorbar(**globals())
