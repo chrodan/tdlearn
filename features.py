@@ -4,7 +4,7 @@ import numpy as np
 class gaussians(object):
 
     def __repr__(self):
-        return "gaussians(" + repr(self.means) + "," + repr(self.sigmasq) + ")"
+        return "gaussians("+repr(self.constant) + "," + repr(self.means) + "," + repr(self.sigmasq) + ")"
 
     def expectation(self, x, Sigma):
 
@@ -12,18 +12,23 @@ class gaussians(object):
         phi = np.exp(-(np.power(x - self.means, 2) / sig).sum(axis=1) / 2.)
         return phi / np.sum(phi)
 
-    def __init__(self, means, sigmas):
+    def __init__(self, means, sigmas, constant=False):
         self.dim = means.shape[0]
         assert(means.shape[0] == sigmas.shape[0])
         self.means = means
         self.sigmasq = np.power(sigmas, 2)
+        self.constant = constant
 
     def __call__(self, x):
         #detsig = np.sqrt(self.sigmasq.prod(axis=1))
         phi = np.exp(
             -(np.power(x - self.means, 2) / self.sigmasq).sum(axis=1) / 2.)
-        return phi / np.sum(phi)
-
+        if self.constant:
+            b = np.ones(phi.shape[0]+1)
+            b[:-1] = phi / np.sum(phi)
+        else:
+            b = phi/np.sum(phi)
+        return b
 
 class linear_blended(object):
     """

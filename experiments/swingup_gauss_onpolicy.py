@@ -1,12 +1,13 @@
 import td
 import examples
 import numpy as np
+import regtd
 #import matplotlib.pyplot as plt
 import features
 import policies
 from task import LinearContinuousValuePredictionTask
 
-gamma = 0.9
+gamma = 0.95
 dt = 0.1
 
 
@@ -41,97 +42,122 @@ task = LinearContinuousValuePredictionTask(
 
 
 methods = []
-
-alpha = .5
-mu = 0.01  # optimal
+alpha = 0.0005
+mu = 2.
 gtd = td.GTD(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
 methods.append(gtd)
 
-
-alpha, mu = .5, 8.  # optimal
+alpha, mu = 0.0005, 1.
 gtd = td.GTD2(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
-alpha = .5
-td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
-td0.name = r"TD(0) $\alpha$={}".format(alpha)
+alpha = td.RMalpha(0.06, 0.5)
+lam = .0
+td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
+td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
-c = 10.
-mu = 0.25
-alpha = td.RMalpha(c=c, mu=mu)
-td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
-td0.name = r"TD(0) $\alpha={}\exp(-{}t)$".format(c, mu)
+alpha = .005
+lam = .0
+td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
+td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
-alpha = .5
-mu = 8.
-lam = .2
-tdc = td.TDCLambda(alpha=alpha, lam=lam, mu=mu, phi=phi, gamma=gamma)
+lam = 0.0
+alpha = 0.02
+mu = .05
+tdc = td.TDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
 tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "b"
 methods.append(tdc)
 
-alpha, mu = (.5, 8.)
-tdc = td.TDC(alpha=alpha, beta=alpha * mu, phi=phi, gamma=gamma)
-tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
-tdc.color = "b"
-methods.append(tdc)
-
-lstd = td.RecursiveLSTDLambda(lam=0, eps=100, phi=phi, gamma=gamma)
-lstd.name = r"LSTD({})".format(0)
-lstd.color = "g"
-methods.append(lstd)
-
 alpha = .5
-lam = 0.
+lam = 0.0
 lstd = td.RecursiveLSPELambda(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
 lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
-methods.append(lstd)
+#methods.append(lstd)
 
-alpha = 1.
 lam = 0.
-lstd = td.FPKF(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
+eps = 100
+lstd = td.RecursiveLSTDLambda(lam=lam, eps=eps, phi=phi, gamma=gamma)
+lstd.name = r"LSTD({}) $\epsilon$={}".format(lam, eps)
+lstd.color = "g"
+lstd.ls = "-."
+methods.append(lstd)
+#
+alpha = 0.0005
+lam = .2
+lstd = td.FPKF(lam=lam, alpha = alpha, phi=phi, gamma=gamma)
 lstd.name = r"FPKF({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
-methods.append(lstd)
+lstd.ls = "-."
+#methods.append(lstd)
 
-alpha = .5
+alpha = .0005
+rg = td.ResidualGradientDS(alpha=alpha, phi=phi, gamma=gamma)
+rg.name = r"RG DS $\alpha$={}".format(alpha)
+rg.color = "brown"
+rg.ls = "--"
+methods.append(rg)
+
+alpha = .003
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
-reward_noise = 1e-1
-ktd = td.KTD(phi=phi, gamma=gamma, theta_noise=None, eta=1e-5, P_init=1.,
-             reward_noise=reward_noise)
-ktd.name = r"KTD $r_n={}$".format(reward_noise)
-#methods.append(ktd)
+lam = .0
+sigma = 31.
+gptdp = td.GPTDPLambda(phi=phi, tau=sigma, lam=lam)
+gptdp.name = r"GPTDP({}) $\sigma$={}".format(lam,sigma)
+gptdp.ls="--"
+#methods.append(gptdp)
 
-sigma = 0.2
-gptdp = td.GPTDP(phi=phi, sigma=sigma)
-gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
-methods.append(gptdp)
+brm = td.RecursiveBRMDS(phi=phi)
+brm.name = "BRMDS"
+brm.color = "b"
+brm.ls = "--"
+methods.append(brm)
+
+brm = td.RecursiveBRM(phi=phi)
+brm.name = "BRM"
+brm.color = "b"
+methods.append(brm)
+
+tau=0.0001
+lstd = regtd.LSTDl1(tau=tau, lam=0, phi=phi)
+lstd.name = r"LSTD-l1({}) $\tau={}$".format(0,tau)
+lstd.color = "b"
+#methods.append(lstd)
+
+tau=0.005
+lstd = regtd.LarsTD(tau=tau, lam=0, phi=phi)
+lstd.name = r"LarsTD({}) $\tau={}$".format(0,tau)
+lstd.color = "b"
+#methods.append(lstd)
+
 
 l = 200
-n_eps = 1000
-error_every = 4000
+n_eps = 250 #1000
+error_every = 1000 #4000
 name = "swingup_" + str(n_slices[0]) + "-" + \
     str(n_slices[1]) + "-" + str(n_slices[2]) + "-" + str(n_slices[3]
                                                           ) + "_gauss_onpolicy"
+name = "swingup_gauss_onpolicy"
 title = "Cartpole Swingup Onpolicy"
-n_indep = 20
+n_indep = 2
+episodic=False
 criterion = "RMSPBE"
-
+criteria=["RMSPBE", "RMSBE"]
 if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
-    save_results(**globals())
-    #plot_errorbar(**globals())
+    #save_results(**globals())
+    plot_errorbar(**globals())
