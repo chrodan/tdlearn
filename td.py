@@ -998,6 +998,44 @@ class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
         self.z = self.gamma * self.lam * rho * self.z + f1
         self._toc()
 
+class RecursiveLSPELambdaCO(RecursiveLSPELambda):
+    """
+        recursive Implementation of Least Squared Policy Evaluation
+         LSPE(\lambda) with linear function approximation, also works in the
+         off-policy case and uses eligibility traces
+
+        uses compliant off-policy weights and is otherwise identical to
+
+            Scherrer, B., & Geist, M. (EWRL 2011). :
+            Recursive Least-Squares Learning with Eligibility Traces.
+            Algorithm 2
+    """
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+        self._tic()
+        if theta is None:
+            theta = self.theta
+        if not hasattr(self, "z"):
+            self.z = f0
+
+        L = np.dot(f0, self.N)
+        self.N -= np.outer(np.dot(self.N, f0), L) / (1 + np.dot(L, f0))
+        deltaf = f0 - self.gamma * f1
+        self.A += np.outer(self.z, rho*deltaf)
+
+        self.b += rho * self.z * r
+        self.i += 1
+        theta += self.alpha.next(
+        ) * np.dot(self.N, (self.b - np.dot(self.A, theta)))
+        self.theta = theta
+        self.z = self.gamma * self.lam * rho * self.z + f1
+        self._toc()
 
 class FPKF(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
     """
