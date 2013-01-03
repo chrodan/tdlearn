@@ -29,55 +29,62 @@ task = LinearLQRValuePredictionTask(mdp, gamma, phi, theta0, policy=policy, mu_n
                                     target_policy=target_policy, normalize_phi=True)
 
 methods = []
-alpha = 0.0005
-mu = 2.
+alpha = 0.003
+mu = 16.
 gtd = td.GTD(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
-#methods.append(gtd)
+methods.append(gtd)
 
-alpha, mu = 0.0005, 1.
+alpha, mu = 0.5, .01
 gtd = td.GTD2(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
-#methods.append(gtd)
+methods.append(gtd)
 
-alpha = td.RMalpha(0.06, 0.5)
+alpha = td.RMalpha(0.7, 0.25)
 lam = .0
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
-#methods.append(td0)
+methods.append(td0)
 
-alpha = .0005
+alpha = .05
 lam = .0
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
-#methods.append(td0)
+methods.append(td0)
 
 lam = 0.0
-alpha = 0.0005
-mu = .05
+alpha = 0.05
+mu = .01
 tdc = td.TDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
 tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "b"
-#methods.append(tdc)
+methods.append(tdc)
 
 lam = 0.0
-alpha = 0.0005
+alpha = 0.06
 mu = .05
 tdc = td.GeriTDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
 tdc.name = r"GeriTDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "b"
 methods.append(tdc)
 
-alpha = .5
-lam = 0.0
+alpha = .01
+lam = .0
 lstd = td.RecursiveLSPELambda(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
 lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
-#methods.append(lstd)
+methods.append(lstd)
+
+alpha = .5
+lam = .0
+lstd = td.RecursiveLSPELambdaCO(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
+lstd.name = r"LSPE({})-CO $\alpha$={}".format(lam, alpha)
+lstd.color = "g"
+methods.append(lstd)
 
 lam = 0.
 eps = 100
@@ -95,26 +102,28 @@ lstd.color = "g"
 lstd.ls = "-."
 methods.append(lstd)
 #
-alpha = 0.0005
-lam = .2
-lstd = td.FPKF(lam=lam, alpha = alpha, phi=phi, gamma=gamma)
-lstd.name = r"FPKF({}) $\alpha$={}".format(lam, alpha)
+alpha = 0.3
+beta=10.
+mins=0.
+lam = .0
+lstd = td.FPKF(lam=lam, alpha = alpha, beta=beta, mins=min,phi=phi, gamma=gamma)
+lstd.name = r"FPKF({}) $\alpha$={} $\beta$={} m={}".format(lam, alpha, beta, mins)
 lstd.color = "g"
 lstd.ls = "-."
-#methods.append(lstd)
+methods.append(lstd)
 
-alpha = .0005
+alpha = .05
 rg = td.ResidualGradientDS(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG DS $\alpha$={}".format(alpha)
 rg.color = "brown"
 rg.ls = "--"
-#methods.append(rg)
+methods.append(rg)
 
-alpha = .003
+alpha = .04
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
-#methods.append(rg)
+methods.append(rg)
 
 brm = td.RecursiveBRMDS(phi=phi)
 brm.name = "BRMDS"
@@ -125,7 +134,7 @@ methods.append(brm)
 brm = td.RecursiveBRM(phi=phi)
 brm.name = "BRM"
 brm.color = "b"
-#methods.append(brm)
+methods.append(brm)
 
 l=50000
 error_every=500

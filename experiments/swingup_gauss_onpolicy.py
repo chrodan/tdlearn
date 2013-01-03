@@ -152,7 +152,7 @@ name = "swingup_" + str(n_slices[0]) + "-" + \
                                                           ) + "_gauss_onpolicy"
 name = "swingup_gauss_onpolicy"
 title = "Cartpole Swingup Onpolicy"
-n_indep = 2
+n_indep = 10
 episodic=False
 criterion = "RMSPBE"
 criteria=["RMSPBE", "RMSBE"]
@@ -160,4 +160,4 @@ if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
     #save_results(**globals())
-    plot_errorbar(**globals())
+    #plot_errorbar(**globals())

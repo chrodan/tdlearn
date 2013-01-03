@@ -89,11 +89,15 @@ class MarcsPolicy(NoisyContinuous):
         NoisyContinuous.__init__(self, dim_A=dim_A, noise=noise)
         try:
             from mlabwrap import mlab
-            self.mlab = mlab
+            import mlabwrap
+            self.mlab = mlabwrap.MlabWrap()
+            print "Init MLAB", self.mlab._session
+            #self.mlab = mlab
             self.mlab._autosync_dirs = False
             self.mlab.addpath("./mlab_cartpole")
             self.mlab.load(filename)
         except Exception:
+            print "Could not init mlabwrap"
             self.mlab = None
         self.filename = filename
 
@@ -108,16 +112,17 @@ class MarcsPolicy(NoisyContinuous):
     def __setstate__(self, state):
         self.__dict__ = state
         try:
-            from mlabwrap import mlab
-
-            self.mlab = mlab
+            import mlabwrap
+            self.mlab = mlabwrap.MlabWrap()
+            print "Restore MLAB", self.mlab._session
             self.mlab._autosync_dirs = False
             self.mlab.addpath("./mlab_cartpole")
             self.mlab.load(self.filename)
         except Exception:
             try:
-                import mlabwrap
-                self.mlab = mlabwrap.MlabWrap()
+                from mlabwrap import mlab
+                self.mlab = mlab
+                print "Restore old MLAB", self.mlab._session
                 self.mlab._autosync_dirs = False
                 self.mlab.addpath("./mlab_cartpole")
                 self.mlab.load(self.filename)
@@ -125,7 +130,6 @@ class MarcsPolicy(NoisyContinuous):
                 print e
                 print mlab._session
                 self.mlab = None
-
 
     def mean(self, s):
         lst = [str(a) for a in s[:-1]] + [str(np.sin(s[-1])), str(
