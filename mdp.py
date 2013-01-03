@@ -10,6 +10,7 @@ import numpy as np
 from util import multinomial_sample, memory, apply_rowise
 from util.progressbar import ProgressBar
 
+
 def _false(x):
     return False
 
@@ -59,10 +60,9 @@ def samples_cached_transitions(mymdp, policy, states, seed=1):
     return actions, rewards, states_next
 
 
-
 @memory.cache(hashfun={"mymdp": repr, "policy": repr, "policy_traj": repr}, ignore=["verbose"])
 def samples_distribution(mymdp, policy, phi, policy_traj=None, n_subsample=1,
-        n_iter=1000, n_restarts=100, n_next=20, seed=1, verbose=True):
+                         n_iter=1000, n_restarts=100, n_next=20, seed=1, verbose=True):
     assert(n_subsample == 1)  # not implemented, do that if you need it
     states = np.ones([n_restarts * n_iter, mymdp.dim_S])
     if policy_traj is None:
@@ -82,7 +82,8 @@ def samples_distribution(mymdp, policy, phi, policy_traj=None, n_subsample=1,
                 s = mymdp.start()
                 c = 0
             p.update(k, n_restarts * n_iter, "Sampling MDP Distribution")
-            s0, a, s1, r = mymdp.sample_step(s, policy=policy, n_samples=n_next)
+            s0, a, s1, r = mymdp.sample_step(
+                s, policy=policy, n_samples=n_next)
             states[k, :] = s0
             feat[k, :] = phi(s0)
             fn = apply_rowise(phi, s1)
@@ -197,7 +198,8 @@ class ContinuousMDP(object):
         if seed is not None:
             np.random.seed(seed)
 
-        rands = np.random.randn(max_n, self.dim_S) * np.sqrt(self.Sigma[None, :])
+        rands = np.random.randn(
+            max_n, self.dim_S) * np.sqrt(self.Sigma[None, :])
         i = 0
         while i < max_n:
             s0 = self.start()
@@ -225,7 +227,8 @@ class ContinuousMDP(object):
         if seed is not None:
             np.random.seed(seed)
 
-        rands = np.random.randn(n_samples, self.dim_S) * np.sqrt(self.Sigma[None, :])
+        rands = np.random.randn(
+            n_samples, self.dim_S) * np.sqrt(self.Sigma[None, :])
         a = policy(s0, n_samples)
         if n_samples == 1:
             mean = self.sf(s0, a)
@@ -361,14 +364,6 @@ class MDP(object):
         self.s_terminal = np.asarray([np.all(self.P[s, :, s] == 1)
                                       for s in self.states])
 
-    def tabular_phi(self, state):
-        """
-        feature function that makes linear approximation equivalent to
-        tabular algorithms
-        """
-        result = np.zeros(len(self.states))
-        result[state] = 1.
-        return result
 
     def extract_transitions(self, episode):
         """
@@ -386,27 +381,6 @@ class MDP(object):
             transitions.append((s, a, s_n, self.r[s, a, s_n]))
 
         return transitions
-
-    def uniform_policy(self):
-        """
-        returns the uniform policy in the form of a numpy array of shape
-        (n_s, n_a)
-        """
-        policy = np.zeros((len(self.states), len(self.actions)))
-        policy[self.valid_actions] = 1
-        policy /= policy.sum(axis=1).reshape(-1, 1)
-        return self.make_policy_fun(policy)
-
-    def make_policy_fun(self, policy_table):
-        """
-        generates a python function for a policy given as a probability table
-                S x A -> R
-                numpy array of shape (n_s, n_a)
-                pi(s,a) is the probability of taking action a in state
-        """
-        o = lambda s: multinomial_sample(1, policy_table[s, :])
-        o.tab = policy_table
-        return o
 
     def stationary_distribution(self, iterations=10000,
                                 seed=None, avoid0=False, policy="uniform"):
@@ -440,7 +414,7 @@ class MDP(object):
         while k < n_restarts * n_iter:
             restarts[k] = True
             for s, a, s_n, r in self.sample_transition(
-                n_iter, policy, with_restart=False):
+                    n_iter, policy, with_restart=False):
                 states[k, :] = s
                 states_next[k, :] = s_n
                 rewards[k] = r
@@ -451,6 +425,20 @@ class MDP(object):
                     break
         return states, actions, rewards, states_next, restarts
 
+    def reward_samples(self, policy, n_iter=1000, n_restarts=100, seed=None):
+        if seed is not None:
+            np.random.seed(seed)
+        rewards = np.zeros((len(self.states), n_restarts, n_iter))
+        for s0 in self.states:
+            for k in range(n_restarts):
+                i = 0
+                for s, a, s_n, r in self.sample_transition(
+                        n_iter, policy, with_restart=False, s_start=s0):
+                    rewards[s0, k, i] = r
+                    i += 1
+
+        return rewards
+
     def samples_cached_transitions(self, policy, states, seed=None):
         n = states.shape[0]
         sn = np.zeros_like(states)
@@ -460,7 +448,7 @@ class MDP(object):
             a[i] = policy(states[i])
             sn[i] = multinomial_sample(1, self.P[int(states[i]), int(a[i])])
             r[i] = self.r[int(states[i]), int(a[i]), int(sn[i])]
-        return a,r,sn
+        return a, r, sn
 
     def samples_featured(self, phi, policy, n_iter=1000, n_restarts=100,
                          no_next_noise=False, seed=1, n_subsample=1):
@@ -508,8 +496,8 @@ class MDP(object):
             r = self.r[s0, a, s1]
             yield (s0, a, s1, r)
 
-    def sample_transition(self, max_n, policy="uniform", seed=None,
-                          with_restart=True):
+    def sample_transition(self, max_n, policy, seed=None,
+                          with_restart=True, s_start=None):
         """
         generator that samples from the MDP
         be aware that this chains can be infinitely long
@@ -530,12 +518,13 @@ class MDP(object):
 
         if seed is not None:
             np.random.seed(seed)
-        if policy is "uniform":
-            policy = self.uniform_policy()
 
         i = 0
         while i < max_n:
-            s0 = multinomial_sample(1, self.P0)
+            if s_start is None:
+                s0 = multinomial_sample(1, self.P0)
+            else:
+                s0 = s_start
             while i < max_n:
                 if self.s_terminal[s0]:
                         break
@@ -554,32 +543,3 @@ class MDP(object):
         T = self.P * policy.tab[:, :, np.newaxis]
         T = np.sum(T, axis=1)
         return T
-
-    def sample_episodes(self, n, max_len=1000, policy="uniform"):
-        """
-        generate a n markov chain realizations (episodes) by sampling
-
-            n: numer of episodes
-            max_len: maximum length of each episode
-            policy pi: S x A -> R
-                numpy array of shape (n_s, n_a)
-                pi(s,a) is the probability of taking action a in state s
-        """
-        episodes = []
-        s0 = multinomial_sample(n, self.P0)
-
-        if policy is "uniform":
-            policy = self.uniform_policy()
-
-        cur_eps = np.zeros(max_len * 2 + 1, dtype="uint")
-        for i_ep in xrange(n):
-            cur_eps[0] = s = s0[i_ep]
-            for i in xrange(max_len):
-                if self.s_terminal[s]:
-                    break
-                a = policy(s)
-                s = multinomial_sample(1, self.P[s, a])
-                cur_eps[2 * i + 1:2 * i + 3] = a, s
-
-            episodes.append(cur_eps[:2 * i + 1].copy())
-        return episodes

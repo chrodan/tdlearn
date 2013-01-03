@@ -515,14 +515,15 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
             V - np.dot(self.projection_operator(), self.bellman_operator(V)))
         return np.sum(v ** 2 * self.beh_mu)
 
-    def AMSE(self, tau, theta):
-        V = (theta * np.asarray(self.Phi)).sum(axis=1)
-        V2 = (tau * np.asarray(self.Phi)).sum(axis=1)
-        v = np.asarray(
-            V - np.dot(self.projection_operator(), self.bellman_operator(V2)))
-        return np.sum(v ** 2 * self.beh_mu)
-
-
+    def estimate_variance(self, n_samples):
+        k = int(np.log(1e-3)/np.log(self.gamma) + 1)
+        r = self.mdp.reward_samples(n_iter=k, n_restarts=n_samples,
+                                    policy=self.behavior_policy,
+                                    seed=3000)
+        disc = np.power(self.gamma, np.arange(k))
+        r *= disc
+        r = r.sum(axis=2)
+        return r.var(axis=1)
 
 class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
     """

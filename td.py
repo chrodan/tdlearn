@@ -84,20 +84,6 @@ class LinearValueFunctionPredictor(ValueFunctionPredictor):
 
         return lambda x: np.dot(theta, self.phi(x))
 
-    def _compute_detTD_updates(self, task):
-        T = np.matrix(task.mdp.policy_P(task.target_policy))
-        Phi = task.Phi
-        Phi = np.matrix(Phi)
-        D = np.diag(task.beh_mu)
-        F = np.array(Phi.T * np.matrix(D) * (self.gamma * T) * Phi)
-        Cmat = np.array(Phi.T * np.matrix(D) * Phi)
-        R = task.mdp.P * task.mdp.r * task.target_policy[:, :, np.newaxis]
-        R = np.sum(R, axis=1)  # sum over all A
-        R = np.sum(R, axis=1)  # sum over all S'
-        b = np.array(Phi) * R[:, np.newaxis] * task.beh_mu[:, np.newaxis]
-        b = np.array(np.sum(b, axis=0)).flatten()
-        return F, Cmat, b
-
 
 class LambdaValueFunctionPredictor(ValueFunctionPredictor):
     """
@@ -379,6 +365,7 @@ class TDCLambda(GTDBase, LambdaValueFunctionPredictor):
         self._toc()
         return theta
 
+
 class GeriTDCLambda(TDCLambda):
 
     def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
@@ -408,6 +395,7 @@ class GeriTDCLambda(TDCLambda):
         self.theta = theta
         self._toc()
         return theta
+
 
 class GeriTDC(TDC):
     """
@@ -563,6 +551,7 @@ class GPTDP(LinearValueFunctionPredictor):
         self.P -= self.sinv * np.outer(self.p, self.p)
         self._toc()
 
+
 class GPTDPLambda(LinearValueFunctionPredictor, LambdaValueFunctionPredictor):
     def __init__(self, tau=0., **kwargs):
         """
@@ -594,7 +583,7 @@ class GPTDPLambda(LinearValueFunctionPredictor, LambdaValueFunctionPredictor):
         try:
             self._tic()
             n = self.C1.shape[0]
-            r =  np.dot(np.linalg.pinv(np.dot(self.C1, np.dot(self.C2, self.C1.T)) + self.tau * self.tau * np.eye(n)), self.C1)
+            r = np.dot(np.linalg.pinv(np.dot(self.C1, np.dot(self.C2, self.C1.T)) + self.tau * self.tau * np.eye(n)), self.C1)
             r = np.dot(r, np.dot(self.C2, self.b))
             return r
         except np.linalg.LinAlgError, e:
@@ -615,7 +604,6 @@ class GPTDPLambda(LinearValueFunctionPredictor, LambdaValueFunctionPredictor):
             self.z = f0
         else:
             self.z = self.gamma * self.lam * self.z + f0
-        alpha = 1. / (self.t + 1)
         df = f0 - self.gamma * f1
         self.t += 1
         self.b += self.z * rho * r
@@ -1079,7 +1067,8 @@ class FPKF(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, Linear
         if self.i < self.mins:
             a = 0.
         b = self.beta.next()
-        theta += a * b * self.i / (b + self.i) * np.dot(self.N, (self.z * rho * r - np.dot(self.Z, deltaf)))
+        theta += a * b * self.i / (b + self.i) * np.dot(
+            self.N, (self.z * rho * r - np.dot(self.Z, deltaf)))
         self.theta = theta
         self.z = self.gamma * self.lam * rho * self.z + f1
         self.Z = self.gamma * self.lam * rho * self.Z + np.outer(
@@ -1111,7 +1100,6 @@ class RecursiveLSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
         #import ipdb; ipdb.set_trace()
         self.init_vals["C"] = np.eye(len(self.init_vals["theta"])) * eps
         self.reset()
-
 
     def reset(self):
         self.reset_trace()
@@ -1300,6 +1288,7 @@ class ResidualGradient(OffPolicyValueFunctionPredictor, LinearValueFunctionPredi
         self.__dict__ = state
         self.alpha = self._assert_iterator(self.init_vals['alpha'])
 
+
 class ResidualGradientDS(ResidualGradient):
 
     def update_V(self, s0, s1, r, f0=None, f1=None, f1t=None, s1t=None, rho2=None, theta=None, rho=1, **kwargs):
@@ -1322,6 +1311,7 @@ class ResidualGradientDS(ResidualGradient):
         self.theta = theta
         self._toc()
         return theta
+
 
 class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
     """
@@ -1503,11 +1493,13 @@ class BRM(OffPolicyValueFunctionPredictor, LinearValueFunctionPredictor):
     def theta(self):
         self._tic()
         try:
-            r =  -np.dot(np.linalg.pinv(self.C), self.b)
-        except np.linalg.LinAlgError, e:
-            r = -np.dot(np.linalg.pinv(self.C + 0.01*np.eye(self.C.shape[0])), self.b)
+            r = -np.dot(np.linalg.pinv(self.C), self.b)
+        except np.linalg.LinAlgError:
+            r = -np.dot(np.linalg.pinv(
+                self.C + 0.01 * np.eye(self.C.shape[0])), self.b)
         self._toc()
         return r
+
     @theta.setter
     def theta_set(self, val):
         pass
@@ -1529,6 +1521,7 @@ class BRM(OffPolicyValueFunctionPredictor, LinearValueFunctionPredictor):
         self.C = (1 - alpha) * self.C + alpha * rho * np.outer(df, df)
         self._toc()
 
+
 class BRMDS(BRM):
 
     def update_V(self, s0, s1, r, f0=None, f1=None, f1t=None, s1t=None, rt=None, theta=None, rho=1., rhot=1., **kwargs):
@@ -1547,11 +1540,13 @@ class BRMDS(BRM):
         self.t += 1
         df = self.gamma * f1 - f0
         dft = self.gamma * f1t - f0
-        self.b = (1 - alpha) * self.b + alpha * (df * rho * rhot * rt + dft * rho * rhot * r) / 2.
-        self.C = (1 - alpha) * self.C + alpha * rho * rhot *  np.outer(df, dft)
+        self.b = (1 - alpha) * self.b + alpha * (df * rho * rhot *
+                                                 rt + dft * rho * rhot * r) / 2.
+        self.C = (1 - alpha) * self.C + alpha * rho * rhot * np.outer(df, dft)
         self._toc()
 
-class RecursiveBRMDS(OffPolicyValueFunctionPredictor,LinearValueFunctionPredictor):
+
+class RecursiveBRMDS(OffPolicyValueFunctionPredictor, LinearValueFunctionPredictor):
     """
     recursive implementation of Bellman Residual Minimization with double sampling
     """
@@ -1589,11 +1584,12 @@ class RecursiveBRMDS(OffPolicyValueFunctionPredictor,LinearValueFunctionPredicto
         A = np.dot(self.C, df)
         B = np.dot(dft, self.C)
         self.b += (df * rho * rhot * rt + dft * rho * rhot * r) / 2.
-        self.C -=  np.outer(A, B) / (1. / rho / rhot + np.dot(B, df))
+        self.C -= np.outer(A, B) / (1. / rho / rhot + np.dot(B, df))
         self.theta = np.dot(self.C, self.b)
         self._toc()
 
-class RecursiveBRM(OffPolicyValueFunctionPredictor,LinearValueFunctionPredictor):
+
+class RecursiveBRM(OffPolicyValueFunctionPredictor, LinearValueFunctionPredictor):
     """
     recursive implementation of Bellman Residual Minimization without double sampling
     """
@@ -1629,7 +1625,6 @@ class RecursiveBRM(OffPolicyValueFunctionPredictor,LinearValueFunctionPredictor)
         A = np.dot(self.C, df)
         B = np.dot(df, self.C)
         self.b += df * rho * r
-        self.C -=  np.outer(A, B) / (1. / rho+ np.dot(B, df))
+        self.C -= np.outer(A, B) / (1. / rho + np.dot(B, df))
         self.theta = np.dot(self.C, self.b)
         self._toc()
-
