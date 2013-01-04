@@ -66,7 +66,7 @@ def plot_errorbar(title, methods, mean, std, l, error_every, criterion,
         ee = int(l * n_eps / error_every / 8.)
     if ee < 1:
         ee = 1
-    lss = ["-","--",".-"]
+    lss = ["-","--","-."]
     for i, m in enumerate(methods):
         if hasattr(m, "hide") and m.hide:
             continue
