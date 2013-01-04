@@ -42,47 +42,47 @@ task = LinearContinuousValuePredictionTask(
 
 
 methods = []
-alpha = 0.0005
-mu = 2.
+alpha = 0.2
+mu = .1
 gtd = td.GTD(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
 methods.append(gtd)
 
-alpha, mu = 0.0005, 1.
+alpha, mu = 0.5, 4.
 gtd = td.GTD2(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
-alpha = td.RMalpha(0.06, 0.5)
+alpha = td.RMalpha(10., 0.25)
 lam = .0
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
-alpha = .005
-lam = .0
+alpha = .5
+lam = .2
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
-lam = 0.0
-alpha = 0.02
-mu = .05
+lam = 0.4
+alpha = 0.4
+mu = 16.
 tdc = td.TDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
 tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "b"
 methods.append(tdc)
 
-alpha = .5
+alpha = .001
 lam = 0.0
 lstd = td.RecursiveLSPELambda(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
 lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
-#methods.append(lstd)
+methods.append(lstd)
 
 lam = 0.
 eps = 100
@@ -100,14 +100,14 @@ lstd.color = "g"
 lstd.ls = "-."
 #methods.append(lstd)
 
-alpha = .0005
+alpha = .5
 rg = td.ResidualGradientDS(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG DS $\alpha$={}".format(alpha)
 rg.color = "brown"
 rg.ls = "--"
 methods.append(rg)
 
-alpha = .003
+alpha = .5
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
@@ -152,12 +152,12 @@ name = "swingup_" + str(n_slices[0]) + "-" + \
                                                           ) + "_gauss_onpolicy"
 name = "swingup_gauss_onpolicy"
 title = "Cartpole Swingup Onpolicy"
-n_indep = 10
+n_indep = 50
 episodic=False
 criterion = "RMSPBE"
 criteria=["RMSPBE", "RMSBE"]
 if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
-    #save_results(**globals())
+    save_results(**globals())
     #plot_errorbar(**globals())

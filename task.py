@@ -240,6 +240,9 @@ class LinearValuePredictionTask(object):
                                                              n_restarts=n_eps,
                                                              policy=self.behavior_policy,
                                                              seed=seed)
+            a2, r2, s_n2 = self.mdp.samples_cached_transitions(
+                policy=self.behavior_policy,
+                states=s, seed=seed)
 
     def error_traces(self, methods, n_samples=1000, n_eps=1,
                      seed=1, criteria=["RMSBE"], error_every=1, episodic=False):

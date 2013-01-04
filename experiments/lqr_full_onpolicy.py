@@ -75,7 +75,7 @@ lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
 methods.append(lstd)
 
-lam = 0.2
+lam = 0.0
 eps = 100
 lstd = td.RecursiveLSTDLambda(lam=lam, eps=eps, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({}) $\epsilon$={}".format(lam, eps)
@@ -83,9 +83,11 @@ lstd.color = "g"
 lstd.ls = "-."
 methods.append(lstd)
 #
-alpha = 0.002
-lam = .6
-lstd = td.FPKF(lam=lam, alpha = alpha, phi=phi, gamma=gamma)
+alpha = 0.5
+beta=10.
+mins=500
+lam =.8
+lstd = td.FPKF(lam=lam, alpha = alpha, beta=beta, mins=mins, phi=phi, gamma=gamma)
 lstd.name = r"FPKF({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
 lstd.ls = "-."

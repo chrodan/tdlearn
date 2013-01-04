@@ -83,6 +83,13 @@ lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
 methods.append(lstd)
 
+alpha = 1.
+lam = 0.0
+lstd = td.RecursiveLSPELambdaCO(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
+lstd.name = r"LSPE({})-CO $\alpha$={}".format(lam, alpha)
+lstd.color = "g"
+methods.append(lstd)
+
 lam = 0.
 eps = 100
 lstd = td.RecursiveLSTDLambdaJP(lam=lam, eps=eps, phi=phi, gamma=gamma)
@@ -99,9 +106,11 @@ lstd.color = "g"
 lstd.ls = "-."
 methods.append(lstd)
 #
-alpha = 0.0005
-lam = .0
-lstd = td.FPKF(lam=lam, alpha = alpha, phi=phi, gamma=gamma)
+alpha = 0.1
+beta = 10.
+mins = 0
+lam = .4
+lstd = td.FPKF(lam=lam, alpha = alpha, beta=beta, mins=mins, phi=phi, gamma=gamma)
 lstd.name = r"FPKF({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
 lstd.ls = "-."
@@ -121,20 +130,20 @@ rg.color = "brown"
 methods.append(rg)
 
 
-brm = td.BRMDS(phi=phi)
+brm = td.RecursiveBRMDS(phi=phi)
 brm.name = "BRMDS"
 brm.color = "b"
 brm.ls = "--"
 methods.append(brm)
 
-brm = td.BRM(phi=phi)
+brm = td.RecursiveBRM(phi=phi)
 brm.name = "BRM"
 brm.color = "b"
 methods.append(brm)
 
 l = 30000
-error_every = 500
-n_indep = 4
+error_every = 300
+n_indep = 50
 n_eps = 1
 episodic=False
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
@@ -146,5 +155,5 @@ title = "4-dim. State Pole Balancing Offpolicy Diagonal Features"
 if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
-    #save_results(**globals())
-    plot_errorbar(**globals())
+    save_results(**globals())
+#    plot_errorbar(**globals())

@@ -75,6 +75,13 @@ lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
 methods.append(lstd)
 
+alpha = .005
+lam = .0
+lstd = td.RecursiveLSPELambdaCO(lam=lam, alpha=alpha, eps=10., phi=phi, gamma=gamma)
+lstd.name = r"LSPE({})-CO $\alpha$={}".format(lam, alpha)
+lstd.color = "g"
+methods.append(lstd)
+
 lam = 0.
 eps = 100
 lstd = td.RecursiveLSTDLambdaJP(lam=lam, eps=eps, phi=phi, gamma=gamma)

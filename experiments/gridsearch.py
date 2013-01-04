@@ -24,12 +24,13 @@ alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(
     np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5]
 mus = [0.0001, 0.001, 0.01, 0.05, 0.1, 0.5, 1, 2, 4, 8, 16]
 lambdas = np.linspace(0., 1., 6)
+ls_eps = [10**5, 10**3, 10**2, 10, 1, 0.1, 0.01]
 sigmas = np.power(10, np.arange(-5., 4, .75))
 reward_noises = np.power(10, np.arange(-5., 0, 1))
 P_inits = [1., 10., 100.]
 mins = [0, 500, 1000]
-fpkf_alphas = [0.01, 0.1, 0.2, 0.3, 0.5, 0.8, 0.9, 1.0]
-fpkf_beta = [1, 10, 100, 1000, 1000000]
+fpkf_alphas = [0.01, 0.1, 0.3, 0.5, 0.8, 1.0]
+fpkf_beta = [1, 10, 100, 1000]
 etas = [None, 1e-5, 1e-3]
 
 try:
@@ -103,6 +104,7 @@ def gridsearch(method, gs_name="", njobs=-2, batchsize=3, **params):
     fn = "data/{}/{}{}.pck".format(name, method.__name__, gs_name)
     if os.path.exists(fn):
         print "Already exists: {}{}".format(method.__name__, gs_name)
+        load_result_file(fn)
         return
     param_names = params.keys()
     param_list = list(itertools.product(*[params[k] for k in param_names]))
@@ -172,7 +174,7 @@ if __name__ == "__main__":
     gridsearch(td.GTD, alpha=alphas, mu=mus, batchsize=batchsize, njobs=njobs)
     gridsearch(td.GTD2, alpha=alphas, mu=mus, batchsize=batchsize, njobs=njobs)
 
-    gridsearch(td.RecursiveLSTDLambda, lam=lambdas, batchsize=batchsize, njobs=njobs)
+    gridsearch(td.RecursiveLSTDLambda, lam=lambdas, eps=ls_eps, batchsize=batchsize, njobs=njobs)
     gridsearch(td.RecursiveLSPELambda, lam=lambdas, alpha=ls_alphas, batchsize=batchsize, njobs=njobs)
 
     gridsearch(td.FPKF, lam=lambdas, alpha=fpkf_alphas, beta= fpkf_beta, mins=mins, batchsize=batchsize, njobs=njobs)
@@ -185,7 +187,7 @@ if __name__ == "__main__":
         gridsearch(td.GeriTDCLambda, alpha=alphas, mu=mus, lam=lambdas, batchsize=batchsize, njobs=njobs)
         gridsearch(td.RecursiveLSTDLambdaJP, lam=lambdas, batchsize=batchsize, njobs=njobs)
         gridsearch(td.RecursiveLSPELambdaCO, lam=lambdas, alpha=ls_alphas,batchsize=batchsize, njobs=njobs)
-    else:
-        gridsearch(td.GPTDPLambda, tau=sigmas, lam=lambdas, batchsize=batchsize, njobs=njobs)
+    #else:
+        #gridsearch(td.GPTDPLambda, tau=sigmas, lam=lambdas, batchsize=batchsize, njobs=njobs)
         #gridsearch(td.GPTDP, sigma=sigmas, batchsize=batchsize, njobs=njobs)
         #gridsearch(td.KTD, reward_noise=reward_noises, eta=etas, P_init=P_inits)
