@@ -49,8 +49,8 @@ gtd.color = "orange"
 methods.append(gtd)
 
 
-alpha = .00002
-lam = 1.
+alpha = .1
+lam = .0
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 methods.append(td0)
@@ -77,15 +77,15 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
-lam = 1.
+lam = 0.
 lstd = td.RecursiveLSTDLambda(lam=lam, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({})".format(lam)
 lstd.color = "k"
-methods.append(lstd)
+#methods.append(lstd)
 
-lam = 1.
+lam = 0.
 alpha = 1.
-lspe = td.RecursiveLSPELambda(lam=lam, alpha=alpha, phi=phi)
+lspe = td.RecursiveLSPELambdaCO(lam=lam, alpha=alpha, phi=phi)
 lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
 methods.append(lstd)
 
@@ -98,13 +98,13 @@ methods.append(lstd)
 brm = td.BRM(phi=phi)
 brm.name = "BRM"
 brm.color = "b"
-methods.append(brm)
+#methods.append(brm)
 
 lam = 1.
 lstd = td.RecursiveLSTDLambdaJP(lam=lam, phi=phi, gamma=gamma)
 lstd.name = r"LSTD-JP({})".format(0)
 lstd.color = "k"
-methods.append(lstd)
+#methods.append(lstd)
 
 
 l = 1000
@@ -116,10 +116,10 @@ name = "baird"
 title = "Baird Star"
 criterion = "RMSPBE"
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
-gs_errorevery=20
+gs_errorevery=10
 
 if __name__ == "__main__":
     from experiments import *
-    mean, std, raw = run_experiment(n_jobs=-1, **globals())
-    save_results(**globals())
+    mean, std, raw = run_experiment(n_jobs=1, **globals())
+    #save_results(**globals())
     plot_errorbar(**globals())

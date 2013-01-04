@@ -239,39 +239,30 @@ class PoleBalancingMDP(mdp.LQRMDP):
             interval=1000. * self.dt * 10, blit=True, init_func=init)
         return ani
 
-class AdvancedRandomMDP(mdp.MDP):
+class ActionMDP(mdp.MDP):
     """
-    Random MDP with uniformly distributed transition probabilities and
-    reward function.
+    MDP with n states and actions where the action deterministically determines the next state.
+    The rewward is only dependent on the current state and is different for each state
     """
 
-    def __init__(self, n_states, n_actions, seed=None, reward_level=1., determinism=1.):
+    def __init__(self, n, reward_level=1.):
         """
-            n_states: number of states
-            seed: random seed to generate the transition and reward function
+        n: number of states and actions
+        reward_level: the general amplitude of rewards
         """
-        if seed is not None:
-            np.random.seed(seed)
-        n_s = n_states
-        n_a = n_actions
+        n_s = n
+        n_a = n
         actions = range(n_a)
         states = range(n_s)
 
-        #d0 = np.random.rand(n_s) + 1e-5
         d0 = np.ones((n_s))
         d0 = d0 / d0.sum()
 
         r = np.ones((n_s, n_a, n_s)) * reward_level
         r *= np.arange(1.,n_s+1.)[:,None,None] / n_s
-        #r[:, :, n_s - 1] = 1
-        P = np.random.rand(n_s, n_a, n_s) + 1e-5
-        P /= P.max(axis=2)[:,:, None]
-        P = np.power(P, determinism)
-        P /= P.sum(axis=2)[:, :, np.newaxis]
         P = np.zeros((n_s, n_s, n_s))
         for i in range(n_s):
             P[:,i,i] = 1.
-        #P /= P.sum(axis=2)[:, :, np.newaxis]
         mdp.MDP.__init__(self, states, actions, r, P, d0)
 
 class RandomMDP(mdp.MDP):
