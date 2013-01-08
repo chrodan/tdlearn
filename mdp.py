@@ -15,9 +15,9 @@ def _false(x):
     return False
 
 
-@memory.cache(hashfun={"mymdp": repr, "policy": repr})
+@memory.cache(hashfun={"mymdp": repr, "policy": repr}, ignore=["verbose"])
 def samples_cached(mymdp, policy, n_iter=1000, n_restarts=100,
-                   no_next_noise=False, seed=1):
+                   no_next_noise=False, seed=1., verbose=0.):
     assert(seed is not None)
     states = np.ones([n_restarts * n_iter, mymdp.dim_S])
     states_next = np.ones([n_restarts * n_iter, mymdp.dim_S])
@@ -27,23 +27,26 @@ def samples_cached(mymdp, policy, n_iter=1000, n_restarts=100,
 
     restarts = np.zeros(n_restarts * n_iter, dtype="bool")
     k = 0
-    while k < n_restarts * n_iter:
-        restarts[k] = True
-        for s, a, s_n, r in mymdp.sample_transition(
-                n_iter, policy, with_restart=False, seed=None):
-            states[k, :] = s
-            states_next[k, :] = s_n
-            rewards[k] = r
-            actions[k, :] = a
 
-            k += 1
-            if k >= n_restarts * n_iter:
-                break
+    with ProgressBar(enabled=(verbose > 2.)) as p:
+        while k < n_restarts * n_iter:
+            restarts[k] = True
+            for s, a, s_n, r in mymdp.sample_transition(
+                    n_iter, policy, with_restart=False, seed=None):
+                states[k, :] = s
+                states_next[k, :] = s_n
+                rewards[k] = r
+                actions[k, :] = a
+
+                k += 1
+                p.update(k, n_restarts * n_iter)
+                if k >= n_restarts * n_iter:
+                    break
     return states, actions, rewards, states_next, restarts
 
 
 @memory.cache(hashfun={"mymdp": repr, "policy": repr})
-def samples_cached_transitions(mymdp, policy, states, seed=1):
+def samples_cached_transitions(mymdp, policy, states, seed=2):
     assert(seed is not None)
     n = states.shape[0]
     states_next = np.ones([n, mymdp.dim_S])
@@ -58,6 +61,31 @@ def samples_cached_transitions(mymdp, policy, states, seed=1):
         actions[k, :] = a
 
     return actions, rewards, states_next
+
+
+@memory.cache(hashfun={"mymdp": repr, "policy": repr}, ignore=["verbose"])
+def samples_distribution_from_states(mymdp, policy, phi, states, n_next=20, seed=1, verbose=True):
+    n = states.shape[0]
+    states_next = np.ones([n, mymdp.dim_S])
+    feat = np.zeros((n, phi.dim))
+    feat_next = np.zeros_like(feat)
+    rewards = np.ones(n)
+    np.random.seed(seed)
+
+    with ProgressBar(enabled=verbose) as p:
+        for k in xrange(n):
+            p.update(k, n, "Sampling MDP Distribution")
+            s = states[k, :]
+            s0, a, s1, r = mymdp.sample_step(
+                s, policy=policy, n_samples=n_next)
+            states[k, :] = s0
+            feat[k, :] = phi(s0)
+            fn = apply_rowise(phi, s1)
+            feat_next[k, :] = np.mean(fn, axis=0)
+            states_next[k, :] = np.mean(s1, axis=0)
+            rewards[k] = np.mean(r)
+
+    return states, rewards, states_next, feat, feat_next
 
 
 @memory.cache(hashfun={"mymdp": repr, "policy": repr, "policy_traj": repr}, ignore=["verbose"])
@@ -363,7 +391,6 @@ class MDP(object):
 
         self.s_terminal = np.asarray([np.all(self.P[s, :, s] == 1)
                                       for s in self.states])
-
 
     def extract_transitions(self, episode):
         """

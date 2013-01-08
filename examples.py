@@ -12,7 +12,8 @@ import scipy.integrate
 import matplotlib.animation as animation
 import re
 import matplotlib.pyplot as plt
-
+import pyximport; pyximport.install()
+import swingup_ode
 
 class GridWorld(mdp.MDP):
     """
@@ -72,7 +73,7 @@ W            W
                 self.pol[i, j, :] /= self.pol[i, j, :].sum()
         self.pol = self.pol.reshape(n ** 2, 4)
 
-        for m in re.finditer('W',s):
+        for m in re.finditer('W', s):
             r[:, :, m.start()] = -2.
 
         P = np.zeros((n, n, 4, n, n))
@@ -132,6 +133,7 @@ class NLinkPendulumMDP(mdp.LQRMDP):
     def __repr__(self):
         return "<NLinkPendulumMDP(" + repr([self.masses, self.lengths, self.dt,
                                             self.n, self.Sigma, self.R, self.Q]) + ")>"
+
     def __init__(self, masses, lengths, dt=.01, sigma=0.01, penalty=0.01, action_penalty=0.):
         self.lengths = lengths
         self.dt = dt
@@ -239,6 +241,7 @@ class PoleBalancingMDP(mdp.LQRMDP):
             interval=1000. * self.dt * 10, blit=True, init_func=init)
         return ani
 
+
 class ActionMDP(mdp.MDP):
     """
     MDP with n states and actions where the action deterministically determines the next state.
@@ -259,11 +262,12 @@ class ActionMDP(mdp.MDP):
         d0 = d0 / d0.sum()
 
         r = np.ones((n_s, n_a, n_s)) * reward_level
-        r *= np.arange(1.,n_s+1.)[:,None,None] / n_s
+        r *= np.arange(1., n_s + 1.)[:, None, None] / n_s
         P = np.zeros((n_s, n_s, n_s))
         for i in range(n_s):
-            P[:,i,i] = 1.
+            P[:, i, i] = 1.
         mdp.MDP.__init__(self, states, actions, r, P, d0)
+
 
 class RandomMDP(mdp.MDP):
     """
@@ -331,12 +335,8 @@ class PendulumSwingUpCartPole(mdp.ContinuousMDP):
     def randstart():
         return np.array([0., 0., 0., (np.random.rand() - .5) * 2 * np.pi])
 
-    def ode(self, s, t, a):
+    def ode(self, s, t, a, m, l, M, b):
         g = 9.81
-        m = self.m
-        l = self.l
-        M = self.M
-        b = self.b
         ds = np.zeros(4)
         ds[0] = s[1]
         ds[1] = (2 * m * l * s[2] ** 2 * np.sin(s[3]) + 3 * m * g * np.sin(s[3]) * np.cos(s[3]) + 4 * a - 4 * b * s[1])\
@@ -346,9 +346,32 @@ class PendulumSwingUpCartPole(mdp.ContinuousMDP):
         ds[3] = s[2]
         return ds
 
+    def ode_jac(self, s, t, a, m, l, M, b):
+        print "jAC CALLED"
+        g = 9.81
+        c3 = np.cos(s[3])
+        s3 = np.sin(s[3])
+        c = 4 * (M + m) - 3 * m * c3 ** 2
+        jac = np.zeros(4, 4)
+        jac[0, 1] = 1.
+        jac[3, 2] = 1.
+        jac[1, 1] = -4 * b / c
+        jac[1, 2] = 4 * m * l * s[2] / c
+        jac[1, 3] = m / c * (2 * l * s[2] ** 2 * c3 + 3 * g * (1 - 2 * s3 ** 2)) \
+            - 6 * m * s3 * c3 / c / c * (2 * m * l * s[2] ** 2 * s3 + 3 * m * g * s3 * c3 + 4 * a -
+                                         4 * b * s[1])
+        jac[2, 1] = 6 * b * c3 / c / l
+        jac[2, 2] = -6 * m * l * s[2] * c3 * s3 / c
+        jac[2, 3] = (3 * m * l * s[2] ** 2 * (2 * s3 - 1) - 6 * (M + m) * g * s3 + 6 * (a - b * s[1]) * s3) / l / l / c \
+            + 3 / l / l / c / c * (m * l * s[2] ** 2 * s3 * c3 - 2 * (
+                                   M + m) * g * s3 + 2(a - b * s[1] * c3)) * 6 * m * c3 * s3
+        return jac
+
     def statefun(self, s, a):
         s1 = scipy.integrate.odeint(
-            self.ode, s, [0., self.dt], args=(a,), printmessg=False)
+            swingup_ode.ode, s, [0., self.dt], args=(a, self.m, self.l, self.M, self.b),
+            #Dfun=ode_jac_wrap,
+            printmessg=False)
         s1 = s1[-1, :].flatten()
         s1[-1] = ((s1[-1] + np.pi) % (2 * np.pi)) - np.pi
         return s1

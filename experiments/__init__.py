@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 plt.ion()
 
 def run_experiment(task, methods, n_indep, l, error_every, name, n_eps,
-                   mdp, phi, title, verbose=True, n_jobs=1, criteria=None,
+                   mdp, phi, title, verbose=1, n_jobs=1, criteria=None,
                    episodic=False, **kwargs):
     a, b, c = task.avg_error_traces(methods, n_indep=n_indep, n_eps=n_eps,
                                     n_samples=l, error_every=error_every,

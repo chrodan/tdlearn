@@ -9,6 +9,7 @@ from experiments import *
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.cm as cm
+import os
 n = 40
 mdp = examples.ActionMDP(n, reward_level=5.)
 gamma = .95
@@ -66,14 +67,24 @@ def lambda_errors(phi, lambdas, noises):
 
 if __name__ == "__main__":
     plt.ion()
-    n_feat = 20
-    phi = features.lin_random(n_feat, n, constant=True)
-    mserrors2 = lambda_errors(phi, lambdas, noises)
-    mserrors2 -= mserrors.min(axis=0)
-    mserror2 /= mserrors.max(axis=0)
-    phi = features.eye(n)
-    mserrors1 = lambda_errors(phi, lambdas, noises)
+    fn = "data/noise_lambda.npz"
+    if os.path.exists(fn):
+        d = np.load(fn)
+        globals().update(d)
+    else:
+        n_feat = 20
+        phi = features.lin_random(n_feat, n, constant=True)
+        mserrors2 = lambda_errors(phi, lambdas, noises)
+        phi = features.eye(n)
+        mserrors1 = lambda_errors(phi, lambdas, noises)
+        np.savez(fn, mserrors1=mserrors1, mserrors2=mserrors2, noises=noises, lambdas=lambdas)
 
+
+
+    mserrors2 -= mserrors2.min(axis=0)
+    mserrors2 /= mserrors2.max(axis=0)
+    mserrors1 -= mserrors1.min(axis=0)
+    #mserrors1 /= mserrors1.max(axis=0)
     plt.figure()
     mymap = mpl.colors.LinearSegmentedColormap.from_list('mycolors',['blue','red'])
     Z = [[0,0],[0,0]]
@@ -82,14 +93,18 @@ if __name__ == "__main__":
 
     for i, noise in enumerate(noises):
         col = mymap(i/float(len(noises)),1)
-        plt.plot(lambdas, mserrors2[:, i], label=str(noise), color=col, linewidth=2)
-    #plt.ylim(-.1,1.1)
-    plt.colorbar(CS3)
-
+        plt.plot(lambdas, mserrors1[:, i], label=str(noise), color=col, linewidth=2)
+    plt.ylim(-.1,1.1)
+    plt.xlabel(r"$\lambda$")
+    plt.ylabel(r"relative avg. RMSE")
+    cb = plt.colorbar(CS3)
+    cb.ax.set_ylabel("Noise")
     plt.figure()
     for i, noise in enumerate(noises):
         col = mymap(i/float(len(noises)),1)
         plt.plot(lambdas, mserrors2[:, i], label=str(noise), color=col, linewidth=2)
     plt.ylim(-.1,1.1)
-    plt.colorbar(CS3)
-
+    plt.xlabel(r"$\lambda$")
+    plt.ylabel(r"relative avg. RMSE")
+    cb = plt.colorbar(CS3)
+    cb.ax.set_ylabel("Noise")

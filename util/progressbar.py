@@ -6,11 +6,29 @@ Usage:
     p = ProgressBar("blue")
     p.render(percentage, message)
 """
- 
+
 import terminal
 import sys
 import os
 import datetime
+
+
+class Timer(object):
+    def __init__(self, name=None, print_enter=True, active=True):
+        self.name = name
+        self.enabled = active
+        self.print_enter = print_enter
+    def __enter__(self):
+        self.tstart = datetime.datetime.now()
+        if self.print_enter and self.name and self.enabled:
+            print 'Start [%s]' % self.name
+
+    def __exit__(self, type, value, traceback):
+        if not self.enabled:
+            return
+        if self.name:
+            print '[%s]' % self.name,
+        print 'Elapsed: %s' % str(datetime.datetime.now() - self.tstart)
 
 class ProgressBar(object):
     """Terminal progress bar class"""
@@ -18,7 +36,7 @@ class ProgressBar(object):
      '%(percent)-2s%% %(color)s%(progress)s%(normal)s%(empty)s %(message)s\n'
     )
     PADDING = 7
- 
+
     def __init__(self, enabled=True, color=None, width=None, block='#', empty=' '):
         """
         color -- color name (BLUE GREEN CYAN RED MAGENTA YELLOW WHITE BLACK)
@@ -29,7 +47,7 @@ class ProgressBar(object):
         self.enabled = enabled
         if not enabled:
             return
-        try:        
+        try:
             if not os.isatty(sys.stdout.fileno()):
                 return
         except AttributeError:
@@ -49,7 +67,7 @@ class ProgressBar(object):
         self.empty = empty
         self.progress = None
         self.lines = 0
-    
+
     def __enter__(self):
         self.tstart = datetime.datetime.now()
         return self
@@ -71,7 +89,7 @@ class ProgressBar(object):
         msg += ' | {} / est. {}'.format(elapsed, est)
         msg = msg.strip()
         self.render(int(perc*100), msg)
-        
+
     def done(self, message='done'):
         return self.render(100, message)
     def render(self, percent, message = ''):
@@ -96,7 +114,7 @@ class ProgressBar(object):
             bar_width = terminal.COLUMNS - inline_msg_len -self.PADDING
         else:
             bar_width = self.width
- 
+
         # Check if render is called for the first time
         if self.progress != None:
             self.clear()

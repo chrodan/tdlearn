@@ -100,6 +100,7 @@ class MarcsPolicy(NoisyContinuous):
             print "Could not init mlabwrap"
             self.mlab = None
         self.filename = filename
+        self.cnt=0
 
     def __repr__(self):
         return "MarcsPolicy (fn=" + self.filename + ",noise=" + repr(self.noise) + ")"
@@ -132,6 +133,7 @@ class MarcsPolicy(NoisyContinuous):
                 self.mlab = None
 
     def mean(self, s):
+        self.cnt+=1
         lst = [str(a) for a in s[:-1]] + [str(np.sin(s[-1])), str(
             np.cos(s[-1]))]
         strrep = ",".join(lst)

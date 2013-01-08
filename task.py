@@ -9,7 +9,8 @@ Created on Wed Feb 22 18:39:00 2012
 import td
 import dynamic_prog
 import numpy as np
-from util.progressbar import ProgressBar
+
+from util.progressbar import ProgressBar, Timer
 import util
 from joblib import Parallel
 import policies
@@ -64,16 +65,17 @@ class LinearValuePredictionTask(object):
 
         return min_errors
 
-    def avg_error_traces(self, methods, n_indep, verbose=False, n_jobs=1, **kwargs):
+    def avg_error_traces(self, methods, n_indep, verbose=0, n_jobs=1, **kwargs):
         res = []
         if n_jobs == 1:
-            with ProgressBar(enabled=verbose) as p:
+            with ProgressBar(enabled=(verbose > 0)) as p:
 
                 for seed in range(n_indep):
                     p.update(
                         seed, n_indep, "{} of {} seeds".format(seed, n_indep))
                     kwargs['seed'] = seed
-                    res.append(self.error_traces(methods, **kwargs))
+                    res.append(
+                        self.error_traces(methods, verbose=verbose, **kwargs))
         else:
             jobs = []
             for seed in range(n_indep):
@@ -244,7 +246,7 @@ class LinearValuePredictionTask(object):
                 policy=self.behavior_policy,
                 states=s, seed=seed)
 
-    def error_traces(self, methods, n_samples=1000, n_eps=1,
+    def error_traces(self, methods, n_samples=1000, n_eps=1, verbose=0.,
                      seed=1, criteria=["RMSBE"], error_every=1, episodic=False):
 
         # Intialization
@@ -264,61 +266,68 @@ class LinearValuePredictionTask(object):
             m.reset_trace()
 
         # Generate trajectories
-        s, a, r, s_n, restarts = self.mdp.samples_cached(n_iter=n_samples,
-                                                         n_restarts=n_eps,
-                                                         policy=self.behavior_policy,
-                                                         seed=seed)
-        a2, r2, s_n2 = self.mdp.samples_cached_transitions(
-            policy=self.behavior_policy,
-            states=s, seed=seed)
+        with Timer("Generate Samples", active=(verbose > 1.)):
+            s, a, r, s_n, restarts = self.mdp.samples_cached(n_iter=n_samples,
+                                                             n_restarts=n_eps,
+                                                             policy=self.behavior_policy,
+                                                             seed=seed, verbose=verbose)
+        with Timer("Generate Double Samples", active=(verbose > 1.)):
+            a2, r2, s_n2 = self.mdp.samples_cached_transitions(
+                policy=self.behavior_policy,
+                states=s, seed=seed)
 
         if self.off_policy:
-            m_a_beh = policies.mean_action_trajectory(self.behavior_policy, s)
-            m_a_tar = policies.mean_action_trajectory(self.target_policy, s)
-            rhos = np.zeros_like(r)
-            rhos2 = np.zeros_like(r2)
-            self.rhos = rhos
+            with Timer("Generate off-policy weights", active=(verbose > 1.)):
+                m_a_beh = policies.mean_action_trajectory(
+                    self.behavior_policy, s)
+                m_a_tar = policies.mean_action_trajectory(
+                    self.target_policy, s)
+                rhos = np.zeros_like(r)
+                rhos2 = np.zeros_like(r2)
+                self.rhos = rhos
 
         # Method learning
-        for i in xrange(n_samples * n_eps):
-            f0 = self.phi(s[i])
-            f1 = self.phi(s_n[i])
-            f1t = self.phi(s_n2[i])
-            if restarts[i]:
-                for k, m in enumerate(methods):
-                    m.reset_trace()
+        with ProgressBar(enabled=(verbose > 2.)) as p:
+            for i in xrange(n_samples * n_eps):
+                p.update(i, n_samples * n_eps)
+                f0 = self.phi(s[i])
+                f1 = self.phi(s_n[i])
+                f1t = self.phi(s_n2[i])
+                if restarts[i]:
+                    for k, m in enumerate(methods):
+                        m.reset_trace()
+                        if episodic:
+                            cur_theta = m.theta
+                            for i_e in range(len(criteria)):
+                                if isinstance(m, td.LinearValueFunctionPredictor):
+                                    errors[k, i_e, k_e] = err_f[i_e](cur_theta)
+                                else:
+                                    errors[k, i_e, k_e] = err_f_gen[i_e](m.V)
+
                     if episodic:
+                        k_e += 1
+                        if k_e >= n_e:
+                            break
+
+                for k, m in enumerate(methods):
+                    if self.off_policy:
+                        rhos[i] = self.target_policy.p(s[i], a[i], mean=m_a_tar[i]) / self.behavior_policy.p(s[i], a[i], mean=m_a_beh[i])
+                        rhos2[i] = self.target_policy.p(s[i], a2[i], mean=m_a_tar[i]) / self.behavior_policy.p(s[i], a2[i], mean=m_a_beh[i])
+                        m.update_V(s[i], s_n[i], r[i],
+                                   rho=rhos[i], rhot=rhos2[i],
+                                   f0=f0, f1=f1, f1t=f1t, s1t=s_n[i], rt=r2[i])
+                    else:
+                        m.update_V(s[i], s_n[i], r[i],
+                                   f0=f0, f1=f1, s1t=s_n2[i], f1t=f1t, rt=r2[i])
+                    if i % error_every == 0 and not episodic:
                         cur_theta = m.theta
                         for i_e in range(len(criteria)):
                             if isinstance(m, td.LinearValueFunctionPredictor):
-                                errors[k, i_e, k_e] = err_f[i_e](cur_theta)
+                                errors[k, i_e, int(
+                                    i / error_every)] = err_f[i_e](cur_theta)
                             else:
-                                errors[k, i_e, k_e] = err_f_gen[i_e](m.V)
-
-                if episodic:
-                    k_e += 1
-                    if k_e >= n_e:
-                        break
-
-            for k, m in enumerate(methods):
-                if self.off_policy:
-                    rhos[i] = self.target_policy.p(s[i], a[i], mean=m_a_tar[i]) / self.behavior_policy.p(s[i], a[i], mean=m_a_beh[i])
-                    rhos2[i] = self.target_policy.p(s[i], a2[i], mean=m_a_tar[i]) / self.behavior_policy.p(s[i], a2[i], mean=m_a_beh[i])
-                    m.update_V(s[i], s_n[i], r[i],
-                               rho=rhos[i], rhot=rhos2[i],
-                               f0=f0, f1=f1, f1t=f1t, s1t=s_n[i], rt=r2[i])
-                else:
-                    m.update_V(s[i], s_n[i], r[i],
-                               f0=f0, f1=f1, s1t=s_n2[i], f1t=f1t, rt=r2[i])
-                if i % error_every == 0 and not episodic:
-                    cur_theta = m.theta
-                    for i_e in range(len(criteria)):
-                        if isinstance(m, td.LinearValueFunctionPredictor):
-                            errors[k, i_e, int(
-                                i / error_every)] = err_f[i_e](cur_theta)
-                        else:
-                            errors[k, i_e, int(
-                                i / error_every)] = err_f_gen[i_e](m.V)
+                                errors[k, i_e, int(
+                                    i / error_every)] = err_f_gen[i_e](m.V)
 
         return errors
 
@@ -519,7 +528,7 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
         return np.sum(v ** 2 * self.beh_mu)
 
     def estimate_variance(self, n_samples):
-        k = int(np.log(1e-3)/np.log(self.gamma) + 1)
+        k = int(np.log(1e-3) / np.log(self.gamma) + 1)
         r = self.mdp.reward_samples(n_iter=k, n_restarts=n_samples,
                                     policy=self.behavior_policy,
                                     seed=3000)
@@ -527,6 +536,7 @@ class LinearDiscreteValuePredictionTask(LinearValuePredictionTask):
         r *= disc
         r = r.sum(axis=2)
         return r.var(axis=1)
+
 
 class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
     """
@@ -601,7 +611,7 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         if name == "mu" or name == "mu_next" or name == "mu_r" or name == "mu_phi" or name == "mu_phi_next":
             self.mu, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next = mdp.samples_distribution(self.mdp, policy=self.target_policy,
                                                                                                        policy_traj=self.behavior_policy,
-                                                                                                       phi=self.phi,
+                                                                                                      phi=self.phi,
                                                                                                        n_next=self.mu_n_next,
                                                                                                        n_iter=self.mu_iter,
                                                                                                        n_restarts=self.mu_restarts,
@@ -645,7 +655,29 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         V2 = self.gamma * np.array((theta * self.mu_phi_next).sum(axis=1))
         return np.mean((V - V2 - self.mu_r) ** 2)
 
+    def set_mu_from_trajectory(self, methods, n_samples=1000, n_eps=1,
+                               verbose=0, seed=1, n_samples_eval=6000):
 
+        s, _, _, _, restarts = self.mdp.samples_cached(n_iter=n_samples,
+                                                       n_restarts=n_eps,
+                                                       policy=self.behavior_policy,
+                                                       seed=seed, verbose=verbose)
+        if hasattr(self, "Pi"):
+            del self.Pi
+        self.mu, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next = mdp.samples_distribution_from_states(self.mdp, policy=self.target_policy,phi=self.phi, states=s[:n_samples_eval,:],
+                                                                                                               n_next=self.mu_n_next,
+                                                                                                               seed=self.mu_seed)
+        print "Mu set to trajectory samples"
+
+    def set_mu_from_states(self, methods, s, n_samples=1000, n_eps=1,
+                               verbose=0, seed=1, n_samples_eval=6000):
+
+        if hasattr(self, "Pi"):
+            del self.Pi
+        self.mu, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next = mdp.samples_distribution_from_states(self.mdp, policy=self.target_policy,phi=self.phi, states=s[:n_samples_eval,:],
+                                                                                                               n_next=self.mu_n_next,
+                                                                                                               seed=self.mu_seed)
+        print "Mu set to trajectory samples"
 class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
 
     def __getattr__(self, name):
@@ -775,7 +807,6 @@ class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
 
     def MSPBE(self, theta):
         """ Mean Squared Projected Bellman Error """
-#       return LinearContinuousValuePredictionTask.MSPBE(self, theta)
         V = np.matrix((theta * np.asarray(self.mu_phi)).sum(axis=1)).T
         theta_trans = features.squared_tri(self.mdp.dim_S).param_forward(
             *self.bellman_operator(*self.phi.param_back(theta)))

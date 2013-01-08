@@ -17,7 +17,7 @@ def make_slice(l, u, n):
 mdp = examples.PendulumSwingUpCartPole(
     dt=dt, Sigma=np.zeros(4))  # np.array([0., 0.005, 0.005, 0.]))
 n_slices = [3, 5, 7, 10]
-bounds = [[0, 20], [-3, 4], [-12, 12], [-3, 3]]
+bounds = [[0, 35], [-3, 4], [-12, 12], [-3, 3]]
 s = [make_slice(b[0], b[1], n) for b, n in zip(bounds, n_slices)]
 bounds = np.array(bounds, dtype="float")
 means = np.mgrid[s[0], s[1], s[2], s[3]].reshape(4, -1).T
@@ -31,14 +31,14 @@ n_feat = len(phi(np.zeros(mdp.dim_S)))
 print "Number of features:", n_feat
 theta_p = np.array([-0.1, 0., 0., 0.])
 
-policy = policies.MarcsPolicy(noise=np.array([0.1]))
+policy = policies.MarcsPolicy(noise=np.array([0.05]))
 theta0 = 0. * np.ones(n_feat)
 
 task = LinearContinuousValuePredictionTask(
     mdp, gamma, phi, theta0, policy=policy,
-    normalize_phi=False,
+    normalize_phi=False, mu_seed=1100,
     mu_subsample=1, mu_iter=200,
-    mu_restarts=30, mu_next=500)
+    mu_restarts=50, mu_next=500)
 
 
 methods = []
@@ -120,13 +120,13 @@ gptdp.name = r"GPTDP({}) $\sigma$={}".format(lam,sigma)
 gptdp.ls="--"
 #methods.append(gptdp)
 
-brm = td.RecursiveBRMDS(phi=phi)
+brm = td.RecursiveBRMDS(phi=phi, eps=eps)
 brm.name = "BRMDS"
 brm.color = "b"
 brm.ls = "--"
 methods.append(brm)
 
-brm = td.RecursiveBRM(phi=phi)
+brm = td.RecursiveBRM(phi=phi, eps=eps)
 brm.name = "BRM"
 brm.color = "b"
 methods.append(brm)
@@ -147,9 +147,6 @@ lstd.color = "b"
 l = 200
 n_eps = 250 #1000
 error_every = 1000 #4000
-name = "swingup_" + str(n_slices[0]) + "-" + \
-    str(n_slices[1]) + "-" + str(n_slices[2]) + "-" + str(n_slices[3]
-                                                          ) + "_gauss_onpolicy"
 name = "swingup_gauss_onpolicy"
 title = "Cartpole Swingup Onpolicy"
 n_indep = 50
@@ -158,6 +155,9 @@ criterion = "RMSPBE"
 criteria=["RMSPBE", "RMSBE"]
 if __name__ == "__main__":
     from experiments import *
+    #task.set_mu_from_states(methods, s=task.mu, n_samples=l, n_eps=n_eps, verbose=4.,
+    #            seed=100,
+    #            n_samples_eval=10000)
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
     save_results(**globals())
     #plot_errorbar(**globals())
