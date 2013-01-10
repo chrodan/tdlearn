@@ -12,7 +12,7 @@ import scipy.integrate
 import matplotlib.animation as animation
 import re
 import matplotlib.pyplot as plt
-import pyximport; pyximport.install()
+#import pyximport; pyximport.install()
 import swingup_ode
 
 class GridWorld(mdp.MDP):
@@ -329,11 +329,11 @@ class PendulumSwingUpCartPole(mdp.ContinuousMDP):
                                    1, self.__class__.randstart, Sigma=Sigma)
 
     def __repr__(self):
-        return "<PendulumSwingUpCartPole(" + repr([self.l, self.M, self.m, self.dt, self.b, self.Sigma]) + ")>"
+        return "<PendulumSwingUpCartPole_lowstart(" + repr([self.l, self.M, self.m, self.dt, self.b, self.Sigma]) + ")>"
 
     @staticmethod
     def randstart():
-        return np.array([0., 0., 0., (np.random.rand() - .5) * 2 * np.pi])
+        return np.array([0., 0., 0., (np.random.rand() - .5) * 1. * np.pi])
 
     def ode(self, s, t, a, m, l, M, b):
         g = 9.81

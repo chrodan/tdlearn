@@ -42,14 +42,14 @@ task = LinearContinuousValuePredictionTask(
 
 
 methods = []
-alpha = 0.2
-mu = .1
+alpha = 0.5
+mu = .01
 gtd = td.GTD(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
 methods.append(gtd)
 
-alpha, mu = 0.5, 4.
+alpha, mu = 0.5, 8.
 gtd = td.GTD2(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
@@ -69,10 +69,10 @@ td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
-lam = 0.4
-alpha = 0.4
-mu = 16.
-tdc = td.TDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
+lam = 0.2
+alpha = 0.5
+mu = 8.
+tdc = td.TDCLambda(alpha=alpha, mu=mu, lam=lam, phi=phi, gamma=gamma)
 tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "b"
 methods.append(tdc)
@@ -94,7 +94,7 @@ methods.append(lstd)
 #
 alpha = 0.0005
 lam = .2
-lstd = td.FPKF(lam=lam, alpha = alpha, phi=phi, gamma=gamma)
+lstd = td.FPKF(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
 lstd.name = r"FPKF({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
 lstd.ls = "-."
@@ -116,8 +116,8 @@ methods.append(rg)
 lam = .0
 sigma = 31.
 gptdp = td.GPTDPLambda(phi=phi, tau=sigma, lam=lam)
-gptdp.name = r"GPTDP({}) $\sigma$={}".format(lam,sigma)
-gptdp.ls="--"
+gptdp.name = r"GPTDP({}) $\sigma$={}".format(lam, sigma)
+gptdp.ls = "--"
 #methods.append(gptdp)
 
 brm = td.RecursiveBRMDS(phi=phi, eps=eps)
@@ -131,30 +131,31 @@ brm.name = "BRM"
 brm.color = "b"
 methods.append(brm)
 
-tau=0.0001
+tau = 0.0001
 lstd = regtd.LSTDl1(tau=tau, lam=0, phi=phi)
-lstd.name = r"LSTD-l1({}) $\tau={}$".format(0,tau)
+lstd.name = r"LSTD-l1({}) $\tau={}$".format(0, tau)
 lstd.color = "b"
 #methods.append(lstd)
 
-tau=0.005
+tau = 0.005
 lstd = regtd.LarsTD(tau=tau, lam=0, phi=phi)
-lstd.name = r"LarsTD({}) $\tau={}$".format(0,tau)
+lstd.name = r"LarsTD({}) $\tau={}$".format(0, tau)
 lstd.color = "b"
 #methods.append(lstd)
 
 
 l = 200
-n_eps = 250 #1000
-error_every = 1000 #4000
+n_eps = 250  # 1000
+error_every = 1000  # 4000
 name = "swingup_gauss_onpolicy"
 title = "Cartpole Swingup Onpolicy"
-n_indep = 50
-episodic=False
+n_indep = 20
+episodic = False
 criterion = "RMSPBE"
-criteria=["RMSPBE", "RMSBE"]
+criteria = ["RMSPBE", "RMSBE"]
 if __name__ == "__main__":
     from experiments import *
+    task.mu
     #task.set_mu_from_states(methods, s=task.mu, n_samples=l, n_eps=n_eps, verbose=4.,
     #            seed=100,
     #            n_samples_eval=10000)
