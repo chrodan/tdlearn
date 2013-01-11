@@ -31,7 +31,7 @@ n_feat = len(phi(np.zeros(mdp.dim_S)))
 print "Number of features:", n_feat
 theta_p = np.array([-0.1, 0., 0., 0.])
 
-policy = policies.MarcsPolicy(noise=np.array([0.05]))
+policy = policies.MarcsPolicy(noise=np.array([0.]))
 theta0 = 0. * np.ones(n_feat)
 
 task = LinearContinuousValuePredictionTask(
