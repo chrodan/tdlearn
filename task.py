@@ -611,7 +611,7 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         if name == "mu" or name == "mu_next" or name == "mu_r" or name == "mu_phi" or name == "mu_phi_next":
             self.mu, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next = mdp.samples_distribution(self.mdp, policy=self.target_policy,
                                                                                                        policy_traj=self.behavior_policy,
-                                                                                                      phi=self.phi,
+                                                                                                       phi=self.phi,
                                                                                                        n_next=self.mu_n_next,
                                                                                                        n_iter=self.mu_iter,
                                                                                                        n_restarts=self.mu_restarts,
@@ -655,7 +655,7 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         V2 = self.gamma * np.array((theta * self.mu_phi_next).sum(axis=1))
         return np.mean((V - V2 - self.mu_r) ** 2)
 
-    def set_mu_from_trajectory(self, methods, n_samples=1000, n_eps=1,
+    def set_mu_from_trajectory(self, n_samples=1000, n_eps=1,
                                verbose=0, seed=1, n_samples_eval=6000):
 
         s, _, _, _, restarts = self.mdp.samples_cached(n_iter=n_samples,
@@ -664,20 +664,21 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
                                                        seed=seed, verbose=verbose)
         if hasattr(self, "Pi"):
             del self.Pi
-        self.mu, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next = mdp.samples_distribution_from_states(self.mdp, policy=self.target_policy,phi=self.phi, states=s[:n_samples_eval,:],
+        self.mu, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next = mdp.samples_distribution_from_states(self.mdp, policy=self.target_policy, phi=self.phi, states=s[:n_samples_eval, :],
                                                                                                                n_next=self.mu_n_next,
                                                                                                                seed=self.mu_seed)
         print "Mu set to trajectory samples"
 
-    def set_mu_from_states(self, methods, s, n_samples=1000, n_eps=1,
-                               verbose=0, seed=1, n_samples_eval=6000):
+    def set_mu_from_states(self, s, seed=1, n_samples_eval=6000):
 
         if hasattr(self, "Pi"):
             del self.Pi
-        self.mu, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next = mdp.samples_distribution_from_states(self.mdp, policy=self.target_policy,phi=self.phi, states=s[:n_samples_eval,:],
+        self.mu, self.mu_r, self.mu_next, self.mu_phi, self.mu_phi_next = mdp.samples_distribution_from_states(self.mdp, policy=self.target_policy, phi=self.phi, states=s[:n_samples_eval, :],
                                                                                                                n_next=self.mu_n_next,
-                                                                                                               seed=self.mu_seed)
+                                                                                                               seed=seed)
         print "Mu set to trajectory samples"
+
+
 class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
 
     def __getattr__(self, name):
