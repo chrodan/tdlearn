@@ -318,22 +318,22 @@ class PendulumSwingUpCartPole(mdp.ContinuousMDP):
         angular position of the pendulum  (in [-pi, +pi[)
 
     """
-    def __init__(self, M=0.5, l=0.6, m=0.5, dt=0.15, b=0.1, Sigma=0.):
+    def __init__(self, M=0.5, l=0.6, m=0.5, dt=0.15, b=0.1, Sigma=0., start_amp=2.0):
         self.l = l
         self.M = M
         self.m = m
         self.dt = dt
         self.b = b
-
+        self.start_amp=start_amp
         mdp.ContinuousMDP.__init__(self, self.statefun, self.rewardfun, 4,
-                                   1, self.__class__.randstart, Sigma=Sigma)
+                                   1, lambda: self.__class__.randstart(start_amp), Sigma=Sigma)
 
     def __repr__(self):
-        return "<PendulumSwingUpCartPole_verylowstart(" + repr([self.l, self.M, self.m, self.dt, self.b, self.Sigma]) + ")>"
+        return "<PendulumSwingUpCartPole(" + repr([self.l, self.M, self.m, self.dt, self.b, self.Sigma, self.start_amp]) + ")>"
 
     @staticmethod
-    def randstart():
-        return np.array([0., 0., 0., (np.random.rand() - .5) * .5 * np.pi])
+    def randstart(a):
+        return np.array([0., 0., 0., (np.random.rand() - .5) * a * np.pi])
 
     def ode(self, s, t, a, m, l, M, b):
         g = 9.81
@@ -390,7 +390,7 @@ class PendulumSwingUpCartPole(mdp.ContinuousMDP):
         mdp.ContinuousMDP.__setstate__(self, state)
         self.rf = self.rewardfun
         self.sf = self.statefun
-        self.start = self.__class__.randstart
+        self.start = lambda: self.__class__.randstart(self.start_amp)
 
     def animate_trace(self, state_trace, action_trace=None):
         fig = plt.figure()

@@ -15,7 +15,7 @@ def make_slice(l, u, n):
     return slice(l, u + float(u - l) / (n - 1) / 2., float(u - l) / (n - 1))
 
 mdp = examples.PendulumSwingUpCartPole(
-    dt=dt, Sigma=np.zeros(4))  # np.array([0., 0.005, 0.005, 0.]))
+    dt=dt, Sigma=np.zeros(4), start_amp=0.2)  # np.array([0., 0.005, 0.005, 0.]))
 n_slices = [3, 5, 7, 10]
 bounds = [[0, 35], [-3, 4], [-12, 12], [-3, 3]]
 s = [make_slice(b[0], b[1], n) for b, n in zip(bounds, n_slices)]
@@ -31,14 +31,14 @@ n_feat = len(phi(np.zeros(mdp.dim_S)))
 print "Number of features:", n_feat
 theta_p = np.array([-0.1, 0., 0., 0.])
 
-policy = policies.MarcsPolicy(noise=np.array([0.]))
+policy = policies.MarcsPolicy(noise=np.array([0.0001]))
 theta0 = 0. * np.ones(n_feat)
 
 task = LinearContinuousValuePredictionTask(
     mdp, gamma, phi, theta0, policy=policy,
     normalize_phi=False, mu_seed=1100,
     mu_subsample=1, mu_iter=200,
-    mu_restarts=50, mu_next=500)
+    mu_restarts=20, mu_next=500)
 
 
 methods = []
@@ -145,19 +145,21 @@ lstd.color = "b"
 
 
 l = 200
-n_eps = 250  # 1000
-error_every = 1000  # 4000
-name = "swingup_gauss_onpolicy"
+n_eps = 50  # 1000
+error_every = 200  # 4000
+name = "swingup_gauss_onpolicy_perf"
 title = "Cartpole Swingup Onpolicy"
-n_indep = 20
+n_indep = 10
 episodic = False
 criterion = "RMSPBE"
 criteria = ["RMSPBE", "RMSBE"]
+eval_on_traces=True
+n_samples_eval=5000
 if __name__ == "__main__":
     from experiments import *
-    task.mu
+    #task.mu
     #task.set_mu_from_states(methods, s=task.mu, n_samples=l, n_eps=n_eps, verbose=4.,
-    #            seed=100,
+    #            seed=1,
     #            n_samples_eval=10000)
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
     save_results(**globals())
