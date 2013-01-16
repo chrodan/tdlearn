@@ -254,20 +254,22 @@ class LSTDl1(td.LSTDLambdaJP):
     def theta(self):
         self._tic()
 
-        interc = hasattr(self.phi, "intercept")
+        interc = hasattr(self.phi, "constant") and self.phi.constant == True
         A = -(self.C1 + self.C2)
         b = self.b
         if interc:
-            A = A[1:,1:]
-            b = b[1:]
+            A = A[:-1,:-1]
+            b = b[:-1]
             s = 1
         else:
             s = 0
         self.lasso.fit(A,b)
         theta = np.zeros_like(self.b)
         if interc:
-            theta[0] = self.lasso.intercept_
-        theta[s:] = self.lasso.coef_.flatten()
+            theta[-1] = self.lasso.intercept_
+            theta[:-1] = self.lasso.coef_.flatten()
+        else:
+            theta = self.lasso.coef_.flatten()
         self._toc()
         return theta
 

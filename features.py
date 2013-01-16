@@ -4,7 +4,8 @@ import numpy as np
 class gaussians(object):
 
     def __repr__(self):
-        return "gaussians("+repr(self.constant) + "," + repr(self.means) + "," + repr(self.sigmasq) + ")"
+        return "gaussians(" + repr(self.constant) + repr(self.normalization) \
+            + "," + repr(self.means) + "," + repr(self.sigmasq) + ")"
 
     def expectation(self, x, Sigma):
 
@@ -12,8 +13,11 @@ class gaussians(object):
         phi = np.exp(-(np.power(x - self.means, 2) / sig).sum(axis=1) / 2.)
         return phi / np.sum(phi)
 
-    def __init__(self, means, sigmas, constant=False):
+    def __init__(self, means, sigmas, constant=False, normalization=None):
         self.dim = means.shape[0]
+        if constant:
+            self.dim +=1
+        self.normalization = normalization
         assert(means.shape[0] == sigmas.shape[0])
         self.means = means
         self.sigmasq = np.power(sigmas, 2)
@@ -24,11 +28,14 @@ class gaussians(object):
         phi = np.exp(
             -(np.power(x - self.means, 2) / self.sigmasq).sum(axis=1) / 2.)
         if self.constant:
-            b = np.ones(phi.shape[0]+1)
+            b = np.ones(phi.shape[0] + 1)
             b[:-1] = phi / np.sum(phi)
         else:
-            b = phi/np.sum(phi)
+            b = phi / np.sum(phi)
+        if hasattr(self, "normalization") and self.normalization is not None:
+            b /= self.normalization
         return b
+
 
 class linear_blended(object):
     """
@@ -174,23 +181,24 @@ class corrupted_rbfs(object):
                      / (self.rbf_sigma ** 2) / 2.)
         phi[1:1 + self.n_rbfs] = rbf / np.sum(rbf)
         phi[1 + self.n_rbfs:] = np.random.normal(size=self.n_random)
-        return (phi-self.offset) / self.scaling
+        return (phi - self.offset) / self.scaling
 
     def normalization(self, samples):
-        rbfs = np.exp(-np.power(samples - self.rbf_mean[None,:], 2)
-                      / (self.rbf_sigma[None,:] ** 2) / 2.)
-        rbfs = rbfs / np.sum(rbfs, axis=1)[:,None]
+        rbfs = np.exp(-np.power(samples - self.rbf_mean[None, :], 2)
+                      / (self.rbf_sigma[None, :] ** 2) / 2.)
+        rbfs = rbfs / np.sum(rbfs, axis=1)[:, None]
         #self.offset[0] = -1.
         self.offset = np.zeros(self.dim)
         self.scaling = np.ones(self.dim)
-        self.offset[1,1+self.n_rbfs] = np.mean(rbfs, axis=0)
-        rbfs -=  np.mean(rbfs, axis=0)
-        self.scaling[1, 1+self.n_rbfs] = np.std(rbfs, axis=0)
+        self.offset[1, 1 + self.n_rbfs] = np.mean(rbfs, axis=0)
+        rbfs -= np.mean(rbfs, axis=0)
+        self.scaling[1, 1 + self.n_rbfs] = np.std(rbfs, axis=0)
 
     def expectation(self, state):
         phi = self(state)
         phi[1 + self.n_rbfs:] = 0.
         return (phi - self.offset) / self.scaling
+
 
 class spikes(object):
 
@@ -231,7 +239,7 @@ class lin_random(object):
         np.random.seed(seed)
         if constant:
             self.A = np.ones((dim_S, dim))
-            self.A[:,:-1] = np.random.rand(dim_S, dim-1)
+            self.A[:, :-1] = np.random.rand(dim_S, dim - 1)
         else:
             self.A = np.random.rand(dim_S, dim)
 

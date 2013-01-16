@@ -43,6 +43,16 @@ try:
 except:
     gs_indep = 3
 
+try:
+    gs_max_weight
+except:
+    gs_max_weight = 2.
+
+try:
+    gs_ignore_first_n
+except:
+    gs_ignore_first_n = 0
+
 
 def load_result_file(fn, maxerr=5):
     with open(fn) as f:
@@ -84,7 +94,10 @@ def run(cls, param):
     mean, std, raw = task.avg_error_traces(
         m, n_indep=gs_indep, n_samples=l, n_eps=n_eps,
         error_every=gs_errorevery, episodic=episodic, criteria=criteria, verbose=False)
-    weights = np.linspace(1., 2., mean.shape[-1])
+    a = int(gs_ignore_first_n / gs_errorevery)
+    mean = mean[a:]
+    weights = np.linspace(1., gs_max_weight, mean.shape[-1])
+
     val = (mean * weights).sum(axis=-1) / weights.sum()
     return val
 
@@ -164,6 +177,8 @@ def gridsearch_cluster(method, experiment, filename=None, gs_name="", batchsize=
 if __name__ == "__main__":
     njobs = args.njobs
     batchsize = args.batchsize
+    task.mu
+    task.fill_trajectory_cache(range(gs_indep), n_samples=l, n_eps=n_eps)
     gridsearch(td.ResidualGradient, alpha=alphas, batchsize=batchsize, njobs=njobs)
     gridsearch(td.ResidualGradientDS, alpha=alphas, batchsize=batchsize, njobs=njobs)
     gridsearch(td.LinearTDLambda, alpha=alphas, lam=lambdas, batchsize=batchsize, njobs=njobs)
