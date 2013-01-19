@@ -50,10 +50,10 @@ class ValueFunctionPredictor(object):
             return itertools.repeat(p)
 
     def _tic(self):
-        self._start = time.clock()
+        self._start = time.time()
 
     def _toc(self):
-        self.time += (time.clock() - self._start)
+        self.time += (time.time() - self._start)
 
 
 class LinearValueFunctionPredictor(ValueFunctionPredictor):

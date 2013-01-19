@@ -205,35 +205,82 @@ class LinearValuePredictionTask(object):
         errors = np.array(errors).swapaxes(0, 1)
         return np.mean(errors, axis=1), np.std(errors, axis=1), np.mean(times, axis=0)
 
-    def error_data_budget(self, methods, passes, n_samples=1000, n_eps=1,
-                          seed=1, criterion="MSE"):
+    def error_traces_cpu_time(self, method, max_t=600, min_diff=0.1, n_samples=1000, n_eps=1, verbose=0.,
+                     seed=1, criteria=["RMSBE"], error_every=1,
+                     eval_on_traces=False, n_samples_eval=None):
 
-        self._init_methods(methods)
-        err_f = self._init_error_fun(criterion)
-        errors = np.ones((passes, len(methods))) * np.inf
-        for m in methods:
-            m.reset_trace()
+        # Intialization
+        self._init_methods([method])
+        err_f = [self._init_error_fun(criterion) for criterion in criteria]
+        err_f_gen = [self._init_error_fun(
+            criterion, general=True) for criterion in criteria]
 
-        s, a, r, s_n, restarts, f0, f1 = self.mdp.samples_featured(
-            phi=self.phi, n_iter=n_samples,
-            n_restarts=n_eps,
-            policy=self.behavior_policy,
-            seed=seed)
-        for p in range(passes):
-            for k, m in enumerate(methods):
-                m.reset_trace()
-                for i in xrange(n_samples * n_eps):
-                    if restarts[i]:
-                        m.reset_trace()
-                    if self.off_policy:
-                        m.update_V_offpolicy(s[i], s_n[i], r[i], a[i],
-                                             self.behavior_policy,
-                                             self.target_policy,
-                                             f0=f0[i], f1=f1[i])
-                    else:
-                        m.update_V(s[i], s_n[i], r[i], f0=f0[i], f1=f1[i])
-                errors[p, k] = err_f(m.theta)
-        times = [m.time for m in methods]
+        times = []
+        errors = []
+
+        method.reset_trace()
+        if hasattr(method, "lam") and method.lam > 0.:
+            print "WARNING: reuse of samples only works without e-traces"
+
+        # Generate trajectories
+        with Timer("Generate Samples", active=(verbose > 1.)):
+            s, a, r, s_n, restarts = self.mdp.samples_cached(n_iter=n_samples,
+                                                             n_restarts=n_eps,
+                                                             policy=self.behavior_policy,
+                                                             seed=seed, verbose=verbose)
+        with Timer("Generate Double Samples", active=(verbose > 1.)):
+            a2, r2, s_n2 = self.mdp.samples_cached_transitions(
+                policy=self.behavior_policy,
+                states=s, seed=seed)
+        if eval_on_traces:
+            print "Evaluation of traces samples"
+            self.set_mu_from_states(
+                seed=self.mu_seed, s=s, n_samples_eval=n_samples_eval)
+
+        if self.off_policy:
+            with Timer("Generate off-policy weights", active=(verbose > 1.)):
+                m_a_beh = policies.mean_action_trajectory(
+                    self.behavior_policy, s)
+                m_a_tar = policies.mean_action_trajectory(
+                    self.target_policy, s)
+                rhos = np.zeros_like(r)
+                rhos2 = np.zeros_like(r2)
+                self.rhos = rhos
+
+        # Method learning
+        i = 0
+        last_t = 0.
+        with ProgressBar(enabled=(verbose > 2.)) as p:
+            while method.time < max_t:
+
+
+                f0 = self.phi(s[i])
+                f1 = self.phi(s_n[i])
+                f1t = self.phi(s_n2[i])
+                if restarts[i]:
+                    method.reset_trace()
+                if self.off_policy:
+                    rhos[i] = self.target_policy.p(s[i], a[i], mean=m_a_tar[i]) / self.behavior_policy.p(s[i], a[i], mean=m_a_beh[i])
+                    rhos2[i] = self.target_policy.p(s[i], a2[i], mean=m_a_tar[i]) / self.behavior_policy.p(s[i], a2[i], mean=m_a_beh[i])
+                    method.update_V(s[i], s_n[i], r[i],
+                                rho=rhos[i], rhot=rhos2[i],
+                                f0=f0, f1=f1, f1t=f1t, s1t=s_n[i], rt=r2[i])
+                else:
+                    method.update_V(s[i], s_n[i], r[i],
+                                f0=f0, f1=f1, s1t=s_n2[i], f1t=f1t, rt=r2[i])
+                assert(method.time > last_t)
+                if method.time - last_t > min_diff:
+                    p.update(method.time, max_t)
+                    last_t = method.time
+                    cur_theta = method.theta
+                    e = np.empty(len(criteria))
+                    for i_e in range(len(criteria)):
+                        e[i_e] = err_f[i_e](cur_theta)
+                    errors.append(e)
+                    times.append(method.time)
+                i += 1
+                i = i % n_samples * n_eps
+
         return errors, times
 
     def fill_trajectory_cache(self, seeds, n_samples=1000, n_eps=1):
