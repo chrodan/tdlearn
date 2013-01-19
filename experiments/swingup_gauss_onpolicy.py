@@ -45,36 +45,36 @@ task = LinearContinuousValuePredictionTask(
 
 
 methods = []
-alpha = 0.5
+alpha = 0.2
 mu = .01
 gtd = td.GTD(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
 methods.append(gtd)
 
-alpha, mu = 0.5, 8.
+alpha, mu = 0.3, 2.
 gtd = td.GTD2(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
-alpha = td.RMalpha(10., 0.25)
+alpha = td.RMalpha(5., 0.25)
 lam = .0
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
-alpha = .5
+alpha = .3
 lam = .2
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
-lam = 0.2
-alpha = 0.2
-mu = 8.
+lam = 0.0
+alpha = 0.3
+mu = .1
 tdc = td.TDCLambda(alpha=alpha, mu=mu, lam=lam, phi=phi, gamma=gamma)
 tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "b"
@@ -95,22 +95,32 @@ lstd.color = "g"
 lstd.ls = "-."
 methods.append(lstd)
 #
-alpha = 0.0005
-lam = .2
-lstd = td.FPKF(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
+lam = 0.
+eps = 10
+lstd = td.RecursiveLSTDLambda(lam=lam, eps=eps, phi=phi, gamma=gamma)
+lstd.name = r"LSTD({}) $\epsilon$={}".format(lam, eps)
+lstd.color = "g"
+lstd.ls = "-."
+methods.append(lstd)
+
+alpha = 0.1
+beta = 10.
+mins = 0
+lam = .6
+lstd = td.FPKF(lam=lam, alpha=alpha, beta=beta, mins=mins, phi=phi, gamma=gamma)
 lstd.name = r"FPKF({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
 lstd.ls = "-."
-#methods.append(lstd)
+methods.append(lstd)
 
-alpha = .5
+alpha = .3
 rg = td.ResidualGradientDS(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG DS $\alpha$={}".format(alpha)
 rg.color = "brown"
 rg.ls = "--"
 methods.append(rg)
 
-alpha = .5
+alpha = .3
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
@@ -150,15 +160,15 @@ lstd.color = "b"
 l = 200
 n_eps = 300  # 1000
 error_every = 600  # 4000
-name = "swingup_gauss_onpolicy_perf"
-title = "Cartpole Swingup Onpolicy stochasticity only in start dist."
-n_indep = 1
+name = "swingup_gauss_onpolicy"
+title = "Cartpole Swingup Onpolicy"
+n_indep = 50
 episodic = False
 criterion = "RMSPBE"
 criteria = ["RMSPBE", "RMSBE"]
 eval_on_traces=False
 n_samples_eval=10000
-verbose=4
+verbose=1
 gs_ignore_first_n = 10000
 gs_max_weight = 3.
 if __name__ == "__main__":
@@ -167,6 +177,6 @@ if __name__ == "__main__":
     #task.set_mu_from_trajectory(n_samples=l, n_eps=n_eps, verbose=4.,
     #            seed=0,
     #            n_samples_eval=10000)
-    mean, std, raw = run_experiment(n_jobs=1, **globals())
+    mean, std, raw = run_experiment(n_jobs=25, **globals())
     save_results(**globals())
-    plot_errorbar(**globals())
+    #plot_errorbar(**globals())

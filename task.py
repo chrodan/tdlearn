@@ -29,6 +29,14 @@ def tmp2(cl, *args, **kwargs):
 def tmp3(cl, *args, **kwargs):
     return cl.error_data_budget(*args, **kwargs)
 
+def tmp4(cl, n_samples, n_eps, seed):
+    s, a, r, s_n, restarts = cl.mdp.samples_cached(n_iter=n_samples,
+                n_restarts=n_eps, policy=cl.behavior_policy, seed=seed)
+    a2, r2, s_n2 = cl.mdp.samples_cached_transitions(
+                policy=cl.behavior_policy,
+                states=s, seed=seed)
+
+
 
 class LinearValuePredictionTask(object):
     """ Base class for LQR and discrete case tasks """
@@ -81,7 +89,7 @@ class LinearValuePredictionTask(object):
             for seed in range(n_indep):
                 kwargs = kwargs.copy()
                 kwargs['seed'] = seed
-                self.projection_operator()
+                #self.projection_operator()
                 jobs.append((tmp, [self, methods], kwargs))
             res = Parallel(n_jobs=n_jobs, verbose=verbose)(jobs)
             res = np.array(res)
@@ -283,15 +291,13 @@ class LinearValuePredictionTask(object):
 
         return errors, times
 
-    def fill_trajectory_cache(self, seeds, n_samples=1000, n_eps=1):
+    def fill_trajectory_cache(self, seeds, n_jobs=-1, verbose=10, **kwargs):
+        jobs = []
         for seed in seeds:
-            s, a, r, s_n, restarts = self.mdp.samples_cached(n_iter=n_samples,
-                                                             n_restarts=n_eps,
-                                                             policy=self.behavior_policy,
-                                                             seed=seed)
-            a2, r2, s_n2 = self.mdp.samples_cached_transitions(
-                policy=self.behavior_policy,
-                states=s, seed=seed)
+            kwargs = kwargs.copy()
+            kwargs['seed'] = seed
+            jobs.append((tmp4, [self], kwargs))
+        res = Parallel(n_jobs=n_jobs, verbose=verbose)(jobs)
 
     def error_traces(self, methods, n_samples=1000, n_eps=1, verbose=0.,
                      seed=1, criteria=["RMSBE"], error_every=1, episodic=False,
@@ -350,6 +356,9 @@ class LinearValuePredictionTask(object):
                         m.reset_trace()
                         if episodic:
                             cur_theta = m.theta
+                            if not np.isfinite(np.sum(cur_theta)):
+                                errors[k,:, int(i / error_every)] = np.nan
+                                continue
                             for i_e in range(len(criteria)):
                                 if isinstance(m, td.LinearValueFunctionPredictor):
                                     errors[k, i_e, k_e] = err_f[i_e](cur_theta)
@@ -373,6 +382,9 @@ class LinearValuePredictionTask(object):
                                    f0=f0, f1=f1, s1t=s_n2[i], f1t=f1t, rt=r2[i])
                     if i % error_every == 0 and not episodic:
                         cur_theta = m.theta
+                        if not np.isfinite(np.sum(cur_theta)):
+                            errors[k,:, int(i / error_every)] = np.nan
+                            continue
                         for i_e in range(len(criteria)):
                             if isinstance(m, td.LinearValueFunctionPredictor):
                                 errors[k, i_e, int(
