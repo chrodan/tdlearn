@@ -17,7 +17,7 @@ args = parser.parse_args()
 if args.experiment != None:
     exec "from experiments."+args.experiment+" import *"
 else:
-    from experiments.lqr_full_offpolicy import *
+    from experiments.swingup_gauss_onpolicy import *
 
 ls_alphas = [0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 1.0]
 alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(
@@ -93,9 +93,9 @@ def run(cls, param):
     m = [cls(phi=task.phi, gamma=gamma, **p) for p in param]
     mean, std, raw = task.avg_error_traces(
         m, n_indep=gs_indep, n_samples=l, n_eps=n_eps,
-        error_every=gs_errorevery, episodic=episodic, criteria=criteria, verbose=False)
+        error_every=gs_errorevery, episodic=episodic, criteria=criteria, verbose=0)
     a = int(gs_ignore_first_n / gs_errorevery)
-    mean = mean[a:]
+    mean = mean[... ,a:]
     weights = np.linspace(1., gs_max_weight, mean.shape[-1])
 
     val = (mean * weights).sum(axis=-1) / weights.sum()
@@ -131,8 +131,8 @@ def gridsearch(method, gs_name="", njobs=-2, batchsize=3, **params):
         i = j
 
     print "Starting {} {}{}".format(name, method.__name__, gs_name)
-    res = Parallel(n_jobs=njobs, verbose=11)(k)
-    res = np.vstack(res)
+    res1 = Parallel(n_jobs=njobs, verbose=11)(k)
+    res = np.vstack(res1)
     for i,c in enumerate(criteria):
         j = np.nanargmin(res[:,i].flatten())
         print "best parameters for {} with value {}:".format(c, np.nanmin(res[:,i]))
