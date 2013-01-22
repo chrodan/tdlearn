@@ -213,7 +213,7 @@ class LinearValuePredictionTask(object):
         errors = np.array(errors).swapaxes(0, 1)
         return np.mean(errors, axis=1), np.std(errors, axis=1), np.mean(times, axis=0)
 
-    def error_traces_cpu_time(self, method, max_t=600, min_diff=0.1, n_samples=1000, n_eps=1, verbose=0.,
+    def error_traces_cpu_time(self, method, max_t=600, max_passes=None, min_diff=0.1, n_samples=1000, n_eps=1, verbose=0.,
                      seed=1, criteria=["RMSBE"], error_every=1,
                      eval_on_traces=False, n_samples_eval=None):
 
@@ -258,6 +258,7 @@ class LinearValuePredictionTask(object):
         # Method learning
         i = 0
         last_t = 0.
+        passes = 0
         with ProgressBar(enabled=(verbose > 2.)) as p:
             while method.time < max_t:
 
@@ -285,9 +286,14 @@ class LinearValuePredictionTask(object):
                     for i_e in range(len(criteria)):
                         e[i_e] = err_f[i_e](cur_theta)
                     errors.append(e)
+                    print e[0],i
                     times.append(method.time)
                 i += 1
-                i = i % n_samples * n_eps
+                if i >= n_samples * n_eps:
+                    passes += 1
+                    if max_passes is not None and passes >= max_passes:
+                        break
+                i = i % (n_samples * n_eps)
 
         return errors, times
 

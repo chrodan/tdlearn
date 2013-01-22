@@ -89,10 +89,10 @@ class MarcsPolicy(NoisyContinuous):
         NoisyContinuous.__init__(self, dim_A=dim_A, noise=noise)
         try:
             from mlabwrap import mlab
-            import mlabwrap
-            self.mlab = mlabwrap.MlabWrap()
-            print "Init MLAB", self.mlab._session
-            #self.mlab = mlab
+            #import mlabwrap
+            #self.mlab = mlabwrap.MlabWrap()
+            #print "Init MLAB", self.mlab._session
+            self.mlab = mlab
             self.mlab._autosync_dirs = False
             self.mlab.addpath("./mlab_cartpole")
             self.mlab.load(filename)
@@ -115,7 +115,7 @@ class MarcsPolicy(NoisyContinuous):
         try:
             import mlabwrap
             self.mlab = mlabwrap.MlabWrap()
-            print "Restore MLAB", self.mlab._session
+            #print "Restore MLAB", self.mlab._session
             self.mlab._autosync_dirs = False
             self.mlab.addpath("./mlab_cartpole")
             self.mlab.load(self.filename)
