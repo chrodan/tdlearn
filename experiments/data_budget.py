@@ -1,155 +1,121 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Sep  2 13:55:04 2012
-
-@author: christoph
-"""
-
 import td
 import examples
 import numpy as np
-import matplotlib.pyplot as plt
-import dynamic_prog as dp
-import util
+import regtd
+#import matplotlib.pyplot as plt
 import features
 import policies
-from joblib import Parallel, delayed
-from task import LinearLQRValuePredictionTask
-import itertools
-import task as t
-gamma=0.9
-sigma = np.array([0.]*3 + [0.01])
-
+from task import LinearContinuousValuePredictionTask
+import util
+gamma = 0.95
 dt = 0.1
-#mdp = examples.MiniLQMDP(dt=dt)
-mdp = examples.PoleBalancingMDP(sigma=sigma, dt=dt)
-
-phi = features.squared_diag()
 
 
-n_feat = len(phi(np.zeros(mdp.dim_S)))
-theta_p,_,_ = dp.solve_LQR(mdp,  gamma=gamma)
-print theta_p
-theta_p = np.array(theta_p).flatten()
-
-policy = policies.LinearContinuous(theta=theta_p, noise=np.zeros((1,1)))
-#theta0 =  10*np.ones(n_feat)
-theta0 =  0.*np.ones(n_feat)
-
-task = LinearLQRValuePredictionTask(mdp, gamma, phi, theta0, policy=policy, normalize_phi=True)
-task.seed=0
-#phi = task.phi
-print "V_true", task.V_true
-print "theta_true"
-theta_true = phi.param_forward(*task.V_true)
-print theta_true
-#task.theta0 = theta_true
-methods = []
-passes = []
-#for alpha in [0.01, 0.005]:
-#    for mu in [0.05, 0.1, 0.2, 0.01]:
-#alpha = 0.1
-alpha = 0.01
-mu = 0.1 #optimal
-gtd = td.GTD(alpha=alpha, beta=mu*alpha, phi=phi)
-gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
-gtd.color = "r"
-methods.append(gtd)
-passes.append(10)
-#for alpha in [.005,0.01,0.02]:
-#    for mu in [0.01, 0.1]:
-alpha, mu = 0.01, 0.5 #optimal
-gtd = td.GTD2(alpha=alpha, beta=mu*alpha, phi=phi)
-gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
-gtd.color = "orange"
-methods.append(gtd)
-passes.append(10)
-
-alpha = .005
-td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
-td0.name = r"TD(0) $\alpha$={}".format(alpha)
-td0.color = "k"
-methods.append(td0)
-passes.append(10)
-
-#c = 1
-#mu = .7
-#alpha = td.RMalpha(c=c, mu=mu)
-#td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
-#td0.name = r"TD(0) $\alpha={}t^{{}}$".format(c, mu)
-#td0.color = "k"
-#methods.append(td0)
-#passes.append(10)
-
-c = 1
-mu = .5
-alpha = td.RMalpha(c=c, mu=mu)
-td0 = td.LinearTD0(alpha=alpha, phi=phi, gamma=gamma)
-td0.name = r"TD(0) $\alpha={}t^{{ {} }}$".format(c, mu)
-td0.color = "k"
-methods.append(td0)
-passes.append(10)
-
-#for alpha in [0.005, 0.01, 0.02]:
-#    for mu in [0.01, 0.1]:
-for alpha, mu in [(.005,0.001)]: #optimal
-    tdc = td.TDC(alpha=alpha, beta=alpha*mu, phi=phi, gamma=gamma)
-    tdc.name = r"TDC $\alpha$={} $\mu$={}".format(alpha, mu)
-    tdc.color = "b"
-    methods.append(tdc)
-    passes.append(10)
-#methods = []
-#for eps in np.power(10,np.arange(-1,4)):
-eps=100
-lstd = td.RecursiveLSTDLambda(lam=0, eps=eps, phi=phi, gamma=gamma)
-lstd.name = r"LSTD({}) $\epsilon$={}".format(0, eps)
-lstd.color = "g"
-methods.append(lstd)
-#
-#methods = []
-#for alpha in [0.01, 0.02, 0.03]:
-#alpha = .2
-alpha=.04
-rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
-rg.name = r"RG $\alpha$={}".format(alpha)
-rg.color = "brown"
-methods.append(rg)
-
-eta = 0.001
-reward_noise=0.01
-P_init=1.
-ktd = td.KTD(phi=phi, gamma=1., P_init=P_init,theta_noise=None, eta=eta, reward_noise=reward_noise)
-ktd.name = r"KTD $\eta$={}, $\sigma^2$={}".format(eta, reward_noise)
-#methods.append(ktd)
-
-eta = 0.0001
-reward_noise=0.001
-ktd = td.KTD(phi=phi, gamma=1., P_init=P_init,theta_noise=None, eta=eta, reward_noise=reward_noise)
-ktd.name = r"KTD $\eta$={}, $\sigma^2$={}".format(eta, reward_noise)
-methods.append(ktd)
+mdp = examples.PendulumSwingUpCartPole(
+    dt=dt, Sigma=np.zeros(4), start_amp=2.)  # np.array([0., 0.005, 0.005, 0.]))
+policy = policies.MarcsPolicy(noise=np.array([.05]))
 
 
-l=2000
-n_indep=20
-passes=8
-name="data_budget"
-title="Fixed Data Budget"
-criterion="RMSPBE"
-n_eps=1
+states,_,_,_,_ = mdp.samples_cached(n_iter=200, n_restarts=30,
+                                policy=policy,seed=8000)
 
-if __name__ =="__main__":
+n_slices = [3, 5, 7,10]
+n_slices2 = [5, 5, 14,20]
+bounds = [[0, 35], [-3, 4], [-12, 12], [-3, 3]]
+means, sigmas = features.make_grid(n_slices, bounds)
+means2, sigmas2 = features.make_grid(n_slices2, bounds)
+means = np.vstack([means,means2])
+sigmas = np.vstack([sigmas, sigmas2])
+
+phi = features.gaussians(means, sigmas, constant=False)
+A = util.apply_rowise(arr=states, f=phi)
+a = np.nonzero(np.sum(A > 0.05, axis=0) > 5)[0]
+phi = features.gaussians(means[a], sigmas[a], constant=True)
+print phi.dim, "features are used"
+theta0 = 0. * np.ones(phi.dim)
+
+task = LinearContinuousValuePredictionTask(
+    mdp, gamma, phi, theta0, policy=policy,
+    normalize_phi=False, mu_seed=1100,
+    mu_subsample=1, mu_iter=200,
+    mu_restarts=150, mu_next=300)
+
+lam = 0.0
+alpha = 0.3
+mu = .1
+tdc = td.TDCLambda(alpha=alpha, mu=mu, lam=lam, phi=phi)
+tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
+
+lam = 0.0
+alpha = td.RMalpha(5., 0.3)
+beta = td.RMalpha(.5, 0.3)
+tdcrm = td.TDCLambda(alpha=alpha, beta=beta, lam=lam, phi=phi)
+tdcrm.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
+
+
+lam = 0.
+eps = 10
+lstd = td.RecursiveLSTDLambda(lam=lam, eps=eps, phi=phi)
+lstd.name = r"LSTD({}) $\epsilon$={}".format(lam, eps)
+
+l = 200
+n_eps = 300  # 1000
+error_every = 600  # 4000
+name = "swingup_gauss_onpolicy"
+title = "Cartpole Swingup Onpolicy"
+n_indep = 10
+episodic = False
+criterion = "RMSPBE"
+criteria = ["RMSPBE"]
+eval_on_traces=False
+n_samples_eval=10000
+verbose=1
+gs_ignore_first_n = 10000
+gs_max_weight = 3.
+max_t=200.
+min_diff=1.
+t = np.arange(min_diff, max_t, min_diff)
+e = np.ones((len(t),3)) * np.nan
+
+def  run(s):
+    lstd.time=0.
+    tdc.time = 0.
+    tdcrm.time = 0.
+    e_,t_ = task.error_traces_cpu_time(lstd, max_passes=1, max_t=max_t, min_diff=min_diff,
+                                        n_samples=l, n_eps=n_eps, verbose=0, seed=s,
+                                        criteria=criteria)
+    e[:len(e_),0] = e_
+    e_,t_ = task.error_traces_cpu_time(tdc, max_passes=None, max_t=max_t, min_diff=min_diff,
+                                        n_samples=l, n_eps=n_eps, verbose=0, seed=s,
+                                        criteria=criteria)
+    e[:len(e_),1] = e_
+    e_,t_ = task.error_traces_cpu_time(tdcrm, max_passes=None, max_t=max_t, min_diff=min_diff,
+                                        n_samples=l, n_eps=n_eps, verbose=0, seed=s,
+                                        criteria=criteria)
+    e[:len(e_),2] = e_
+
+if __name__ == "__main__":
     from experiments import *
-    mean, std, times = task.avg_error_data_budget(methods, n_indep=n_indep, passes=passes, 
-                                      n_samples=l, n_eps=n_eps, seed=1, criterion=criterion,
-                                      verbose=1)
-    for k,m in enumerate(methods):
-        print m, times[k]     
-        plt.errorbar(range(1, mean.shape[0]+1),mean[:,k], yerr=std[:,k], label=m.name, linestyle=m.style)
-    plt.legend()
-    plt.xlabel("Number of Passes")
-    plt.ylabel(r"$\sqrt{RMSPBE}$")
-    plt.title(title)
-    plt.show()
-    #mean, std, raw = run_experiment(n_jobs=1, **globals())
-    #save_results(**globals())
-    #plot_errorbar(**globals())
+    import matplotlib.pyplot as plt
+    task.fill_trajectory_cache(seeds=range(n_indep), n_eps=n_eps, n_samples=l)
+    task.mu
+    fn = "data/data_budget.npz"
+    if os.path.exists(fn):
+        d = np.load(fn)
+        globals().update(d)
+    else:
+        n_jobs = 1
+        jobs = []
+        for s in range(n_indep):
+            jobs.append((run, [s]))
+        res = Parallel(n_jobs=n_jobs, verbose=verbose)(jobs)
+        res = np.array(res)
+        print res
+        print s, "done"
+        np.savez(fn, e=e, t=t)
+    #plt.figure()
+    #for s in range(len(t["lstd"])):
+    #    plt.plot(t["lstd"][s],np.vstack(e["lstd"][s])[:,0], "*", color="red")
+    #    plt.plot(t["tdc"][s],np.vstack(e["tdc"][s])[:,0], "o", color="blue")
+    #    plt.plot(t["tdcrm"][s],np.vstack(e["tdcrm"][s])[:,0], ".", color="green")
+

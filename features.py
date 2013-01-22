@@ -1,5 +1,17 @@
 import numpy as np
 
+def make_slice(l, u, n):
+    return slice(l, u + float(u - l) / (n - 1) / 2., float(u - l) / (n - 1))
+
+def make_grid(n_slices, bounds):
+    s = [make_slice(b[0], b[1], n) for b, n in zip(bounds, n_slices)]
+    bounds = np.array(bounds, dtype="float")
+    means = np.mgrid[s[0], s[1], s[2], s[3]].reshape(4, -1).T
+
+    sigmas = np.ones_like(means) * (
+        (bounds[:, 1] - bounds[:, 0]) / 2. / (np.array(n_slices) - 1)).flatten()
+    return means, sigmas
+
 
 class gaussians(object):
 
