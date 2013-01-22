@@ -1,4 +1,5 @@
 __author__ = "Christoph Dann <cdann@cdann.de>"
+import os
 import numpy as np
 import util
 
@@ -82,7 +83,7 @@ class DiscreteUniform(Discrete):
         self.dim_S, self.dim_A = dim_S, dim_A
 
 
-
+os.environ["MLABRAW_CMD_STR"] = "matlab -nosplash -nodesktop"
 class MarcsPolicy(NoisyContinuous):
 
     def __init__(self, filename="./mlab_cartpole/policy.mat", noise=None, dim_A=1):

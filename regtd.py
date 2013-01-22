@@ -130,7 +130,10 @@ class LSTDl21(td.LinearValueFunctionPredictor, td.OffPolicyValueFunctionPredicto
 
     def reset(self):
         self.reset_trace()
-        n = len(self.init_vals["theta"]) - 1
+        if hasattr(self.phi, "constant") and self.phi.constant == True:
+            n = len(self.init_vals["theta"]) - 1
+        else:
+            n = len(self.init_vals["theta"])
         for k, v in self.init_vals.items():
             if k == "theta":
                 continue
@@ -155,9 +158,9 @@ class LSTDl21(td.LinearValueFunctionPredictor, td.OffPolicyValueFunctionPredicto
         if f0 is None or f1 is None:
             f0 = self.phi(s0)
             f1 = self.phi(s1)
-        if hasattr(self.phi, "intercept"):
-            f0 = f0[1:]
-            f1 = f1[1:]
+        if hasattr(self.phi, "constant") and self.phi.constant == True:
+            f0 = f0[:-1]
+            f1 = f1[:-1]
 
         self._tic()
         self.t += 1
@@ -208,8 +211,8 @@ class LSTDl21(td.LinearValueFunctionPredictor, td.OffPolicyValueFunctionPredicto
         b = np.dot(Sigma, R_cent) + R_m
         self.lasso.fit(A, b)
         theta = np.zeros(n + 1)
-        theta[0] = self.lasso.intercept_ / (1 - self.gamma)
-        theta[1:] = self.lasso.coef_.flatten()
+        theta[-1] = self.lasso.intercept_ / (1 - self.gamma)
+        theta[:-1] = self.lasso.coef_.flatten()
 
         self._toc()
         return theta
@@ -220,8 +223,6 @@ class LSTDl1(td.LSTDLambdaJP):
         LSTD-l1
         regularized LSTD approach adding an l1 penalty on the A * theta - b residuals.
 
-        A Danzuig Selector Approach to Temporal Difference Learning
-        Geist M., Scherrer B., ... (ICML 2012)
     """
 
     def __init__(self, lars=False, **kwargs):
