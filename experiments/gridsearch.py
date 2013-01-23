@@ -200,7 +200,7 @@ if __name__ == "__main__":
     if task.off_policy:
         #gridsearch(td.GeriTDC, alpha=alphas, mu=mus, batchsize=batchsize, njobs=njobs)
         gridsearch(td.GeriTDCLambda, alpha=alphas, mu=mus, lam=lambdas, batchsize=batchsize, njobs=njobs)
-        gridsearch(td.RecursiveLSTDLambdaJP, lam=lambdas, batchsize=batchsize, njobs=njobs)
+        gridsearch(td.RecursiveLSTDLambdaJP, lam=lambdas, eps=ls_eps, batchsize=batchsize, njobs=njobs)
         gridsearch(td.RecursiveLSPELambdaCO, lam=lambdas, alpha=ls_alphas,batchsize=batchsize, njobs=njobs)
     #else:
         #gridsearch(td.GPTDPLambda, tau=sigmas, lam=lambdas, batchsize=batchsize, njobs=njobs)

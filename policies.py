@@ -83,7 +83,7 @@ class DiscreteUniform(Discrete):
         self.dim_S, self.dim_A = dim_S, dim_A
 
 
-os.environ["MLABRAW_CMD_STR"] = "matlab -nosplash -nodesktop"
+os.environ["MLABRAW_CMD_STR"] = "matlab -nosplash -nodesktop -nodisplay -nojvm"
 class MarcsPolicy(NoisyContinuous):
 
     def __init__(self, filename="./mlab_cartpole/policy.mat", noise=None, dim_A=1):

@@ -286,7 +286,7 @@ class LinearValuePredictionTask(object):
                     for i_e in range(len(criteria)):
                         e[i_e] = err_f[i_e](cur_theta)
                     errors.append(e)
-                    print e[0],i
+                    #print e[0],i
                     times.append(method.time)
                 i += 1
                 if i >= n_samples * n_eps:

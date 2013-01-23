@@ -1,4 +1,5 @@
 import td
+from joblib import Parallel
 import examples
 import numpy as np
 import regtd
@@ -78,6 +79,7 @@ t = np.arange(min_diff, max_t, min_diff)
 e = np.ones((len(t),3)) * np.nan
 
 def  run(s):
+    e = np.ones((len(t),3)) * np.nan
     lstd.time=0.
     tdc.time = 0.
     tdcrm.time = 0.
@@ -93,6 +95,7 @@ def  run(s):
                                         n_samples=l, n_eps=n_eps, verbose=0, seed=s,
                                         criteria=criteria)
     e[:len(e_),2] = e_
+    return e
 
 if __name__ == "__main__":
     from experiments import *
@@ -104,18 +107,18 @@ if __name__ == "__main__":
         d = np.load(fn)
         globals().update(d)
     else:
-        n_jobs = 1
+        n_jobs = 10
         jobs = []
         for s in range(n_indep):
-            jobs.append((run, [s]))
+            jobs.append((run, [s], {}))
         res = Parallel(n_jobs=n_jobs, verbose=verbose)(jobs)
         res = np.array(res)
-        print res
-        print s, "done"
-        np.savez(fn, e=e, t=t)
-    #plt.figure()
-    #for s in range(len(t["lstd"])):
-    #    plt.plot(t["lstd"][s],np.vstack(e["lstd"][s])[:,0], "*", color="red")
+        np.savez(fn, res=res)
+    plt.figure()
+    r = res.mean(axis=0)
+    plt.plot(t,res[:,0], color="red")
+    plt.plot(t,res[:,1], color="blue")
+    plt.plot(t,res[:,2], color="green")
     #    plt.plot(t["tdc"][s],np.vstack(e["tdc"][s])[:,0], "o", color="blue")
     #    plt.plot(t["tdcrm"][s],np.vstack(e["tdcrm"][s])[:,0], ".", color="green")
 
