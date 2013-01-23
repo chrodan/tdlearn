@@ -67,45 +67,40 @@ class DLSTD(td.LSTDLambdaJP):
         m.update()
         m.setParam( 'OutputFlag', False )
         m.optimize()
-        #print m.status
         res = np.array([v.x for v in thetas])
-
-
-
-        #self.G[2 * n:3 * n, n:] = +A
-        #self.G[3 * n:, n:] = -A
-        #self.h[2 * n:3 * n] = -self.b + self.tau
-        #self.h[3 * n:] = self.b + self.tau
-
-        #import ipdb
-        #ipdb.set_trace()
-        ##print "G Rank", np.array(self.G).shape, np.linalg.matrix_rank(np.array(self.G))
-        #res = solv.lp(self.c, self.G, self.h)  # , solver="glpk")
         self._toc()
-        #if res['status'] != "optimal":
-            #import ipdb
-            #ipdb.set_trace()
-        #    pass
-        #return np.array(res["x"][n:]).flatten()
         return res
 
     def regularization_path(self):
         taus = np.logspace(-10, 0, num=20)
-        A = self.C1 + self.C2
+        A = -(self.C1 + self.C2)
         n = A.shape[0]
-        self.G[2 * n:3 * n, n:] = +A
-        self.G[3 * n:, n:] = -A
-        res = []
-        curres = None
-        for tau in taus:
-            self.h[2 * n:3 * n] = -self.b + tau
-            self.h[3 * n:] = self.b + tau
+        m = grb.Model("DLSTD")
+        u = []
+        thetas = []
+        for i in range(n):
+            u.append(m.addVar(obj=1., name="u_{}".format(i), lb=0.))
+            thetas.append(m.addVar(obj=0., name="theta_{}".format(i), lb=-grb.GRB.INFINITY))
+        m.update()
+        for i in range(n):
+            if i not in self.nonreg_ids:
+                m.addConstr(thetas[i]  <= u[i], "c_pos_{}".format(i))
+                m.addConstr(thetas[i]  >= -u[i], "c_neg_{}".format(i))
 
-            if curres is not None and curres["status"] == "optimal":
-                curres = solv.lp(self.c, self.G, self.h, primalstart=curres)
-            else:
-                curres = solv.lp(self.c, self.G, self.h)
-            res.append((tau, np.array(curres["x"][n:]).flatten()))
+            e = grb.quicksum([thetas[j]*A[i,j] for j in range(n)])
+            m.addConstr(e - self.b[i] <= self.tau, "tau_pos{}".format(i))
+            m.addConstr(e - self.b[i] >= -self.tau, "tau_neg{}".format(i))
+        m.update()
+        m.setParam( 'OutputFlag', False )
+        res = []
+        for tau in taus:
+            for i in range(n):
+                m.getConstrByName("tau_pos{}".format(i)).setAttr(grb.AttrConstClass.RHS, float(tau + self.b[i]))
+                m.getConstrByName("tau_neg{}".format(i)).setAttr(grb.AttrConstClass.RHS, float(- tau + self.b[i]))
+            m.update()
+            m.optimize()
+            curres = np.array([v.x for v in thetas])
+            res.append((tau, curres))
         return res
 
 
@@ -276,7 +271,7 @@ class LSTDl1(td.LSTDLambdaJP):
 
 
 def _min_plus(vals):
-    vals[vals <= 0] = np.inf
+    vals[vals <= 0.] = np.inf
     i = np.nanargmin(vals)
     assert(vals[i] >= 0.)
     return vals[i], i
@@ -318,9 +313,9 @@ class LarsTD(td.LSTDLambdaJP):
         c = self.b.copy()
         i = np.argmax(np.abs(c))
         I = set([i])
-
-        beta = c[i]
-        while beta > tau + 1e-15:
+        #import ipdb; ipdb.set_trace()
+        beta = np.abs(c[i])
+        while beta > tau + 1e-7:
             Il = list(I)
             Il.sort()
             Ilc = list(set(xrange(n)) - I)
@@ -358,6 +353,7 @@ class LarsTD(td.LSTDLambdaJP):
 
             theta[Il] += alpha * dw
             beta -= alpha
+            print beta
             c -= alpha * d
 
             # Update active set

@@ -402,7 +402,7 @@ class LinearValuePredictionTask(object):
         return errors
 
     def regularization_paths(self, methods, n_samples=1000, n_eps=1,
-                             seed=1, criteria=["RMSBE"]):
+                             seed=1, criteria=["RMSBE"], verbose=0):
 
         # Intialization
         self._init_methods(methods)
@@ -424,21 +424,25 @@ class LinearValuePredictionTask(object):
             self.rhos = rhos
 
         # Method learning
-        for i in xrange(n_samples * n_eps):
-            f0 = self.phi(s[i])
-            f1 = self.phi(s_n[i])
-            if restarts[i]:
-                for k, m in enumerate(methods):
-                    m.reset_trace()
+        with ProgressBar(enabled=(verbose > 2.)) as p:
+            for i in xrange(n_samples * n_eps):
+                p.update(i, n_samples * n_eps)
+                f0 = self.phi(s[i])
+                f1 = self.phi(s_n[i])
+                if restarts[i]:
+                    for k, m in enumerate(methods):
+                        m.reset_trace()
 
-            for k, m in enumerate(methods):
-                if self.off_policy:
-                    rhos[i] = self.target_policy.p(s[i], a[i], mean=m_a_tar[i]) / self.behavior_policy.p(s[i], a[i], mean=m_a_beh[i])
-                    m.update_V(s[i], s_n[i], r[i],
-                               rho=rhos[i],
-                               f0=f0, f1=f1)
-                else:
-                    m.update_V(s[i], s_n[i], r[i], f0=f0, f1=f1)
+                for k, m in enumerate(methods):
+                    if self.off_policy:
+                        rhos[i] = self.target_policy.p(s[i], a[i], mean=m_a_tar[i]) / self.behavior_policy.p(s[i], a[i], mean=m_a_beh[i])
+                        m.update_V(s[i], s_n[i], r[i],
+                                    rho=rhos[i],
+                                    f0=f0, f1=f1)
+                    else:
+                        m.update_V(s[i], s_n[i], r[i], f0=f0, f1=f1)
+
+
         for i, m in enumerate(methods):
             v = m.regularization_path()
             for tau, theta in v:

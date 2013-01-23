@@ -62,7 +62,7 @@ lstd.name = r"LSTD({}) $\epsilon$={}".format(lam, eps)
 l = 200
 n_eps = 300  # 1000
 error_every = 600  # 4000
-name = "swingup_gauss_onpolicy"
+name = "swingup_data_budget"
 title = "Cartpole Swingup Onpolicy"
 n_indep = 10
 episodic = False

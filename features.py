@@ -182,17 +182,17 @@ class corrupted_rbfs(object):
         self.dim = n_rbfs + 1 + n_random
         self.rbf_mean = np.linspace(0, n_S, n_rbfs)
         self.rbf_sigma = n_S / (n_rbfs - 1.)
-        self.intercept = 0
+        self.constant=True
         self.offset = np.zeros(self.dim)
         self.scaling = np.ones(self.dim)
 
     def __call__(self, state):
         phi = np.empty(self.dim)
-        phi[0] = 1.
+        phi[self.dim - 1] = 1.
         rbf = np.exp(-np.power(state - self.rbf_mean, 2)
                      / (self.rbf_sigma ** 2) / 2.)
-        phi[1:1 + self.n_rbfs] = rbf / np.sum(rbf)
-        phi[1 + self.n_rbfs:] = np.random.normal(size=self.n_random)
+        phi[:self.n_rbfs] = rbf / np.sum(rbf)
+        phi[self.n_rbfs:-1] = np.random.normal(size=self.n_random)
         return (phi - self.offset) / self.scaling
 
     def normalization(self, samples):
@@ -202,15 +202,15 @@ class corrupted_rbfs(object):
         #self.offset[0] = -1.
         self.offset = np.zeros(self.dim)
         self.scaling = np.ones(self.dim)
-        self.offset[1, 1 + self.n_rbfs] = np.mean(rbfs, axis=0)
+        self.offset[:self.n_rbfs] = np.mean(rbfs, axis=0)
         rbfs -= np.mean(rbfs, axis=0)
-        self.scaling[1, 1 + self.n_rbfs] = np.std(rbfs, axis=0)
+        self.scaling[:self.n_rbfs] = np.std(rbfs, axis=0)
 
-    def expectation(self, state):
+"""    def expectation(self, state):
         phi = self(state)
         phi[1 + self.n_rbfs:] = 0.
         return (phi - self.offset) / self.scaling
-
+"""
 
 class spikes(object):
 
