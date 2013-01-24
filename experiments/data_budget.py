@@ -30,7 +30,7 @@ sigmas = np.vstack([sigmas, sigmas2])
 
 phi = features.gaussians(means, sigmas, constant=False)
 A = util.apply_rowise(arr=states, f=phi)
-a = np.nonzero(np.sum(A > 0.05, axis=0) > 5)[0]
+a = np.nonzero(np.sum(A > 0.04, axis=0) > 10)[0]
 phi = features.gaussians(means[a], sigmas[a], constant=True)
 print phi.dim, "features are used"
 theta0 = 0. * np.ones(phi.dim)
@@ -55,7 +55,7 @@ tdcrm.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 
 
 lam = 0.
-eps = 10
+eps = 100
 lstd = td.RecursiveLSTDLambda(lam=lam, eps=eps, phi=phi)
 lstd.name = r"LSTD({}) $\epsilon$={}".format(lam, eps)
 
@@ -73,7 +73,7 @@ n_samples_eval=10000
 verbose=1
 gs_ignore_first_n = 10000
 gs_max_weight = 3.
-max_t=200.
+max_t=400.
 min_diff=1.
 t = np.arange(min_diff, max_t, min_diff)
 e = np.ones((len(t),3)) * np.nan
@@ -116,9 +116,9 @@ if __name__ == "__main__":
         np.savez(fn, res=res)
     plt.figure()
     r = res.mean(axis=0)
-    plt.plot(t,res[:,0], color="red")
-    plt.plot(t,res[:,1], color="blue")
-    plt.plot(t,res[:,2], color="green")
+    plt.plot(t,r[:,0], color="red", label="LSTD")
+    plt.plot(t,r[:,1], color="blue", label="TDC const.")
+    plt.plot(t,r[:,2], color="green", label=r"TDC decr.")
     #    plt.plot(t["tdc"][s],np.vstack(e["tdc"][s])[:,0], "o", color="blue")
     #    plt.plot(t["tdcrm"][s],np.vstack(e["tdcrm"][s])[:,0], ".", color="green")
 
