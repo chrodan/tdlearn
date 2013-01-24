@@ -9,7 +9,7 @@ Created on Fri Dec  9 19:01:41 2011
 import numpy as np
 from util import multinomial_sample, memory, apply_rowise
 from util.progressbar import ProgressBar
-
+from joblib import Parallel
 
 def _false(x):
     return False
@@ -122,6 +122,33 @@ def samples_distribution(mymdp, policy, phi, policy_traj=None, n_subsample=1,
             c += 1
 
     return states, rewards, states_next, feat, feat_next
+
+
+def run1(*args, **kwargs):
+    return accum_reward_for_states(*args, **kwargs)
+
+@memory.cache(hashfun={"mymdp": repr, "policy": repr}, ignore=["verbose", "n_jobs"])
+def accum_reward_for_states(mymdp, policy, states, gamma, n_eps, l_eps, seed, verbose=3, n_jobs=24):
+    n = states.shape[0]
+    rewards = np.ones(n)
+    if n_jobs == 1:
+        with ProgressBar(enabled=(verbose >= 1)) as p:
+            for k in xrange(n):
+                p.update(k, n, "Sampling acc. reward")
+                np.random.seed(seed)
+                r = mymdp.sample_accum_reward(states[k], gamma, policy, n_eps=n_eps, l_eps=l_eps)
+                rewards[k] = np.mean(r)
+    else:
+        jobs = []
+        b = int(n / n_jobs)+1
+        k = 0
+        while k < n:
+            kp = min(k+b, n)
+            jobs.append((run1, [mymdp, policy, states[k:kp], gamma, n_eps, l_eps, seed], {"verbose": verbose-1, "n_jobs": 1}))
+            k = kp
+        res = Parallel(n_jobs=n_jobs, verbose=verbose)(jobs)
+        rewards = np.concatenate(res, axis=0).mean(axis=1)
+    return rewards
 
 
 class ContinuousMDP(object):
@@ -245,6 +272,20 @@ class ContinuousMDP(object):
                 yield (s0, a, s1, r)
                 i += 1
                 s0 = s1
+
+    def sample_accum_reward(self, s0, gamma, policy, n_eps=10, l_eps=200):
+        r = np.zeros(n_eps)
+        for n in xrange(n_eps):
+            s = s0
+            g = 1.
+            rands = np.random.randn(
+                l_eps, self.dim_S) * np.sqrt(self.Sigma[None, :])
+            for l in xrange(l_eps):
+                a = policy(s, 1)
+                s = self.sf(s,a)
+                r[n] += self.rf(s,a) * g
+                g *= gamma
+        return r
 
     def sample_step(self, s0, policy, seed=None, n_samples=1):
         """

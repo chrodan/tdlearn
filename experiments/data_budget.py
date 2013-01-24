@@ -17,15 +17,15 @@ mdp = examples.PendulumSwingUpCartPole(
 policy = policies.MarcsPolicy(noise=np.array([.05]))
 
 
-states,_,_,_,_ = mdp.samples_cached(n_iter=200, n_restarts=30,
-                                policy=policy,seed=8000)
+states, _, _, _, _ = mdp.samples_cached(n_iter=200, n_restarts=30,
+                                        policy=policy, seed=8000)
 
-n_slices = [3, 5, 7,10]
-n_slices2 = [5, 5, 14,20]
+n_slices = [3, 5, 7, 10]
+n_slices2 = [5, 5, 14, 20]
 bounds = [[0, 35], [-3, 4], [-12, 12], [-3, 3]]
 means, sigmas = features.make_grid(n_slices, bounds)
 means2, sigmas2 = features.make_grid(n_slices2, bounds)
-means = np.vstack([means,means2])
+means = np.vstack([means, means2])
 sigmas = np.vstack([sigmas, sigmas2])
 
 phi = features.gaussians(means, sigmas, constant=False)
@@ -56,7 +56,12 @@ tdcrm.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 
 lam = 0.
 eps = 100
-lstd = td.RecursiveLSTDLambda(lam=lam, eps=eps, phi=phi)
+rlstd = td.RecursiveLSTDLambda(lam=lam, eps=eps, phi=phi)
+rlstd.name = r"LSTD({}) $\epsilon$={}".format(lam, eps)
+
+lam = 0.
+eps = 100
+lstd = td.LSTDLambda(lam=lam, eps=eps, phi=phi)
 lstd.name = r"LSTD({}) $\epsilon$={}".format(lam, eps)
 
 l = 200
@@ -68,34 +73,44 @@ n_indep = 10
 episodic = False
 criterion = "RMSPBE"
 criteria = ["RMSPBE"]
-eval_on_traces=False
-n_samples_eval=10000
-verbose=1
+eval_on_traces = False
+n_samples_eval = 10000
+verbose = 1
 gs_ignore_first_n = 10000
 gs_max_weight = 3.
-max_t=400.
-min_diff=1.
+max_t = 800.
+min_diff = 1.
 t = np.arange(min_diff, max_t, min_diff)
-e = np.ones((len(t),3)) * np.nan
+e = np.ones((len(t), 3)) * np.nan
+
 
 def  run(s):
-    e = np.ones((len(t),3)) * np.nan
-    lstd.time=0.
+    e = np.ones((len(t), 3)) * np.nan
+    lstd.time = 0.
+    rlstd.time = 0.
     tdc.time = 0.
     tdcrm.time = 0.
-    e_,t_ = task.error_traces_cpu_time(lstd, max_passes=1, max_t=max_t, min_diff=min_diff,
-                                        n_samples=l, n_eps=n_eps, verbose=0, seed=s,
-                                        criteria=criteria)
-    e[:len(e_),0] = e_
-    e_,t_ = task.error_traces_cpu_time(tdc, max_passes=None, max_t=max_t, min_diff=min_diff,
-                                        n_samples=l, n_eps=n_eps, verbose=0, seed=s,
-                                        criteria=criteria)
-    e[:len(e_),1] = e_
-    e_,t_ = task.error_traces_cpu_time(tdcrm, max_passes=None, max_t=max_t, min_diff=min_diff,
-                                        n_samples=l, n_eps=n_eps, verbose=0, seed=s,
-                                        criteria=criteria)
-    e[:len(e_),2] = e_
-    return e
+    el, tl = task.error_traces_cpu_time(
+        lstd, max_passes=1, max_t=100000000, min_diff=min_diff,
+        n_samples=l, n_eps=n_eps, verbose=0, seed=s,
+        criteria=criteria, eval_once=True)
+
+    e_, t_ = task.error_traces_cpu_time(
+        rlstd, max_passes=1, max_t=max_t, min_diff=min_diff,
+        n_samples=l, n_eps=n_eps, verbose=0, seed=s,
+        criteria=criteria)
+    e[:len(e_), 0] = e_
+    e_, t_ = task.error_traces_cpu_time(
+        tdc, max_passes=None, max_t=max_t, min_diff=min_diff,
+        n_samples=l, n_eps=n_eps, verbose=0, seed=s,
+        criteria=criteria)
+    e[:len(e_), 1] = e_
+    e_, t_ = task.error_traces_cpu_time(
+        tdcrm, max_passes=None, max_t=max_t, min_diff=min_diff,
+        n_samples=l, n_eps=n_eps, verbose=0, seed=s,
+        criteria=criteria)
+    e[:len(e_), 2] = e_
+    return e, el, tl
 
 if __name__ == "__main__":
     from experiments import *
@@ -112,23 +127,27 @@ if __name__ == "__main__":
         for s in range(n_indep):
             jobs.append((run, [s], {}))
         res = Parallel(n_jobs=n_jobs, verbose=verbose)(jobs)
+        res, el, tl = zip(*res)
         res = np.array(res)
-        np.savez(fn, res=res, title="Cartpole Swingup with {} features".format(phi.dim))
+        np.savez(fn, res=res, el=el, tl=tl,
+                 title="Cartpole Swingup with {} features".format(phi.dim))
     plt.figure()
     for i in range(n_indep):
-        o = res[i,0,0]
+        o = res[i, 0, 0]
         for k in range(len(t)):
-            if np.isnan(res[i,k,0]):
-                res[i,k,0] = o
-            o = res[i,k,0]
-    r = np.nansum(res,axis=0) / np.sum(np.isfinite(res), axis=0)
-    u = (res - r)**2
-    std = np.sqrt(np.nansum(u,axis=0) / np.sum(np.isfinite(u), axis=0))
-    plt.errorbar(t, r[:,0], yerr=std[:,0], errorevery=20, color="red", label="LSTD")
-    plt.errorbar(t, r[:,1], yerr=std[:,1], errorevery=20, color="blue", label="TDC const.")
-    plt.errorbar(t, r[:,2], yerr=std[:,2], errorevery=20, color="green", label="TDC decr.")
+            if np.isnan(res[i, k, 0]):
+                res[i, k, 0] = o
+            o = res[i, k, 0]
+    r = np.nansum(res, axis=0) / np.sum(np.isfinite(res), axis=0)
+    u = (res - r) ** 2
+    std = np.sqrt(np.nansum(u, axis=0) / np.sum(np.isfinite(u), axis=0))
+    plt.errorbar(
+        t, r[:, 0], yerr=std[:, 0], errorevery=20, color="red", label="LSTD")
+    plt.errorbar(t, r[:, 1], yerr=std[:, 1], errorevery=20,
+                 color="blue", label="TDC const.")
+    plt.errorbar(t, r[:, 2], yerr=std[:, 2], errorevery=20,
+                 color="green", label="TDC decr.")
     plt.ylabel("RMSPBE")
     plt.xlabel("Runtime in s")
     plt.title(title)
     plt.legend()
-

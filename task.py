@@ -215,7 +215,7 @@ class LinearValuePredictionTask(object):
 
     def error_traces_cpu_time(self, method, max_t=600, max_passes=None, min_diff=0.1, n_samples=1000, n_eps=1, verbose=0.,
                      seed=1, criteria=["RMSBE"], error_every=1,
-                     eval_on_traces=False, n_samples_eval=None):
+                     eval_on_traces=False, n_samples_eval=None, eval_once=False):
 
         # Intialization
         self._init_methods([method])
@@ -281,19 +281,25 @@ class LinearValuePredictionTask(object):
                 if method.time - last_t > min_diff:
                     p.update(method.time, max_t)
                     last_t = method.time
-                    cur_theta = method.theta
-                    e = np.empty(len(criteria))
-                    for i_e in range(len(criteria)):
-                        e[i_e] = err_f[i_e](cur_theta)
-                    errors.append(e)
-                    #print e[0],i
-                    times.append(method.time)
+                    if not eval_once:
+                        cur_theta = method.theta
+                        e = np.empty(len(criteria))
+                        for i_e in range(len(criteria)):
+                            e[i_e] = err_f[i_e](cur_theta)
+                        errors.append(e)
+                        times.append(method.time)
                 i += 1
                 if i >= n_samples * n_eps:
                     passes += 1
                     if max_passes is not None and passes >= max_passes:
                         break
                 i = i % (n_samples * n_eps)
+        if eval_once:
+            cur_theta = method.theta
+            e = np.empty(len(criteria))
+            for i_e in range(len(criteria)):
+                e[i_e] = err_f[i_e](cur_theta)
+            return e, method.time
 
         return errors, times
 
@@ -701,7 +707,11 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
                                                                                                                            seed=self.mu_seed,
                                                                                                                            n_subsample=self.mu_subsample)
             return self.__dict__[name]
-
+        elif name == "mu_accum_r":
+            self.mu_accum_r = mdp.accum_reward_for_states(self.mdp, policy=self.target_policy, states=self.mu,
+                                                          gamma=self.gamma, seed=self.mu_seed,
+                                                          n_eps=10, l_eps=200, verbose=10)
+            return self.__dict__[name]
         else:
             raise AttributeError(name)
 
