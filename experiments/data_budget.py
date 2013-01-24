@@ -73,7 +73,7 @@ n_samples_eval=10000
 verbose=1
 gs_ignore_first_n = 10000
 gs_max_weight = 3.
-max_t=200.
+max_t=400.
 min_diff=1.
 t = np.arange(min_diff, max_t, min_diff)
 e = np.ones((len(t),3)) * np.nan
@@ -100,7 +100,7 @@ def  run(s):
 if __name__ == "__main__":
     from experiments import *
     import matplotlib.pyplot as plt
-    task.fill_trajectory_cache(seeds=range(n_indep), n_eps=n_eps, n_samples=l)
+    #task.fill_trajectory_cache(seeds=range(n_indep), n_eps=n_eps, n_samples=l)
     task.mu
     fn = "data/data_budget.npz"
     if os.path.exists(fn):
@@ -113,12 +113,24 @@ if __name__ == "__main__":
             jobs.append((run, [s], {}))
         res = Parallel(n_jobs=n_jobs, verbose=verbose)(jobs)
         res = np.array(res)
-        np.savez(fn, res=res)
+        np.savez(fn, res=res, title="Cartpole Swingup with {} features".format(phi.dim))
     plt.figure()
-    r = res.mean(axis=0)
-    plt.plot(t,res[:,0], color="red")
-    plt.plot(t,res[:,1], color="blue")
-    plt.plot(t,res[:,2], color="green")
+    for i in range(n_indep):
+        o = res[i,0,0]
+        for k in range(len(t)):
+            if np.isnan(res[i,k,0]):
+                res[i,k,0] = o
+            o = res[i,k,0]
+    r = np.nansum(res,axis=0) / np.sum(np.isfinite(res), axis=0)
+    u = (res - r)**2
+    std = np.sqrt(np.nansum(u,axis=0) / np.sum(np.isfinite(u), axis=0))
+    plt.errorbar(t, r[:,0], yerr=std[:,0], errorevery=20, color="red", label="LSTD")
+    plt.errorbar(t, r[:,1], yerr=std[:,1], errorevery=20, color="blue", label="TDC const.")
+    plt.errorbar(t, r[:,2], yerr=std[:,2], errorevery=20, color="green", label="TDC decr.")
+    plt.ylabel("RMSPBE")
+    plt.xlabel("Runtime in s")
+    plt.title(title)
+    plt.legend()
     #    plt.plot(t["tdc"][s],np.vstack(e["tdc"][s])[:,0], "o", color="blue")
     #    plt.plot(t["tdcrm"][s],np.vstack(e["tdcrm"][s])[:,0], ".", color="green")
 
