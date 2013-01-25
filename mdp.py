@@ -147,7 +147,7 @@ def accum_reward_for_states(mymdp, policy, states, gamma, n_eps, l_eps, seed, ve
             jobs.append((run1, [mymdp, policy, states[k:kp], gamma, n_eps, l_eps, seed], {"verbose": verbose-1, "n_jobs": 1}))
             k = kp
         res = Parallel(n_jobs=n_jobs, verbose=verbose)(jobs)
-        rewards = np.concatenate(res, axis=0).mean(axis=1)
+        rewards = np.concatenate(res, axis=0)
     return rewards
 
 
@@ -466,7 +466,7 @@ class MDP(object):
         return mu
 
     def samples_cached(self, policy, n_iter=1000, n_restarts=100,
-                       no_next_noise=False, seed=None):
+                       no_next_noise=False, seed=None, verbose=False):
         if seed is not None:
             np.random.seed(seed)
         assert (not no_next_noise)

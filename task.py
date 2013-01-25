@@ -369,7 +369,7 @@ class LinearValuePredictionTask(object):
                         if episodic:
                             cur_theta = m.theta
                             if not np.isfinite(np.sum(cur_theta)):
-                                errors[k,:, int(i / error_every)] = np.nan
+                                errors[k,:, k_e] = np.nan
                                 continue
                             for i_e in range(len(criteria)):
                                 if isinstance(m, td.LinearValueFunctionPredictor):
@@ -732,6 +732,11 @@ class LinearContinuousValuePredictionTask(LinearValuePredictionTask):
         V = np.array((theta * self.mu_phi_tar).sum(axis=1))
         V2 = self.gamma * np.array((theta * self.mu_phi_next_tar).sum(axis=1))
         return np.mean((V - V2 - self.mu_r_tar) ** 2)
+
+    def MSE(self, theta):
+        """ Mean Squared Bellman Error """
+        V = np.array((theta * self.mu_phi).sum(axis=1))
+        return np.mean((V - self.mu_accum_r) ** 2)
 
     def MSBE(self, theta):
         """ Mean Squared Bellman Error """

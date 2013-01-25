@@ -17,7 +17,7 @@ n = 14
 n_feat = 4
 mdp = examples.BoyanChain(n, n_feat)
 phi = features.spikes(n_feat, n)
-gamma = 1.
+gamma = .95
 p0 = np.zeros(n_feat)
 task = LinearDiscreteValuePredictionTask(mdp, gamma, phi, p0)
 
@@ -59,15 +59,22 @@ td0.name = r"TD({}) $\alpha={}t^{{-{} }}$".format(lam, alpha.c, alpha.mu)
 methods.append(td0)
 
 alpha = 0.2
-mu = 1
-lam = 0.8
+mu = 0.0001
+lam = 0.1
 tdc = td.TDCLambda(lam=lam, alpha=alpha, beta=alpha * mu, phi=phi)
 tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "r"
 methods.append(tdc)
 
 lam = .8
-lstd = td.RecursiveLSTDLambda(lam=lam, phi=phi)
+eps = 10000
+lstd = td.RecursiveLSTDLambda(lam=lam, eps=eps, phi=phi)
+lstd.name = r"LSTD({})".format(lam)
+methods.append(lstd)
+
+lam = .0
+eps = 100
+lstd = td.RecursiveLSTDLambda(lam=lam, eps=eps, phi=phi)
 lstd.name = r"LSTD({})".format(lam)
 methods.append(lstd)
 
@@ -77,10 +84,12 @@ lspe = td.RecursiveLSPELambda(lam=lam, alpha=alpha, phi=phi)
 lspe.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
 methods.append(lspe)
 
-lam = .6
-alpha = .002
-lstd = td.FPKF(lam=lam, alpha=alpha, phi=phi)
-lstd.name = r"FPKF({}) $\alpha={}$".format(lam, alpha)
+lam = .0
+alpha = .01
+beta = 1000
+mins = 0
+lstd = td.FPKF(lam=lam, alpha=alpha, beta=beta, mins=mins, phi=phi)
+lstd.name = r"FPKF({}) $\alpha={}$ $\beta={}$".format(lam, alpha, beta)
 lstd.ls = "--"
 methods.append(lstd)
 
@@ -119,14 +128,14 @@ sigma = 1.
 gptdp = td.GPTDP(phi=phi, sigma=sigma)
 gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
 gptdp.ls = "--"
-methods.append(gptdp)
+#methods.append(gptdp)
 
 lam = .8
 sigma = 1e-5
 gptdp = td.GPTDPLambda(phi=phi, tau=sigma, lam=lam)
 gptdp.name = r"GPTDP({}) $\sigma$={}".format(lam, sigma)
 gptdp.ls = "--"
-methods.append(gptdp)
+#methods.append(gptdp)
 
 l = 20
 n_eps = 100
@@ -144,4 +153,4 @@ if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=1, **globals())
     save_results(**globals())
-    plot_errorbar(**globals())
+    #plot_errorbar(**globals())
