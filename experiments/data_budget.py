@@ -92,21 +92,25 @@ def  run(s):
     tdcrm.time = 0.
     el, tl = task.error_traces_cpu_time(
         lstd, max_passes=1, max_t=100000000, min_diff=min_diff,
-        n_samples=l, n_eps=n_eps, verbose=0, seed=s,
+        n_samples=l, n_eps=n_eps, verbose=0, seed=s, eval_on_traces=eval_on_traces,
+        n_samples_eval=n_samples_eval,
         criteria=criteria, eval_once=True)
 
     e_, t_ = task.error_traces_cpu_time(
         rlstd, max_passes=1, max_t=max_t, min_diff=min_diff,
-        n_samples=l, n_eps=n_eps, verbose=0, seed=s,
+        n_samples=l, n_eps=n_eps, verbose=0, seed=s, eval_on_traces=eval_on_traces,
+        n_samples_eval=n_samples_eval,
         criteria=criteria)
     e[:len(e_), 0] = e_
     e_, t_ = task.error_traces_cpu_time(
         tdc, max_passes=None, max_t=max_t, min_diff=min_diff,
-        n_samples=l, n_eps=n_eps, verbose=0, seed=s,
+        n_samples=l, n_eps=n_eps, verbose=0, seed=s, eval_on_traces=eval_on_traces,
+        n_samples_eval=n_samples_eval,
         criteria=criteria)
     e[:len(e_), 1] = e_
     e_, t_ = task.error_traces_cpu_time(
         tdcrm, max_passes=None, max_t=max_t, min_diff=min_diff,
+        n_samples=l, n_eps=n_eps, verbose=0, seed=s, eval_on_traces=eval_on_traces,
         n_samples=l, n_eps=n_eps, verbose=0, seed=s,
         criteria=criteria)
     e[:len(e_), 2] = e_

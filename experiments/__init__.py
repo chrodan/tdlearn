@@ -7,9 +7,10 @@ import matplotlib.pyplot as plt
 plt.ion()
 
 exp_list = ["disc_random", "boyan", "lqr_imp_onpolicy", "lqr_imp_offpolicy",
-        "lqr_full_onpolicy", "lqr_full_offpolicy", "swingup_gauss_onpolicy",
-        "swingup_gauss_offpolicy", "baird", "link20_imp_onpolicy",
-        "link20_imp_offpolicy"]
+            "lqr_full_onpolicy", "lqr_full_offpolicy", "swingup_gauss_onpolicy",
+            "swingup_gauss_offpolicy", "baird", "link20_imp_onpolicy",
+            "link20_imp_offpolicy"]
+
 
 def load_result_file(fn, maxerr=5):
     with open(fn) as f:
@@ -21,12 +22,17 @@ def load_result_file(fn, maxerr=5):
             print n, v
     return d
 
+def plot_experiment(experiment, criterion):
+    d = load_results(experiment)
+    plot_errorbar(ncol=3, criterion=criterion, **d)
 
 def plot_2d_error_grid_experiments(experiments, method, criterion, **kwargs):
     for e in experiments:
-        fn = "data/{e}/{m}.pck".format(e=e,m=method)
-        plot_2d_error_grid_file(fn, criterion, title="{m} {e}".format(m=method, e=e),
-                **kwargs)
+        fn = "data/{e}/{m}.pck".format(e=e, m=method)
+        plot_2d_error_grid_file(
+            fn, criterion, title="{m} {e}".format(m=method, e=e),
+            **kwargs)
+
 
 def plot_2d_error_grid_file(fn, criterion, **kwargs):
     with open(fn) as f:
@@ -36,24 +42,25 @@ def plot_2d_error_grid_file(fn, criterion, **kwargs):
 
 
 def plot_2d_error_grid(criterion, res, param_names, params, criteria, maxerr=5,
-        title="",pn1=None, pn2=None, settings={},**kwargs):
+                       title="", pn1=None, pn2=None, settings={}, **kwargs):
     if pn1 is None and pn2 is None:
         pn1 = param_names[0]
         pn2 = param_names[1]
     erri = criteria.index(criterion)
     ferr = res[..., erri].copy()
     ferr[ferr > maxerr] = np.nan
-    i = [slice(None) if (i == pn1 or i == pn2) else settings[i] for i in param_names]
+    i = [slice(
+        None) if (i == pn1 or i == pn2) else settings[i] for i in param_names]
     ferr = ferr[i]
-    if param_names.index(pn1) > param_names.index(pn2):
+    if param_names.index(pn1) < param_names.index(pn2):
         ferr = ferr.T
     plt.figure(figsize=(12, 10))
     plt.imshow(ferr, interpolation="nearest", cmap="hot", norm=LogNorm(
         vmin=np.nanmin(ferr), vmax=np.nanmax(ferr)))
     p1 = kwargs[pn1]
     p2 = kwargs[pn2]
-    plt.yticks(range(len(p1)), p1)
-    plt.xticks(range(len(p2)), p2, rotation=45, ha="right")
+    plt.yticks(range(len(p2)), p2)
+    plt.xticks(range(len(p1)), p1, rotation=45, ha="right")
     plt.xlabel(pn1)
     plt.ylabel(pn2)
     plt.title(title)

@@ -1069,7 +1069,10 @@ class FPKF(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, Linear
 
     def __setstate__(self, state):
         self.__dict__ = state
-        self.beta = self._assert_iterator(self.init_vals['beta'])
+        try:
+            self.beta = self._assert_iterator(self.init_vals['beta'])
+        except KeyError:
+            self.beta = self._assert_iterator(1.)
         self.alpha = self._assert_iterator(self.init_vals['alpha'])
 
     def reset(self):
