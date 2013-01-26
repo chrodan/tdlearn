@@ -116,13 +116,13 @@ if __name__ == "__main__":
     from experiments import *
     import matplotlib.pyplot as plt
     fn = "data/data_budget_nonoise.npz"
+    n_jobs = 5
     if os.path.exists(fn):
         d = np.load(fn)
         globals().update(d)
     else:
-        #task.fill_trajectory_cache(seeds=range(n_indep), n_eps=n_eps, n_samples=l)
+        task.fill_trajectory_cache(seeds=range(n_indep), n_eps=n_eps, n_samples=l, n_jobs=n_jobs)
         task.mu
-        n_jobs = 10
         jobs = []
         for s in range(n_indep):
             jobs.append((run, [s], {}))
