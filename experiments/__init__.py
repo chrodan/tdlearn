@@ -117,7 +117,7 @@ def load_results(name):
 
 
 def plot_errorbar(title, methods, mean, std, l, error_every, criterion,
-                  criteria, n_eps, episodic=False, ncol=1, **kwargs):
+                  criteria, n_eps, episodic=False, ncol=1, figsize=(15,10), **kwargs):
     plt.figure(figsize=(15, 10))
     plt.ylabel(criterion)
     plt.xlabel("Timesteps")

@@ -14,7 +14,7 @@ dt = 0.1
 
 mdp = examples.PendulumSwingUpCartPole(
     dt=dt, Sigma=np.zeros(4), start_amp=2.)  # np.array([0., 0.005, 0.005, 0.]))
-policy = policies.MarcsPolicy(noise=np.array([.0]))
+policy = policies.MarcsPolicy(noise=np.array([.05]))
 
 
 states, _, _, _, _ = mdp.samples_cached(n_iter=200, n_restarts=30,
@@ -55,7 +55,7 @@ tdcrm.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 
 
 lam = 0.
-eps = 100
+eps = 10000
 rlstd = td.RecursiveLSTDLambda(lam=lam, eps=eps, phi=phi)
 rlstd.name = r"LSTD({}) $\epsilon$={}".format(lam, eps)
 
@@ -78,7 +78,7 @@ n_samples_eval = 30000
 verbose = 1
 gs_ignore_first_n = 10000
 gs_max_weight = 3.
-max_t = 300.
+max_t = 200.
 min_diff = 1.
 t = np.arange(min_diff, max_t, min_diff)
 e = np.ones((len(t), 3)) * np.nan
@@ -119,13 +119,13 @@ def  run(s):
 if __name__ == "__main__":
     from experiments import *
     import matplotlib.pyplot as plt
-    fn = "data/data_budget_nonoise.npz"
+    fn = "data/data_budget_test.npz"
     n_jobs = 1
     if os.path.exists(fn):
         d = np.load(fn)
         globals().update(d)
     else:
-        task.fill_trajectory_cache(seeds=range(n_indep), n_eps=n_eps, n_samples=l, n_jobs=n_jobs)
+        #task.fill_trajectory_cache(seeds=range(n_indep), n_eps=n_eps, n_samples=l, n_jobs=n_jobs)
         task.mu
         jobs = []
         for s in range(n_indep):
