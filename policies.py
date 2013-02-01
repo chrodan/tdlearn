@@ -89,11 +89,11 @@ class MarcsPolicy(NoisyContinuous):
     def __init__(self, filename="./mlab_cartpole/policy.mat", noise=None, dim_A=1):
         NoisyContinuous.__init__(self, dim_A=dim_A, noise=noise)
         try:
-            from mlabwrap import mlab
-            #import mlabwrap
-            #self.mlab = mlabwrap.MlabWrap()
+            #from mlabwrap import mlab
+            import mlabwrap
+            self.mlab = mlabwrap.MlabWrap()
             #print "Init MLAB", self.mlab._session
-            self.mlab = mlab
+            #self.mlab = mlab
             self.mlab._autosync_dirs = False
             self.mlab.addpath("./mlab_cartpole")
             self.mlab.load(filename)

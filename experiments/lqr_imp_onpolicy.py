@@ -69,7 +69,7 @@ lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
 methods.append(lstd)
 
-lam = 0.2
+lam = 0.0
 eps = 100
 lstd = td.RecursiveLSTDLambda(lam=lam, eps=eps, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({}) $\epsilon$={}".format(lam, eps)
@@ -100,13 +100,13 @@ rg.color = "brown"
 methods.append(rg)
 
 
-brm = td.BRMDS(phi=phi)
+brm = td.RecursiveBRMDS(phi=phi)
 brm.name = "BRMDS"
 brm.color = "b"
 brm.ls = "--"
 methods.append(brm)
 
-brm = td.BRM(phi=phi)
+brm = td.RecursiveBRM(phi=phi)
 brm.name = "BRM"
 brm.color = "b"
 methods.append(brm)

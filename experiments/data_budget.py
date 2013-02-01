@@ -69,7 +69,7 @@ n_eps = 150
 error_every = 600  # 4000
 name = "swingup_data_budget"
 title = "Cartpole Swingup Onpolicy"
-n_indep = 10
+n_indep = 3
 episodic = False
 criterion = "RMSPBE"
 criteria = ["RMSPBE"]
@@ -111,7 +111,7 @@ def  run(s):
     e_, t_ = task.error_traces_cpu_time(
         tdcrm, max_passes=None, max_t=max_t, min_diff=min_diff,
         n_samples=l, n_eps=n_eps, verbose=0, seed=s, eval_on_traces=eval_on_traces,
-        n_samples=l, n_eps=n_eps, verbose=0, seed=s,
+        n_samples_eval=n_samples_eval,
         criteria=criteria)
     e[:len(e_), 2] = e_
     return e, el, tl
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     from experiments import *
     import matplotlib.pyplot as plt
     fn = "data/data_budget_nonoise.npz"
-    n_jobs = 5
+    n_jobs = 1
     if os.path.exists(fn):
         d = np.load(fn)
         globals().update(d)

@@ -114,10 +114,10 @@ brm.color = "b"
 brm.ls = "--"
 methods.append(brm)
 
-brm = td.BRM(phi=phi)
+brm = td.RecursiveBRM(phi=phi)
 brm.name = "BRM"
 brm.color = "b"
-#methods.append(brm)
+methods.append(brm)
 
 l = 30000
 error_every = 300
@@ -132,6 +132,6 @@ title = "20 link Pole Balancing Diagonal Features"
 
 if __name__ == "__main__":
     from experiments import *
-    mean, std, raw = run_experiment(n_jobs=-1, **globals())
+    mean, std, raw = run_experiment(n_jobs=13, **globals())
     save_results(**globals())
-    plot_errorbar(**globals())
+    #plot_errorbar(**globals())

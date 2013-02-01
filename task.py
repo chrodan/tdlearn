@@ -29,12 +29,18 @@ def tmp2(cl, *args, **kwargs):
 def tmp3(cl, *args, **kwargs):
     return cl.error_data_budget(*args, **kwargs)
 
-def tmp4(cl, n_samples, n_eps, seed):
+def tmp4(cl, n_samples, n_eps, seed, eval_on_traces=False, n_samples_eval=1):
     s, a, r, s_n, restarts = cl.mdp.samples_cached(n_iter=n_samples,
                 n_restarts=n_eps, policy=cl.behavior_policy, seed=seed)
     a2, r2, s_n2 = cl.mdp.samples_cached_transitions(
                 policy=cl.behavior_policy,
                 states=s, seed=seed)
+    if eval_on_traces:
+        cl.set_mu_from_trajectory(n_samples=n_samples, n_eps=n_eps, seed=seed,
+                                  n_samples_eval=n_samples_eval)
+        #_, _, _, _, _ = mdp.samples_distribution_from_states(cl.mdp,
+        #                    policy=cl.target_policy, phi=cl.phi, states=s[:n_samples_eval, :],
+        #                    n_next=cl.mu_n_next,seed=cl.mu_seed)
 
 
 
