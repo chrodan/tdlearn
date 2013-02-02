@@ -121,12 +121,12 @@ sigma = 1e-5
 gptdp = td.GPTDPLambda(phi=phi, tau=sigma, lam=lam)
 gptdp.name = r"GPTDP({}) $\sigma$={}".format(lam,sigma)
 gptdp.ls="--"
-methods.append(gptdp)
+#methods.append(gptdp)
 
 
 l = 15000
 error_every = 500
-n_indep = 50
+n_indep = 12
 n_eps = 1
 episodic=False
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
@@ -138,8 +138,8 @@ title = "4-dim. State Pole Balancing Onpolicy Diagonal Features"
 if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
-    save_results(**globals())
-    #plot_errorbar(**globals())
+    #save_results(**globals())
+    plot_errorbar(**globals())
 
 
 

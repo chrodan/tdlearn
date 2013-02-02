@@ -173,7 +173,7 @@ class PoleBalancingMDP(mdp.LQRMDP):
     def __repr__(self):
         return "<PoleBalancingMDP(" + repr([self.length, self.dt, self.A, self.B, self.Q, self.R, self.Sigma]) + ")>"
 
-    def __init__(self, mass=1., length=5., dt=.01, sigma=0.):
+    def __init__(self, m=.5, M=.5, length=.6, b=0.1,dt=.01, sigma=0.):
         """
         mass: point mass of the pendulum
         length: length of the stick / pendulum
@@ -183,11 +183,12 @@ class PoleBalancingMDP(mdp.LQRMDP):
         self.length = length
         self.dt = dt
         g = 9.81
+        k = 4.*M-m
         A = np.array([[1., dt, 0, 0],
-                      [g / length, 1, 0, 0],
+                      [dt*3*(M+m)/k/length, 1 + dt*3*b/k, 0, 0],
                       [0., 0, 1, dt],
-                      [0, 0, 0, 1]])
-        B = np.array([0., dt / length, 0, dt]).reshape(4, 1)
+                      [dt*3*m*g/k, -4*b/k, 0, 1]])
+        B = np.array([0., -3*dt /length/k, 0, dt *4/k]).reshape(4, 1)
         Q = np.diag([-100., 0., -1, 0])
         #terminal_f = lambda x: np.abs(x[0]) > 10
 

@@ -124,6 +124,7 @@ error_every = 300
 n_indep = 50
 n_eps = 1
 episodic=False
+verbose=3
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
 criterion = "RMSPBE"
 name = "link20_imp_onpolicy"
@@ -132,6 +133,6 @@ title = "20 link Pole Balancing Diagonal Features"
 
 if __name__ == "__main__":
     from experiments import *
-    mean, std, raw = run_experiment(n_jobs=13, **globals())
+    mean, std, raw = run_experiment(n_jobs=-1, **globals())
     save_results(**globals())
     #plot_errorbar(**globals())
