@@ -34,13 +34,13 @@ gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
 methods.append(gtd)
 
-alpha, mu = 0.03, 0.1
+alpha, mu = 0.02, 0.1
 gtd = td.GTD2(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
-alpha = td.RMalpha(0.6, .5)
+alpha = td.RMalpha(0.04, .25)
 lam = .0
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
@@ -48,13 +48,13 @@ td0.color = "k"
 methods.append(td0)
 
 alpha = .004
-lam = .4
+lam = .0
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
-lam = 0.4
+lam = 0.
 alpha = 0.004
 mu = 0.0001
 tdc = td.TDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
@@ -62,38 +62,39 @@ tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "b"
 methods.append(tdc)
 
-alpha = 1.
-lam = 0.2
+alpha = .9
+lam = 0.0
 lstd = td.RecursiveLSPELambda(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
 lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
 methods.append(lstd)
 
 lam = 0.0
-eps = 100
+eps = 100000
 lstd = td.RecursiveLSTDLambda(lam=lam, eps=eps, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({}) $\epsilon$={}".format(lam, eps)
 lstd.color = "g"
 lstd.ls = "-."
 methods.append(lstd)
 #
-alpha = .01
-beta = 1000.
-lam = .4
-lstd = td.FPKF(lam=lam, alpha = alpha, beta=beta, mins=0, eps=1,phi=phi, gamma=gamma)
+alpha = .3
+beta = 100.
+mins=500
+lam = .0
+lstd = td.FPKF(lam=lam, alpha = alpha, beta=beta, mins=mins, eps=1,phi=phi, gamma=gamma)
 lstd.name = r"FPKF({}) $\alpha$={} $\beta={}$".format(lam, alpha, beta)
 lstd.color = "g"
 lstd.ls = "-."
 methods.append(lstd)
 
-alpha = .01
+alpha = .06
 rg = td.ResidualGradientDS(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG DS $\alpha$={}".format(alpha)
 rg.color = "brown"
 rg.ls = "--"
 methods.append(rg)
 
-alpha = .01
+alpha = .06
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
