@@ -57,7 +57,7 @@ methods.append(td0)
 lam = 0.
 alpha = 0.004
 mu = 0.0001
-tdc = td.TDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
+tdc = td.TDCLambda(alpha=alpha, mu=mu, lam=lam, phi=phi, gamma=gamma)
 tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "b"
 methods.append(tdc)
@@ -79,9 +79,10 @@ methods.append(lstd)
 #
 alpha = .3
 beta = 100.
-mins=500
+mins = 500
 lam = .0
-lstd = td.FPKF(lam=lam, alpha = alpha, beta=beta, mins=mins, eps=1,phi=phi, gamma=gamma)
+lstd = td.FPKF(
+    lam=lam, alpha=alpha, beta=beta, mins=mins, eps=1, phi=phi, gamma=gamma)
 lstd.name = r"FPKF({}) $\alpha$={} $\beta={}$".format(lam, alpha, beta)
 lstd.color = "g"
 lstd.ls = "-."
@@ -120,16 +121,16 @@ gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
 lam = .2
 sigma = 1e-5
 gptdp = td.GPTDPLambda(phi=phi, tau=sigma, lam=lam)
-gptdp.name = r"GPTDP({}) $\sigma$={}".format(lam,sigma)
-gptdp.ls="--"
+gptdp.name = r"GPTDP({}) $\sigma$={}".format(lam, sigma)
+gptdp.ls = "--"
 #methods.append(gptdp)
 
 
 l = 15000
 error_every = 500
-n_indep = 12
+n_indep = 50
 n_eps = 1
-episodic=False
+episodic = False
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
 criterion = "RMSPBE"
 name = "lqr_imp_onpolicy"
@@ -139,8 +140,5 @@ title = "4-dim. State Pole Balancing Onpolicy Diagonal Features"
 if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
-    #save_results(**globals())
-    plot_errorbar(**globals())
-
-
-
+    save_results(**globals())
+    #plot_errorbar(**globals())

@@ -29,20 +29,20 @@ task = LinearLQRValuePredictionTask(
 
 
 methods = []
-alpha = 0.0002
-mu = .1
+alpha = 0.001
+mu = .0001
 gtd = td.GTD(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
 methods.append(gtd)
 
-alpha, mu = 0.002, 0.5
+alpha, mu = 0.001, 1.
 gtd = td.GTD2(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
-alpha = td.RMalpha(0.5, 0.5)
+alpha = td.RMalpha(0.03, 0.25)
 lam = .0
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
@@ -50,30 +50,30 @@ td0.color = "k"
 methods.append(td0)
 
 alpha = .002
-lam = .4
+lam = .2
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
-lam = 0.
+lam = 0.2
 alpha = 0.002
-mu = 0.1
+mu = 0.05
 tdc = td.TDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
 tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "b"
 methods.append(tdc)
 
 lam = 0.
-alpha = 0.002
+alpha = 0.003
 mu = 0.1
 tdc = td.GeriTDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
-tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
+tdc.name = r"TDC({})-TO $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "b"
 methods.append(tdc)
 
-alpha = .5
-lam = 1.
+alpha = .001
+lam = 0.
 lstd = td.RecursiveLSPELambda(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
 lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
@@ -82,37 +82,37 @@ methods.append(lstd)
 alpha = 1.
 lam = .0
 lstd = td.RecursiveLSPELambdaCO(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
-lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
+lstd.name = r"LSPE({})-TO $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
 methods.append(lstd)
 
 lam = 0.
-eps = 100
+eps = 10
 lstd = td.RecursiveLSTDLambdaJP(lam=lam, eps=eps, phi=phi, gamma=gamma)
-lstd.name = r"LSTD-CO({}) $\epsilon$={}".format(lam, eps)
+lstd.name = r"LSTD-TO({}) $\epsilon$={}".format(lam, eps)
 lstd.color = "g"
 lstd.ls = "-."
 methods.append(lstd)
 
 lam = 0.
-eps = 100
+eps = 0.01
 lstd = td.RecursiveLSTDLambda(lam=lam, eps=eps, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({}) $\epsilon$={}".format(lam, eps)
 lstd.color = "g"
 lstd.ls = "-."
 methods.append(lstd)
 #
-alpha = 0.3
-lam = .2
-beta = 10.
-mins = 1000.
+alpha = 1.
+lam = .4
+beta = 1.
+mins = 500
 lstd = td.FPKF(lam=lam, alpha = alpha, beta=beta, mins=mins, phi=phi, gamma=gamma)
 lstd.name = r"FPKF({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
 lstd.ls = "-."
 methods.append(lstd)
 
-alpha = .006
+alpha = .008
 rg = td.ResidualGradientDS(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG DS $\alpha$={}".format(alpha)
 rg.color = "brown"
@@ -152,5 +152,5 @@ if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
     save_results(**globals())
-    plot_errorbar(**globals())
+    #plot_errorbar(**globals())
 

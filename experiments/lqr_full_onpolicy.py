@@ -33,50 +33,50 @@ task = LinearLQRValuePredictionTask(
 #task.theta0 = theta_true
 
 methods = []
-alpha = 0.001
-mu = .01
+alpha = 0.0005
+mu = .001
 gtd = td.GTD(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "r"
 methods.append(gtd)
 
-alpha, mu = 0.006, 0.5
+alpha, mu = 0.005, 0.5
 gtd = td.GTD2(alpha=alpha, beta=mu * alpha, phi=phi)
 gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
-alpha = td.RMalpha(0.6, .7)
+alpha = td.RMalpha(0.8, .5)
 lam = .0
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
-alpha = .006
-lam = .4
+alpha = .008
+lam = .2
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
-lam = 0.2
-alpha = 0.006
-mu = 0.1
+lam = 0.0
+alpha = 0.007
+mu = 0.05
 tdc = td.TDCLambda(alpha=alpha, mu = mu, lam=lam, phi=phi, gamma=gamma)
 tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "b"
 methods.append(tdc)
 
-alpha = 1.
-lam = 0.2
+alpha = .1
+lam = 0.0
 lstd = td.RecursiveLSPELambda(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
 lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
 lstd.color = "g"
 methods.append(lstd)
 
 lam = 0.0
-eps = 100
+eps = 10
 lstd = td.RecursiveLSTDLambda(lam=lam, eps=eps, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({}) $\epsilon$={}".format(lam, eps)
 lstd.color = "g"
@@ -100,7 +100,7 @@ rg.color = "brown"
 rg.ls = "--"
 methods.append(rg)
 
-alpha = .03
+alpha = .01
 rg = td.ResidualGradient(alpha=alpha, phi=phi, gamma=gamma)
 rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
