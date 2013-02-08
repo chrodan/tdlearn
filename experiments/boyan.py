@@ -93,13 +93,13 @@ lstd.name = r"FPKF({}) $\alpha={}$ $\beta={}$".format(lam, alpha, beta)
 lstd.ls = "--"
 methods.append(lstd)
 
-brm = td.BRMDS(phi=phi)
+brm = td.RecursiveBRMDS(phi=phi)
 brm.name = "BRMDS"
 brm.color = "b"
 brm.ls = "--"
 methods.append(brm)
 
-brm = td.BRM(phi=phi)
+brm = td.RecursiveBRM(phi=phi)
 brm.name = "BRM"
 brm.color = "b"
 methods.append(brm)

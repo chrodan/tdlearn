@@ -1,10 +1,10 @@
 backend 	: TkAgg
 
-font.family        : serif
+#font.family        : serif
 font.size	   : 14
 #font.serif         : Times, Palatino, New Century Schoolbook, Bookman, Computer Modern Roman
 #font.sans-serif    : Helvetica, Avant Garde, Computer Modern Sans serif
 #font.cursive       : Zapf Chancery
 #font.monospace     : Courier, Computer Modern Typewriter
 
-text.usetex        : true
+#text.usetex        : true
