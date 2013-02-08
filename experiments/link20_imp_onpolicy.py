@@ -12,7 +12,7 @@ dim=20
 gamma = 0.95
 sigma = np.ones(2*dim)*1.
 dt = 0.1
-mdp = examples.NLinkPendulumMDP(np.ones(dim), np.ones(dim)*5, sigma=sigma, dt=dt)
+mdp = examples.NLinkPendulumMDP(np.ones(dim)*.5, np.ones(dim)*.6, sigma=sigma, dt=dt)
 phi = features.squared_diag(2*dim)
 
 
@@ -106,7 +106,7 @@ sigma = 31.
 gptdp = td.GPTDPLambda(phi=phi, tau=sigma, lam=lam)
 gptdp.name = r"GPTDP({}) $\sigma$={}".format(lam,sigma)
 gptdp.ls="--"
-methods.append(gptdp)
+#methods.append(gptdp)
 
 brm = td.RecursiveBRMDS(phi=phi)
 brm.name = "BRMDS"
@@ -121,10 +121,10 @@ methods.append(brm)
 
 l = 30000
 error_every = 300
-n_indep = 50
+n_indep = 2
 n_eps = 1
 episodic=False
-verbose=3
+verbose=10
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
 criterion = "RMSPBE"
 name = "link20_imp_onpolicy"
@@ -134,5 +134,5 @@ title = "20 link Pole Balancing Diagonal Features"
 if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
-    save_results(**globals())
-    #plot_errorbar(**globals())
+    #save_results(**globals())
+    plot_errorbar(**globals())
