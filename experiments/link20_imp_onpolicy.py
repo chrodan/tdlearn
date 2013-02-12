@@ -65,7 +65,7 @@ tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "b"
 methods.append(tdc)
 
-alpha = .5
+alpha = .01
 lam = 0.0
 lstd = td.RecursiveLSPELambda(lam=lam, alpha=alpha, phi=phi, gamma=gamma)
 lstd.name = r"LSPE({}) $\alpha$={}".format(lam, alpha)
@@ -73,7 +73,7 @@ lstd.color = "g"
 methods.append(lstd)
 
 lam = 0.
-eps = 100
+eps = 0.01
 lstd = td.RecursiveLSTDLambda(lam=lam, eps=eps, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({}) $\epsilon$={}".format(lam, eps)
 lstd.color = "g"
@@ -101,27 +101,20 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
-lam = .0
-sigma = 31.
-gptdp = td.GPTDPLambda(phi=phi, tau=sigma, lam=lam)
-gptdp.name = r"GPTDP({}) $\sigma$={}".format(lam,sigma)
-gptdp.ls="--"
-#methods.append(gptdp)
-
-brm = td.RecursiveBRMDS(phi=phi)
+brm = td.RecursiveBRMDS(phi=phi, eps=0.01)
 brm.name = "BRMDS"
 brm.color = "b"
 brm.ls = "--"
 methods.append(brm)
 
-brm = td.RecursiveBRM(phi=phi)
+brm = td.RecursiveBRM(phi=phi, eps=1e5)
 brm.name = "BRM"
 brm.color = "b"
 methods.append(brm)
 
 l = 30000
 error_every = 300
-n_indep = 2
+n_indep = 50
 n_eps = 1
 episodic=False
 verbose=10
@@ -134,5 +127,5 @@ title = "20 link Pole Balancing Diagonal Features"
 if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
-    #save_results(**globals())
-    plot_errorbar(**globals())
+    save_results(**globals())
+    #plot_errorbar(**globals())

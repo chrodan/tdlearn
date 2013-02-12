@@ -128,7 +128,7 @@ gptdp.ls = "--"
 
 l = 15000
 error_every = 500
-n_indep = 50
+n_indep = 200
 n_eps = 1
 episodic = False
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
