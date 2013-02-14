@@ -125,13 +125,13 @@ rg.name = r"RG $\alpha$={}".format(alpha)
 rg.color = "brown"
 methods.append(rg)
 
-brm = td.RecursiveBRMDS(phi=phi)
+brm = td.RecursiveBRMDS(phi=phi,eps=100)
 brm.name = "BRMDS"
 brm.color = "b"
 brm.ls = "--"
 methods.append(brm)
 
-brm = td.RecursiveBRM(phi=phi)
+brm = td.RecursiveBRM(phi=phi, eps=1e5)
 brm.name = "BRM"
 brm.color = "b"
 methods.append(brm)
