@@ -6,7 +6,7 @@ from matplotlib.colors import LogNorm
 import matplotlib.pyplot as plt
 plt.ion()
 
-exp_list = ["disc_random", "boyan", "lqr_imp_onpolicy", "lqr_imp_offpolicy",
+exp_list = ["disc_random_on","disc_random_off", "boyan", "lqr_imp_onpolicy", "lqr_imp_offpolicy",
             "lqr_full_onpolicy", "lqr_full_offpolicy", "swingup_gauss_onpolicy",
             "swingup_gauss_offpolicy", "baird", "link20_imp_onpolicy",
             "link20_imp_offpolicy"]

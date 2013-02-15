@@ -46,7 +46,7 @@ gtd.name = r"GTD2 $\alpha$={} $\mu$={}".format(alpha, mu)
 gtd.color = "orange"
 methods.append(gtd)
 
-alpha = td.RMalpha(0.8, .5)
+alpha = td.RMalpha(0.01, 0.05)
 lam = .0
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
 td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
@@ -112,13 +112,13 @@ ktd = td.KTD(phi=phi, gamma=gamma, theta_noise=None, eta=1e-5, P_init=1.,
 ktd.name = r"KTD $r_n={}$".format(reward_noise)
 #methods.append(ktd)
 
-brm = td.BRMDS(phi=phi)
+brm = td.BRMDS(phi=phi, eps=10)
 brm.name = "BRMDS"
 brm.color = "b"
 brm.ls = "--"
 methods.append(brm)
 
-brm = td.BRM(phi=phi)
+brm = td.BRM(phi=phi, eps=10)
 brm.name = "BRM"
 brm.color = "b"
 methods.append(brm)
@@ -126,19 +126,19 @@ methods.append(brm)
 sigma = 0.31
 gptdp = td.GPTDP(phi=phi, sigma=sigma)
 gptdp.name = r"GPTDP $\sigma$={}".format(sigma)
-methods.append(gptdp)
+#methods.append(gptdp)
 
 lam = .2 #suboptimal!!
 sigma = .031
 gptdp = td.GPTDPLambda(phi=phi, tau=sigma, lam=lam)
 gptdp.name = r"GPTDP({}) $\sigma$={}".format(lam,sigma)
 gptdp.ls="--"
-methods.append(gptdp)
+#methods.append(gptdp)
 
 
 l = 15000
 error_every = 500
-n_indep = 50
+n_indep = 200
 n_eps = 1
 episodic=False
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
@@ -151,4 +151,4 @@ if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
     save_results(**globals())
-    plot_errorbar(**globals())
+    #plot_errorbar(**globals())

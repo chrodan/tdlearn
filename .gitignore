@@ -4,4 +4,6 @@
 /.project
 /.pydevproject
 /cache/*
+/data/*
+/cache_old/*
 /*.swp

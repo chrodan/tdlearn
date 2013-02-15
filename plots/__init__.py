@@ -10,7 +10,8 @@ def plot_errorbar(title, methods, mean, std, l, error_every, criterion,
     f = plt.figure(figsize=figsize)
     plt.ylabel(criterion)
     plt.xlabel("Timesteps")
-    plt.title(title)
+    if title is not None:
+        plt.title(title)
 
     k = criteria.index(criterion)
     x = range(0, l * n_eps, error_every) if not episodic else range(n_eps)
