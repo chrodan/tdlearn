@@ -1,7 +1,7 @@
 from plots import *
 from experiments import load_results
 
-d = load_results("disc_random")
+d = load_results("disc_random_off")
 l = [11,12,13,14]
 for i,m in enumerate(d["methods"]):
     if i not in l:
@@ -20,6 +20,6 @@ for i,m in enumerate(d["methods"]):
         m.name="BRM"
 
 plt.ioff()
-f = plot_errorbar(criterion="RMSBE", figsize=(6,4), **d)
-plt.ylim(0,2)
+f = plot_errorbar(criterion="RMSBE", ncol=2,figsize=(6,4), **d)
+plt.ylim(0,1)
 save_figure("ds_off", fig=f)

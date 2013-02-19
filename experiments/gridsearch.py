@@ -17,8 +17,11 @@ args = parser.parse_args()
 if args.experiment != None:
     exec "from experiments."+args.experiment+" import *"
 else:
-    from experiments.lqr_imp_onpolicy import *
-
+    try:
+        print "Experiment", exp_name
+        exec "from experiments."+exp_name+" import *"
+    except:
+        print "You have to specify the experiment"
 ls_alphas = [0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 1.0]
 alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(
     np.arange(0.01, 0.1, 0.01)) + [0.1, 0.2, 0.3, 0.4, 0.5]
@@ -32,6 +35,7 @@ mins = [0, 500, 1000]
 fpkf_alphas = [0.01, 0.1, 0.3, 0.5, 0.8, 1.0]
 fpkf_beta = [1, 10, 100, 1000]
 etas = [None, 1e-5, 1e-3]
+
 
 try:
     gs_errorevery
@@ -52,7 +56,6 @@ try:
     gs_ignore_first_n
 except:
     gs_ignore_first_n = 0
-
 
 def load_result_file(fn, maxerr=5):
     with open(fn) as f:
@@ -175,6 +178,7 @@ def gridsearch_cluster(method, experiment, filename=None, gs_name="", batchsize=
 
 
 if __name__ == "__main__":
+
     njobs = args.njobs
     batchsize = args.batchsize
     task.mu
