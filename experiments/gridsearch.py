@@ -17,7 +17,7 @@ args = parser.parse_args()
 if args.experiment != None:
     exec "from experiments."+args.experiment+" import *"
 else:
-    from experiments.swingup_gauss_onpolicy import *
+    from experiments.lqr_imp_onpolicy import *
 
 ls_alphas = [0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 1.0]
 alphas = [0.0002, 0.0005] + list(np.arange(0.001, .01, 0.001)) + list(

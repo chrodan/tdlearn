@@ -23,7 +23,8 @@ policy = policies.LinearContinuous(theta=theta_p, noise=np.zeros((1)))
 theta0 = 0. * np.ones(n_feat)
 
 task = LinearLQRValuePredictionTask(
-    mdp, gamma, phi, theta0, policy=policy, normalize_phi=True, mu_next=1000)
+    mdp, gamma, phi, theta0, policy=policy, normalize_phi=True, mu_next=1000,
+    mu_iter=2000)
 
 
 methods = []

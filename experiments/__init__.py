@@ -27,22 +27,29 @@ def plot_experiment(experiment, criterion):
     plot_errorbar(ncol=3, criterion=criterion, **d)
 
 def plot_2d_error_grid_experiments(experiments, method, criterion, **kwargs):
+    l = []
     for e in experiments:
         fn = "data/{e}/{m}.pck".format(e=e, m=method)
-        plot_2d_error_grid_file(
+        l.append(plot_2d_error_grid_file(
             fn, criterion, title="{m} {e}".format(m=method, e=e),
-            **kwargs)
+            **kwargs))
+    return l if len(l) > 1 else l
 
+def plot_2d_error_grid_experiment(experiment, method, criterion, title=None, **kwargs):
+    fn = "data/{e}/{m}.pck".format(e=experiment, m=method)
+    if title is None:
+        title = "{} {}".format(method, experiment)
+    return plot_2d_error_grid_file(fn, criterion, title=title, **kwargs)
 
 def plot_2d_error_grid_file(fn, criterion, **kwargs):
     with open(fn) as f:
         d = pickle.load(f)
     d.update(kwargs)
-    plot_2d_error_grid(criterion=criterion, **d)
+    return plot_2d_error_grid(criterion=criterion, **d)
 
 
 def plot_2d_error_grid(criterion, res, param_names, params, criteria, maxerr=5,
-                       title="", pn1=None, pn2=None, settings={}, **kwargs):
+                       title="", pn1=None, pn2=None, settings={}, figsize=(10,12),**kwargs):
     if pn1 is None and pn2 is None:
         pn1 = param_names[0]
         pn2 = param_names[1]
@@ -54,7 +61,7 @@ def plot_2d_error_grid(criterion, res, param_names, params, criteria, maxerr=5,
     ferr = ferr[i]
     if param_names.index(pn1) < param_names.index(pn2):
         ferr = ferr.T
-    plt.figure(figsize=(12, 10))
+    f = plt.figure(figsize=figsize)
     plt.imshow(ferr, interpolation="nearest", cmap="hot", norm=LogNorm(
         vmin=np.nanmin(ferr), vmax=np.nanmax(ferr)))
     p1 = kwargs[pn1]
@@ -64,7 +71,8 @@ def plot_2d_error_grid(criterion, res, param_names, params, criteria, maxerr=5,
     plt.xlabel(pn1)
     plt.ylabel(pn2)
     plt.title(title)
-    plt.colorbar()
+    #plt.colorbar()
+    return f
 
 
 def run_experiment(task, methods, n_indep, l, error_every, name, n_eps,

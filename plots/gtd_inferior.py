@@ -15,6 +15,4 @@ for j,exp in enumerate(exp_list):
             c = i
 
     k = d["criteria"].index("RMSPBE")
-    print np.all(d["mean"][a,k,:] >= d["mean"][b,k,:])
-    print np.all(d["mean"][a,k,:] >= d["mean"][c,k,:])
     print d["title"], "&", "&".join(["{:.2f}".format(np.sum(d["mean"][i,k,:])) for i in [a,b,c]]), r"\\"

@@ -14,7 +14,7 @@ for i,m in enumerate(d["methods"]):
 
 plt.ioff()
 d["title"] = None
-f = plot_errorbar(criterion="RMSPBE", ncol=3, figsize=(8,5), **d)
+f = plot_errorbar(criterion="RMSPBE", ncol=3, figsize=(7,4.5), **d)
 plt.ylim(0,.5)
 plt.xlim(0,15e3)
 save_figure("norm", fig=f)
@@ -31,7 +31,7 @@ for i,m in enumerate(d["methods"]):
 
 plt.ioff()
 d["title"] = None
-f = plot_errorbar(criterion="RMSPBE", ncol=3, figsize=(8,5), **d)
+f = plot_errorbar(criterion="RMSPBE", ncol=3, figsize=(7,4.5), **d)
 plt.xlim(0,15e3)
 plt.ylim(0,.5)
 save_figure("unnorm", fig=f)
