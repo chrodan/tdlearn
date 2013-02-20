@@ -28,7 +28,7 @@ tdc = td.TDCLambda(alpha=alpha, mu=mu, lam=lam, phi=phi)
 tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 
 lam = 0.0
-alpha = td.RMalpha(.09, 0.25)
+alpha = td.RMalpha(.05, 0.2)
 beta = td.RMalpha(.5, 0.25)
 tdcrm = td.TDCLambda(alpha=alpha, beta=beta, lam=lam, phi=phi)
 tdcrm.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
