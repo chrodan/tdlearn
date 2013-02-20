@@ -49,7 +49,7 @@ def plot_2d_error_grid_file(fn, criterion, **kwargs):
 
 
 def plot_2d_error_grid(criterion, res, param_names, params, criteria, maxerr=5,
-                       title="", pn1=None, pn2=None, settings={}, figsize=(10,12),**kwargs):
+                       title="", cmap="hot", pn1=None, pn2=None, settings={}, figsize=(10,12),**kwargs):
     if pn1 is None and pn2 is None:
         pn1 = param_names[0]
         pn2 = param_names[1]
@@ -62,7 +62,7 @@ def plot_2d_error_grid(criterion, res, param_names, params, criteria, maxerr=5,
     if param_names.index(pn1) < param_names.index(pn2):
         ferr = ferr.T
     f = plt.figure(figsize=figsize)
-    plt.imshow(ferr, interpolation="nearest", cmap="hot", norm=LogNorm(
+    plt.imshow(ferr, interpolation="nearest", cmap=cmap, norm=LogNorm(
         vmin=np.nanmin(ferr), vmax=np.nanmax(ferr)))
     p1 = kwargs[pn1]
     p2 = kwargs[pn2]
