@@ -42,6 +42,16 @@ class ValueFunctionPredictor(object):
                 self.z = self.init_vals["z"]
             else:
                 del self.z
+        if hasattr(self, "Z"):
+            if "Z" in self.init_vals:
+                self.Z = self.init_vals["Z"]
+            else:
+                del self.Z
+        if hasattr(self, "last_rho"):
+            if "last_rho" in self.init_vals:
+                self.Z = self.init_vals["last_rho"]
+            else:
+                del self.Z
 
     def _assert_iterator(self, p):
         try:
@@ -986,6 +996,7 @@ class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
         self.z = self.gamma * self.lam * rho * self.z + f1
         self._toc()
 
+
 class RecursiveLSPELambdaCO(RecursiveLSPELambda):
     """
         recursive Implementation of Least Squared Policy Evaluation
@@ -1015,7 +1026,7 @@ class RecursiveLSPELambdaCO(RecursiveLSPELambda):
         L = np.dot(f0, self.N)
         self.N -= np.outer(np.dot(self.N, f0), L) / (1 + np.dot(L, f0))
         deltaf = f0 - self.gamma * f1
-        self.A += np.outer(self.z, rho*deltaf)
+        self.A += np.outer(self.z, rho * deltaf)
 
         self.b += rho * self.z * r
         self.i += 1
@@ -1024,6 +1035,7 @@ class RecursiveLSPELambdaCO(RecursiveLSPELambda):
         self.theta = theta
         self.z = self.gamma * self.lam * rho * self.z + f1
         self._toc()
+
 
 class FPKF(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
     """
@@ -1628,6 +1640,91 @@ class RecursiveBRMDS(OffPolicyValueFunctionPredictor, LinearValueFunctionPredict
         self.C -= np.outer(A, B) / (1. / rho / rhot + np.dot(B, df))
         self.theta = np.dot(self.C, self.b)
         self._toc()
+
+
+class RecursiveBRMLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
+    """
+    recursive implementation of Bellman Residual Minimization without double sampling
+    but with e-traces, see Algorithm 4 of
+    Scherrer, Geist: Recursive Least-Squares Learning with Eligibility Traces,
+    EWRL 2011
+    """
+
+    def __init__(self, eps=100, **kwargs):
+        """
+            gamma:  discount factor
+        """
+        LinearValueFunctionPredictor.__init__(self, **kwargs)
+        OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
+        LambdaValueFunctionPredictor.__init__(self, **kwargs)
+        self.eps = eps
+        self.reset()
+
+    def reset(self):
+        self.reset_trace()
+        n = len(self.init_vals["theta"])
+        self.init_vals["Z"] = np.zeros(n)
+        self.init_vals["C"] = np.eye(n) * self.eps
+        self.init_vals["y"] = 0.
+        self.init_vals["b"] = np.zeros(n)
+        self.init_vals["last_rho"] = 1.
+        self.init_vals["z"] = 0.
+        for k, v in self.init_vals.items():
+            self.__setattr__(k, copy.copy(v))
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, theta=None, rho=1., **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+
+        self._tic()
+        if theta is None:
+            theta = self.theta
+        last_rho = self.last_rho
+        df = - self.gamma * f1 * rho + f0
+        n = len(df)
+
+        # Pre-update traces
+        y = (self.gamma * self.lam * last_rho) ** 2 * self.y + 1
+
+        # Compute auxiliary var
+        sqy = np.sqrt(y)
+        k = self.gamma * self.lam * last_rho / sqy
+        U = np.zeros((n, 2))
+        V = np.zeros((2, n))
+        W = np.zeros(2)
+        U[:, 0] = (sqy * df + k * self.Z)
+        U[:, 1] = k * self.Z
+        V[0, :] = sqy * df + k * self.Z
+        V[1, :] = -k * self.Z
+        W[0] = sqy * rho * r + k * self.z
+        W[1] = -k * self.z
+
+        # Update parameters
+        In = np.linalg.pinv(np.eye(2) + np.dot(V, np.dot(self.C, U)))
+        self.theta += np.dot(np.dot(self.C, U), np.dot(In, W - np.dot(V, self.theta)))
+        self.C -= np.dot(np.dot(self.C, U), np.dot(In, np.dot(V, self.C)))
+        #self.b += df * r
+        #print "BRM Lambda Estimation:"
+        #print self.theta
+        #self.theta =  np.dot(self.C, self.b)
+        # Post-update traces
+        self.y = y
+        self.z = self.lam * self.gamma * last_rho * self.z + r * rho * y
+        self.Z = self.lam * self.gamma * last_rho * self.Z + df * y
+        self.last_rho = rho
+        self._toc()
+
+    def reset_trace(self):
+        super(RecursiveBRMLambda, self).reset_trace()
+        if hasattr(self, "y"):
+            if "y" in self.init_vals:
+                self.y = self.init_vals["y"]
+            else:
+                del self.y
 
 
 class RecursiveBRM(OffPolicyValueFunctionPredictor, LinearValueFunctionPredictor):
