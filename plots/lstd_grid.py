@@ -1,7 +1,7 @@
 from experiments import *
 from plots import *
 import td
-__builtins__["exp_name"] = "lqr_imp_offpolicy"
+__builtins__["exp_name"] = "lqr_full_onpolicy"
 import experiments.gridsearch as gs
 lambdas = np.linspace(0,1,21)
 eps = np.power(10, np.linspace(-3,6,21))
@@ -55,4 +55,3 @@ f = plot_2d_error_grid_experiment("data/lqr_imp_offpolicy/RecursiveLSTDLambdaJP_
                                    settings={"lam": 0}, maxerr=5, figsize=(8,8))
 #plt.title("")
 #save_figure("tdc_mu_baird", fig=f)
-"""
