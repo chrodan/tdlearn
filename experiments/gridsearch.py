@@ -194,7 +194,7 @@ if __name__ == "__main__":
     gridsearch(td.GTD2, alpha=alphas, mu=mus, batchsize=batchsize, njobs=njobs)
 
     gridsearch(td.RecursiveLSTDLambda, lam=lambdas, eps=ls_eps, batchsize=batchsize, njobs=njobs)
-    gridsearch(td.RecursiveBRM, eps=ls_eps, batchsize=batchsize, njobs=njobs)
+    gridsearch(td.RecursiveBRMLambda, lam=lambdas, eps=ls_eps, batchsize=batchsize, njobs=njobs)
     gridsearch(td.RecursiveBRMDS, eps=ls_eps, batchsize=batchsize, njobs=njobs)
     gridsearch(td.RecursiveLSPELambda, lam=lambdas, alpha=ls_alphas, batchsize=batchsize, njobs=njobs)
 

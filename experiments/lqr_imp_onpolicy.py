@@ -111,6 +111,11 @@ methods.append(brm)
 
 brm = td.RecursiveBRM(phi=phi, eps=1e5)
 brm.name = "BRM"
+methods.append(brm)
+
+lam = 0.8
+brm = td.RecursiveBRMLambda(phi=phi, eps=1e5, lam=lam)
+brm.name = "BRM({})".format(lam)
 brm.color = "b"
 methods.append(brm)
 
