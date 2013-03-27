@@ -141,7 +141,7 @@ n_indep = 200
 episodic = False
 error_every = 80
 name = "disc_random_on"
-title = "{}-State Random MDP On-policy({} trials)".format(n, n_indep)
+title = "3. {}-State Random MDP On-policy".format(n, n_indep)
 criterion = "RMSPBE"
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
 if __name__ == "__main__":

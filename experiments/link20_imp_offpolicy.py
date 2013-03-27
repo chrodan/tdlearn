@@ -143,7 +143,7 @@ n_eps = 1
 episodic=False
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
 criterion="RMSPBE"
-title="20-Link Pole Balancing Diagonal Feat. Off-policy"
+title = "12. 20-link Lin. Pole Balancing Off-pol."
 name="link20_imp_offpolicy"
 if __name__ =="__main__":
     from experiments import *

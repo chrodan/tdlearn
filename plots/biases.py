@@ -1,7 +1,12 @@
 from experiments import *
 import td
-exp_list = filter(lambda x: x != "baird" and x != "disc_random_on" and x != "disc_random_off", exp_list)
-exp_list += ["disc_random_on_conv", "disc_random_off_conv"]
+exp_list = ["boyan_conv", "baird",
+            "disc_random_on_conv", "disc_random_off_conv",
+            "lqr_imp_onpolicy", "lqr_imp_offpolicy",
+            "lqr_full_onpolicy_conv", "lqr_full_offpolicy_conv", "swingup_gauss_onpolicy",
+            "swingup_gauss_offpolicy", "link20_imp_onpolicy",
+            "link20_imp_offpolicy"]
+
 tab = np.zeros((len(exp_list), 3))
 names = []
 print r"& MSTDE & MSBE & MSPBE \\"

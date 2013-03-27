@@ -60,7 +60,7 @@ methods.append(td0)
 
 alpha = 0.2
 mu = 0.0001
-lam = 0.1
+lam = 1.
 tdc = td.TDCLambda(lam=lam, alpha=alpha, beta=alpha * mu, phi=phi)
 tdc.name = r"TDC({}) $\alpha$={} $\mu$={}".format(lam, alpha, mu)
 tdc.color = "r"
@@ -143,7 +143,7 @@ episodic = True
 error_every = 1
 name = "boyan"
 n_indep = 200
-title = "{}-State Boyan Chain ({} trials)".format(n, n_indep)
+title = "1. 14-State Boyan Chain".format(n, n_indep)
 criterion = "RMSPBE"
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
 

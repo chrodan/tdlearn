@@ -403,7 +403,7 @@ class MDP(object):
 
     def __init__(self, states, actions, reward_function,
                  state_transition_kernel,
-                 start_distribution):
+                 start_distribution, terminal_trans=0):
         self.state_names = states
         self.states = np.arange(len(states))
         self.action_names = actions
@@ -416,7 +416,7 @@ class MDP(object):
         assert np.abs(np.sum(self.P0) - 1) < 1e-12
         assert np.all(self.P0 >= 0)
         assert np.all(self.P0 <= 1)
-
+        self.terminal_trans = terminal_trans
         self.dim_S = 1
         self.dim_A = 1
         # transition kernel testing
@@ -588,6 +588,7 @@ class MDP(object):
             np.random.seed(seed)
 
         i = 0
+        term = 0
         while i < max_n:
             if s_start is None:
                 s0 = multinomial_sample(1, self.P0)
@@ -595,6 +596,9 @@ class MDP(object):
                 s0 = s_start
             while i < max_n:
                 if self.s_terminal[s0]:
+                    term += 1
+                    if term > self.terminal_trans:
+                        term = 0
                         break
                 a = policy(s0)
                 s1 = multinomial_sample(1, self.P[s0, a])

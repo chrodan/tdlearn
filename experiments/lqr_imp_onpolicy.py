@@ -140,7 +140,7 @@ episodic = False
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
 criterion = "RMSPBE"
 name = "lqr_imp_onpolicy"
-title = "4-dim. State Pole Balancing Onpolicy Diagonal Features"
+title = "5. Lin. Cart-Pole Balancing On-pol. Imp. Feat."
 
 
 if __name__ == "__main__":

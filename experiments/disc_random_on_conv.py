@@ -53,8 +53,8 @@ n_indep = 20
 episodic = False
 error_every = 1000000
 name = "disc_random_on_conv"
-title = "{}-State Random MDP On-policy({} trials)".format(n, n_indep)
 criterion = "RMSPBE"
+title = "3. {}-State Random MDP On-policy".format(n, n_indep)
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
 if __name__ == "__main__":
     from experiments import *

@@ -110,16 +110,21 @@ methods.append(lstd)
 
 
 
-brm = td.BRM(phi=phi)
+brm = td.RecursiveBRM(phi=phi)
 brm.name = "BRM"
 brm.color = "b"
-#methods.append(brm)
+methods.append(brm)
+brm = td.RecursiveBRMDS(phi=phi)
+brm.name = "BRMDS"
+brm.color = "b"
+methods.append(brm)
 
-lam = 1.
+
+lam = 0.
 lstd = td.RecursiveLSTDLambdaJP(lam=lam, phi=phi, gamma=gamma)
 lstd.name = r"LSTD-JP({})".format(0)
 lstd.color = "k"
-#methods.append(lstd)
+methods.append(lstd)
 
 
 l = 1000
@@ -128,7 +133,7 @@ n_indep = 200
 n_eps = 1
 episodic=False
 name = "baird"
-title = "Baird Star"
+title = "2. Baird Star Example"
 criterion = "RMSPBE"
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
 gs_errorevery=10

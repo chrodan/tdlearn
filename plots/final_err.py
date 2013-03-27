@@ -15,7 +15,7 @@ methods = (("GTD", td.GTD),
            ("LSTD", td.RecursiveLSTDLambdaJP, td.RecursiveLSTDLambda),
            ("FPKF", td.FPKF))
 
-print r"&"," & ".join([a[0] for a in methods]),r"\\"
+print r"Task &"," & ".join([a[0] for a in methods]),r"\\"
 
 for j,exp in enumerate(exp_list):
     d = load_results(exp)
@@ -26,7 +26,7 @@ for j,exp in enumerate(exp_list):
             if cur_id >= 0:
                 break
             for io,mo in enumerate(d["methods"]):
-                if type(mo) is t):
+                if type(mo) is t:
                     if t == td.LinearTDLambda and not isinstance(mo.alpha, float):
                         continue
                     cur_id = io
@@ -40,7 +40,7 @@ for j,exp in enumerate(exp_list):
         l = ["{:.2f}".format(a) for a in e]
     i = np.argmin(np.array(e))
     l[i] = r"\bf{"+l[i]+"}"
-    print "({})&".format(j+1), " & ".join(l), r"\\"
+    print "{}&".format(j+1), " & ".join(l), r"\\"
 
 for j,exp in enumerate(exp_list):
     d = load_results(exp)

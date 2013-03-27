@@ -145,8 +145,7 @@ episodic=False
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
 criterion = "RMSPBE"
 name = "lqr_full_offpolicy"
-title = "4-dim. State Pole Balancing Offpolicy"
-
+title = "8. Lin. Cart-Pole Balancing Off-pol. Perf. Feat."
 
 if __name__ == "__main__":
     from experiments import *

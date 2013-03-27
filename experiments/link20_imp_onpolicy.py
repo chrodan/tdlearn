@@ -121,7 +121,7 @@ verbose=10
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
 criterion = "RMSPBE"
 name = "link20_imp_onpolicy"
-title = "20 link Pole Balancing Diagonal Features"
+title = "11. 20-link Lin. Pole Balancing On-pol."
 
 
 if __name__ == "__main__":

@@ -552,7 +552,7 @@ class BoyanChain(mdp.MDP):
             P[s, :, s + 1] = 0.5
             P[s, :, s + 2] = 0.5
 
-        mdp.MDP.__init__(self, states, actions, r, P, d0)
+        mdp.MDP.__init__(self, states, actions, r, P, d0, terminal_trans=n_s)
 
 
 class BairdStarExample(mdp.MDP):
