@@ -95,7 +95,7 @@ lstd.ls = "-."
 methods.append(lstd)
 
 lam = 0.
-eps = 100
+eps = 10
 lstd = td.RecursiveLSTDLambdaJP(lam=lam, eps=eps, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({})-CO $\epsilon$={}".format(lam, eps)
 lstd.color = "g"

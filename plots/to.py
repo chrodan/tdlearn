@@ -3,7 +3,7 @@ from experiments import load_results
 
 d = load_results("swingup_gauss_offpolicy")
 l = [6,7,8,9]
-names = ["LSPE", "LSPE-TO", "LSTD-TO", "LSTD"]
+names = ["LSPE-TO", "LSPE", "LSTD-TO", "LSTD"]
 for i,m in enumerate(d["methods"]):
     if i not in l:
         m.hide=True
@@ -25,7 +25,7 @@ save_figure("to", fig=f)
 
 d = load_results("lqr_imp_offpolicy")
 l = [6,7,8,9]
-names = ["LSPE-TO", "LSPE", "LSTD-TO", "LSTD"]
+names = ["LSPE", "LSPE-TO", "LSTD-TO", "LSTD"]
 for i,m in enumerate(d["methods"]):
     if i not in l:
         m.hide=True

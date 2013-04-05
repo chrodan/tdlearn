@@ -2,13 +2,14 @@ from experiments import *
 from plots import *
 import td
 from matplotlib.ticker import FuncFormatter, NullFormatter, MultipleLocator
+"""
 __builtins__["exp_name"] = "lqr_full_offpolicy"
 import experiments.gridsearch as gs
 lambdas = np.linspace(0,1,21)
 eps = np.power(10, np.linspace(-3,6,21))
 njobs = -1
 gs.gridsearch(td.RecursiveLSTDLambdaJP, gs_name="fine",eps=eps, lam=lambdas, batchsize=10, njobs=njobs)
-
+"""
 """
 __builtins__["exp_name"] = "disc_random_on"
 import experiments.gridsearch as gs

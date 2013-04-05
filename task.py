@@ -231,6 +231,7 @@ class LinearValuePredictionTask(object):
 
         times = []
         errors = []
+        processed = []
 
         method.reset_trace()
         if hasattr(method, "lam") and method.lam > 0.:
@@ -265,6 +266,7 @@ class LinearValuePredictionTask(object):
         i = 0
         last_t = 0.
         passes = 0
+        u = 0
         with ProgressBar(enabled=(verbose > 2.)) as p:
             while method.time < max_t:
 
@@ -272,6 +274,9 @@ class LinearValuePredictionTask(object):
                 f0 = self.phi(s[i])
                 f1 = self.phi(s_n[i])
                 f1t = self.phi(s_n2[i])
+                #assert not np.any(np.isnan(f0))
+                #assert not np.any(np.isnan(f1))
+                #assert not np.any(np.isnan(f1t))
                 if restarts[i]:
                     method.reset_trace()
                 if self.off_policy:
@@ -283,6 +288,7 @@ class LinearValuePredictionTask(object):
                 else:
                     method.update_V(s[i], s_n[i], r[i],
                                 f0=f0, f1=f1, s1t=s_n2[i], f1t=f1t, rt=r2[i])
+                u+=1
                 assert(method.time > last_t)
                 if method.time - last_t > min_diff:
                     p.update(method.time, max_t)
@@ -293,6 +299,7 @@ class LinearValuePredictionTask(object):
                         for i_e in range(len(criteria)):
                             e[i_e] = err_f[i_e](cur_theta)
                         errors.append(e)
+                        processed.append(u)
                         times.append(method.time)
                 i += 1
                 if i >= n_samples * n_eps:
@@ -307,7 +314,7 @@ class LinearValuePredictionTask(object):
                 e[i_e] = err_f[i_e](cur_theta)
             return e, method.time
 
-        return errors, times
+        return errors, processed, times
 
     def fill_trajectory_cache(self, seeds, n_jobs=-1, verbose=10, **kwargs):
         jobs = []
@@ -788,8 +795,9 @@ class LinearLQRValuePredictionTask(LinearContinuousValuePredictionTask):
                 gamma=self.gamma)
             return self.V_true
         elif name == "mu_phi_full":
+            n = (self.mdp.dim_S+1)*(self.mdp.dim_S)+1
             self.mu_phi_full = util.apply_rowise(
-                features.squared_tri(self.mdp.dim_S), self.mu)
+                features.squared_tri(n), self.mu)
             return self.mu_phi_full
         else:
             return LinearContinuousValuePredictionTask.__getattr__(self, name)

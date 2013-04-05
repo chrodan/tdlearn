@@ -51,3 +51,20 @@ def ode_jac(np.ndarray[np.double_t, ndim=1] s, double t, double a, double m,
         + 3 / l / l / c / c * (m * l * s[2] ** 2 * s3 * c3 - 2 * (
                                 M + m) * g * s3 + 2*(a - b * s[1]) * c3) * 6 * m * c3 * s3
     return jac
+
+@cython.boundscheck(False)
+def squared_tri(np.ndarray[np.double_t, ndim=1] s, int n,
+                np.ndarray[np.double_t, ndim=1] normalization):
+    cdef unsigned int n_feat, u, i, j
+    n_feat = ((n+1)*n / 2)+1
+    cdef np.ndarray[np.double_t, ndim=1] f = np.empty(n_feat)
+    u = 0
+    for i in range(n):
+        for j in range(i,n):
+            f[u] = s[i]*s[j]
+            if i != j:
+                f[u] *= 2
+            f[u] /= normalization[u]
+            u+=1
+    f[u] = 1.
+    return f

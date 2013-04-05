@@ -1,7 +1,8 @@
 from experiments import *
 from plots import *
 import td
-
+from matplotlib.ticker import FuncFormatter, NullFormatter, MultipleLocator
+import matplotlib.cm, matplotlib.colors
 """
 __builtins__["exp_name"] = "lqr_imp_offpolicy"
 import experiments.gridsearch as gs
@@ -39,24 +40,53 @@ njobs = -1
 gs.gridsearch(td.LinearTDLambda, gs_name="fine",alpha=alphas, lam=lambdas, batchsize=20, njobs=njobs)
 """
 plt.ioff()
-f = plot_2d_error_grid_file("data/lqr_imp_offpolicy/LinearTDLambda_fine.pck",
-                            "RMSE", pn1="lam", pn2="alpha", cmap="spectral",
-                                   settings={"lam": 0}, maxerr=5, figsize=(8,8))
+def tr(x):
+    a = np.log(x)
+    return a - np.nanmin(a)+ .1
+lf = FuncFormatter(lambda x,p: str(x)+" "+str(p))
+cmap = "hot"
+f, p1, p2 = plot_2d_error_grid_file("data/lqr_imp_offpolicy/LinearTDLambda_fine_exp.pck",
+                                  "RMSE", pn1="lam", pn2="alpha", cmap=cmap, ticks=False, transform=tr,
+                                   settings={"lam": 0}, maxerr=5, figsize=(6,6))
+#plt.title("")
+plt.xlabel(r"$\lambda$")
+plt.ylabel(r"$\log(\alpha)$")
+plt.xticks(range(len(p1))[::4], p1[::4])
+plt.yticks(range(len(p2))[::3], [str(np.log10(a)) for a in p2][::3])
+save_figure("td_grid_lqr_imp_offpolicy", fig=f)
+
+f, p1, p2 = plot_2d_error_grid_file("data/disc_random_on/LinearTDLambda_fine_exp.pck",
+                                  "RMSE", pn1="lam", pn2="alpha", cmap=cmap, ticks=False, transform=tr,
+                                   settings={"lam": 0}, maxerr=5, figsize=(6,6))
+#plt.title("")
+plt.xlabel(r"$\lambda$")
+plt.ylabel(r"$\log(\alpha)$")
+plt.xticks(range(len(p1))[::4], p1[::4])
+plt.yticks(range(len(p2))[::3], [str(np.log10(a)) for a in p2][::3])
+
 
 #plt.title("")
-save_figure("td_grid_lqr_imp_offpolicy", fig=f)
-f = plot_2d_error_grid_file("data/boyan/LinearTDLambda_fine.pck", "RMSE", pn1="lam",
-                            pn2="alpha", cmap="spectral",
-                            settings={"lam": 0}, maxerr=10, figsize=(8,8))
+save_figure("td_grid_disc_random_on", fig=f)
+f, p1, p2 = plot_2d_error_grid_file("data/lqr_full_onpolicy/LinearTDLambda_fine_exp.pck",
+                                  "RMSE", pn1="lam", pn2="alpha", cmap=cmap, ticks=False, transform=tr,
+                                   settings={"lam": 0}, maxerr=5, figsize=(6,6))
+#plt.title("")
+plt.xlabel(r"$\lambda$")
+plt.ylabel(r"$\log(\alpha)$")
+plt.xticks(range(len(p1))[::4], p1[::4])
+plt.yticks(range(len(p2))[::3], [str(np.log10(a)) for a in p2][::3])
+save_figure("td_grid_lqr_full_onpolicy", fig=f)
+
+f, p1, p2 = plot_2d_error_grid_file("data/boyan/LinearTDLambda_fine_exp.pck",
+                                  "RMSE", pn1="lam", pn2="alpha", cmap=cmap, ticks=False, transform=tr,
+                                   settings={"lam": 0}, maxerr=5, figsize=(6,6))
+#plt.title("")
+plt.xlabel(r"$\lambda$")
+plt.ylabel(r"$\log(\alpha)$")
+plt.xticks(range(len(p1))[::4], p1[::4])
+plt.yticks(range(len(p2))[::3], [str(np.log10(a)) for a in p2][::3])
+
+
 #plt.title("")
 save_figure("td_grid_boyan", fig=f)
-f = plot_2d_error_grid_file("data/disc_random_on/LinearTDLambda_fine.pck",
-                            "RMSE", pn1="lam", pn2="alpha", cmap="spectral",
-                                   settings={"lam": 0}, maxerr=5, figsize=(8,8))
-#plt.title("")
-save_figure("td_grid_disc_random_on", fig=f)
-f = plot_2d_error_grid_file("data/lqr_full_onpolicy/LinearTDLambda_fine.pck", "RMSE",
-                            pn1="lam", pn2="alpha",
-                                   settings={"lam": 0}, cmap="spectral", maxerr=5, figsize=(8,8))
-#plt.title("")
-save_figure("td_grid_lqr_full_onpolicy", fig=f)
+

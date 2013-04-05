@@ -1,4 +1,5 @@
 import numpy as np
+import swingup_ode as cyhelp
 
 def make_slice(l, u, n):
     return slice(l, u + float(u - l) / (n - 1) / 2., float(u - l) / (n - 1))
@@ -129,14 +130,18 @@ class squared_tri(object):
         self.normalization = normalization
 
     def __call__(self, state):
-        iu1 = np.triu_indices(len(state))
+        norm = self.normalization if self.normalization is not None else np.ones(self.dim)
+        assert np.all(self.normalization != 0.)
+        k = cyhelp.squared_tri(state,len(state),norm)
+        """iu1 = np.triu_indices(len(state))
         a = np.outer(state, state)
         a = a * (2 - np.eye(len(state)))
         r = np.concatenate((a[iu1], [1]))
         if self.normalization is not None:
             assert self.normalization.shape == r.shape
             r /= self.normalization
-        return r
+        assert np.allclose(r,k)"""
+        return k
 
     def expectation(self, x, Sigma):
 
