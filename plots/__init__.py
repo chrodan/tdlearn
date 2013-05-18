@@ -6,7 +6,8 @@ import sys
 folder="/home/christoph/Dropbox/ChristophDann/tdpaper/img/"
 
 def plot_errorbar(title, methods, mean, std, l, error_every, criterion,
-                  criteria, n_eps, episodic=False, ncol=1, figsize=(8,6), **kwargs):
+                  criteria, n_eps, episodic=False, ncol=1, figsize=(8,6),
+                  order=None, **kwargs):
     f = plt.figure(figsize=figsize)
     plt.ylabel(criterion)
     plt.xlabel("Timesteps")
@@ -22,7 +23,9 @@ def plot_errorbar(title, methods, mean, std, l, error_every, criterion,
     if ee < 1:
         ee = 1
     lss = ["-", "--", "-."]
-    for i, m in enumerate(methods):
+    ind_list = order if order is not None else range(len(methods))
+    for i in ind_list:
+        m = methods[i]
         if hasattr(m, "hide") and m.hide:
             continue
         ls = m.ls if hasattr(m,"ls") else "-"

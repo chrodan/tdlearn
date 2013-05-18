@@ -65,7 +65,7 @@ def plot_2d_error_grid(
     ferr[ferr > maxerr] = np.nan
     ferr = transform(ferr)
     i = [slice(
-        None) if (i == pn1 or i == pn2) else settings[i] for i in param_names]
+        None) if (i == pn1 or i == pn2) else np.flatnonzero(np.array(kwargs[i])== settings[i])[0] for i in param_names]
     ferr = ferr[i]
     if param_names.index(pn1) < param_names.index(pn2):
         ferr = ferr.T

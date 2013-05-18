@@ -57,7 +57,7 @@ class ValueFunctionPredictor(object):
         try:
             return iter(p)
         except TypeError:
-            return itertools.repeat(p)
+            return ConstAlpha(p)
 
     def _tic(self):
         self._start = time.time()
@@ -1238,7 +1238,7 @@ class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredict
         delta = r + self.gamma * np.dot(theta, f1) \
             - np.dot(theta, f0)
 
-        theta_d = theta + self.alpha.next() * delta * self.z
+        theta_d = theta + self.alpha.next(el_trace=self.z, f0=f0, f1=f1, gamma=self.gamma) * delta * self.z
         self.theta = theta_d
         self._toc()
         return theta
@@ -1281,10 +1281,49 @@ class RMalpha(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def next(self, **kwargs):
         self.t += 1.
         return self.c * self.t ** (-self.mu)
 
+
+class ConstAlpha(object):
+    """
+    step size generator for constant alphas
+    """
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        return "ConstAlpha({})".format(self.alpha)
+
+    def __init__(self, alpha):
+        self.alpha = alpha
+
+    def __iter__(self):
+        return self
+
+    def next(self, **kwargs):
+        return self.alpha
+
+class DabneyAlpha(object):
+    """
+    step size generator from Dabney [2012]: Adaptive Step-Size for Online TD Learning
+    """
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        return "DabneyAlpha()"
+
+    def __init__(self):
+        self.alpha = 1.0
+
+    def __iter__(self):
+        return self
+
+    def next(self, el_trace, f0, f1, gamma, **kwargs):
+        self.alpha = min(self.alpha, np.abs(np.dot(el_trace, gamma*f1 - f0))**(-1))
+        return self.alpha
 
 class ResidualGradient(OffPolicyValueFunctionPredictor, LinearValueFunctionPredictor):
     """

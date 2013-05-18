@@ -74,7 +74,7 @@ n_eps = 7
 error_every = 100  # 4000
 name = "link100_data_budget"
 title = "100-link Pole Balancing"
-n_indep = 3
+n_indep = 10
 episodic = False
 criterion = "RMSE"
 criteria = ["RMSE"]
@@ -132,7 +132,7 @@ def  run(s):
 if __name__ == "__main__":
     from experiments import *
     import matplotlib.pyplot as plt
-    fn = "data/data_budget_link100_full_long.npz"
+    fn = "data/data_budget_link100_full.npz"
     n_jobs = 1
     if os.path.exists(fn):
         d = np.load(fn)

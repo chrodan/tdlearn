@@ -8,12 +8,12 @@ import features
 import policies
 from task import LinearLQRValuePredictionTask
 
-dim=20
+dim=30
 gamma = 0.95
 sigma = np.ones(2*dim)*1.
 dt = 0.1
 mdp = examples.NLinkPendulumMDP(np.ones(dim)*.5, np.ones(dim)*.6, sigma=sigma, dt=dt)
-phi = features.squared_diag(2*dim)
+phi = features.squared_tri(dim*(dim+1)/2+1)
 
 
 n_feat = len(phi(np.zeros(mdp.dim_S)))
@@ -120,8 +120,8 @@ episodic=False
 verbose=10
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
 criterion = "RMSPBE"
-name = "link20_imp_onpolicy"
-title = "11. 20-link Lin. Pole Balancing On-pol."
+name = "link30_full_onpolicy"
+title = "13. 30-link Lin. Pole Balancing On-pol."
 
 
 if __name__ == "__main__":

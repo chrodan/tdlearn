@@ -58,6 +58,12 @@ td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi)
 td0.name = r"TD({}) $\alpha={}t^{{-{} }}$".format(lam, alpha.c, alpha.mu)
 methods.append(td0)
 
+alpha = td.DabneyAlpha()
+lam = 0.
+td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi)
+td0.name = r"TD({}) $\alpha$=aut.".format(lam)
+methods.append(td0)
+
 alpha = 0.2
 mu = 0.0001
 lam = 1.
@@ -142,7 +148,7 @@ n_eps = 100
 episodic = True
 error_every = 1
 name = "boyan"
-n_indep = 200
+n_indep = 20
 title = "1. 14-State Boyan Chain".format(n, n_indep)
 criterion = "RMSPBE"
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
@@ -152,5 +158,5 @@ gs_errorevery = 1
 if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=1, **globals())
-    save_results(**globals())
-    #plot_errorbar(**globals())
+    #save_results(**globals())
+    plot_errorbar(**globals())

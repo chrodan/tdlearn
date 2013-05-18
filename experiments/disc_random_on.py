@@ -45,6 +45,14 @@ td0.name = r"TD({}) $\alpha$={}".format(lam, alpha)
 td0.color = "k"
 methods.append(td0)
 
+alpha = td.DabneyAlpha()
+lam = .0
+td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
+td0.name = r"TD({}) $\alpha$=auto".format(lam, alpha)
+td0.color = "k"
+methods.append(td0)
+
+
 alpha = .001
 lam = .4
 td0 = td.LinearTDLambda(alpha=alpha, lam=lam, phi=phi, gamma=gamma)
@@ -136,7 +144,7 @@ lstd.color = "b"
 
 l = 8000
 n_eps = 1
-n_indep = 200
+n_indep = 5
 
 episodic = False
 error_every = 80
@@ -147,5 +155,5 @@ criteria = ["RMSPBE", "RMSBE", "RMSE"]
 if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=-1, **globals())
-    save_results(**globals())
-    #plot_errorbar(**globals())
+    #save_results(**globals())
+    plot_errorbar(**globals())
