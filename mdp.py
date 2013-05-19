@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Markov Decision Processes with finite state and action spaces
-
-Created on Fri Dec  9 19:01:41 2011
-
-@author: Christoph Dann <cdann@cdann.de>
+class for Markov decision processes
+They have either discrete state and action space
+or continuous with the special case of a LQG / LQR system
 """
+__author__ = "Christoph Dann <cdann@cdann.de>"
 import numpy as np
 from util import multinomial_sample, memory, apply_rowise
 from util.progressbar import ProgressBar

@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+20-link pole balancing task with impoverished features, on-policy case
+"""
+__author__ = "Christoph Dann <cdann@cdann.de>"
 import td
 import examples
 import numpy as np

@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+Feature function implementations
+"""
+__author__ = "Christoph Dann <cdann@cdann.de>"
 import numpy as np
 import swingup_ode as cyhelp
 

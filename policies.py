@@ -1,3 +1,6 @@
+"""
+Policies for agents in MDPs
+"""
 __author__ = "Christoph Dann <cdann@cdann.de>"
 import os
 import numpy as np
@@ -85,7 +88,9 @@ class DiscreteUniform(Discrete):
 
 os.environ["MLABRAW_CMD_STR"] = "matlab -nosplash -nodesktop -nodisplay -nojvm"
 class MarcsPolicy(NoisyContinuous):
-
+    """Policy with interfaces with the PILCO implementation in Matlab to
+    run execute a policy learned with PILCO
+    """
     def __init__(self, filename="./mlab_cartpole/policy.mat", noise=None, dim_A=1):
         NoisyContinuous.__init__(self, dim_A=dim_A, noise=noise)
         try:

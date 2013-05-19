@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Convergence speed comparison of TD methods on a (uniformly) random MDP
-@author: Christoph Dann <cdann@cdann.de>
+Uniformly sampled random MDP with discrete states, on-policy case
+Experiment to determine the fix-points of MSBE, MSPBE, MSTDE
 """
+__author__ = "Christoph Dann <cdann@cdann.de>"
 
 import td
 import examples

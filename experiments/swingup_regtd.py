@@ -1,13 +1,16 @@
+# -*- coding: utf-8 -*-
+"""
+cart-pole swing-up experiment with 2 layers rbf features and on-policy samples
+to test different regularization schemes for LSTD
+"""
+__author__ = "Christoph Dann <cdann@cdann.de>"
 import td
 import regtd
 import examples
 import numpy as np
-import regtd
-#import matplotlib.pyplot as plt
 import features
 import policies
 from task import LinearContinuousValuePredictionTask
-import util
 gamma = 0.95
 dt = 0.1
 
@@ -17,11 +20,11 @@ mdp = examples.PendulumSwingUpCartPole(
 policy = policies.MarcsPolicy(noise=np.array([.05]))
 
 
-states,_,_,_,_ = mdp.samples_cached(n_iter=200, n_restarts=30,
-                                policy=policy,seed=8000)
+states, _, _, _, _ = mdp.samples_cached(n_iter=200, n_restarts=30,
+                                        policy=policy, seed=8000)
 
-n_slices = [3, 5, 7,10]
-n_slices2 = [5, 5, 14,20]
+n_slices = [3, 5, 7, 10]
+n_slices2 = [5, 5, 14, 20]
 bounds = [[0, 35], [-3, 4], [-12, 12], [-3, 3]]
 means, sigmas = features.make_grid(n_slices, bounds)
 means2, sigmas2 = features.make_grid(n_slices2, bounds)

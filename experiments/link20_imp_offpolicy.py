@@ -1,14 +1,16 @@
+# -*- coding: utf-8 -*-
+"""
+20-link pole balancing task with impoverished features, off-policy case
+"""
+__author__ = "Christoph Dann <cdann@cdann.de>"
+
 import td
 import examples
 import numpy as np
-import matplotlib.pyplot as plt
 import dynamic_prog as dp
-import util
 import features
 import policies
-from joblib import Parallel, delayed
 from task import LinearLQRValuePredictionTask
-import itertools
 
 gamma=0.95
 dt = 0.1

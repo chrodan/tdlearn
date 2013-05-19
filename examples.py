@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Set of Example MDPs that are widely used in the TD Learning community.
-
-Created on Tue Dec 20 21:04:24 2011
-
-@author: Christoph Dann <cdann@cdann.de>
+Set of MDPs
+Some of them are widely used in the td learning community
+to assess the quality of their methods
 """
+__author__ = "Christoph Dann <cdann@cdann.de>"
 import mdp
 import numpy as np
 import scipy.integrate

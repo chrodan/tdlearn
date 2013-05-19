@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+pole balancing experiment with imprefect features and on-policy samples
+The features are _not_ normalized!
+"""
+__author__ = "Christoph Dann <cdann@cdann.de>"
+
 import td
 import examples
 import numpy as np

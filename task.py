@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Feb 22 18:39:00 2012
-
-@author: Christoph Dann <cdann@cdann.de>
+Code for running policy evaluation experiments. Depending on the
+class, the cost functions are computed more or less efficiently.
 """
+__author__ = "Christoph Dann <cdann@cdann.de>"
 
 
 import td

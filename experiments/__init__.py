@@ -1,4 +1,9 @@
-__author__ = 'dann'
+# -*- coding: utf-8 -*-
+"""
+Generic code for running policy evaluation experiments from scripts
+and plotting their results.
+"""
+__author__ = "Christoph Dann <cdann@cdann.de>"
 import pickle
 import numpy as np
 import os

@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Experiment that shows arbitrary off-policy behavior of TDC and TD
-
-Created on Tue Jan 31 12:13:51 2012
-
-@author: Christoph Dann <cdann@cdann.de>
+Experiment that shows arbitrary off-policy behavior of TD
 """
+__author__ = "Christoph Dann <cdann@cdann.de>"
 import td
 import examples
 import numpy as np
@@ -87,7 +84,7 @@ lam = 0.
 lstd = td.RecursiveLSTDLambda(lam=lam, phi=phi, gamma=gamma)
 lstd.name = r"LSTD({})".format(lam)
 lstd.color = "k"
-#methods.append(lstd)
+# methods.append(lstd)
 
 lam = 0.
 alpha = .1
@@ -103,11 +100,10 @@ methods.append(lstd)
 
 lam = 0.
 alpha = .1
-beta=100.
+beta = 100.
 lstd = td.FPKF(lam=lam, alpha=alpha, beta=beta, phi=phi)
 lstd.name = r"FPKF({}) $\alpha={}$ $\beta={}$".format(lam, alpha, beta)
 methods.append(lstd)
-
 
 
 brm = td.RecursiveBRM(phi=phi)
@@ -131,15 +127,15 @@ l = 1000
 error_every = 1
 n_indep = 200
 n_eps = 1
-episodic=False
+episodic = False
 name = "baird"
 title = "2. Baird Star Example"
 criterion = "RMSPBE"
 criteria = ["RMSPBE", "RMSBE", "RMSE"]
-gs_errorevery=10
+gs_errorevery = 10
 
 if __name__ == "__main__":
-    from experiments import *
+    from .experiments import *
     mean, std, raw = run_experiment(n_jobs=1, **globals())
     save_results(**globals())
-    #plot_errorbar(**globals())
+    # plot_errorbar(**globals())

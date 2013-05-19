@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+pole balancing experiment with prefect features and on-policy samples
+"""
+__author__ = "Christoph Dann <cdann@cdann.de>"
 import td
 import examples
 import numpy as np

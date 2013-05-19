@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Convergence speed comparison of TD methods on the Boyan chain example
-
-Created on Mon Jan 30 21:06:12 2012
-
-@author: Christoph Dann <cdann@cdann.de>
+Boyan Chain Experiment
 """
+__author__ = "Christoph Dann <cdann@cdann.de>"
 
 import td
 import examples
@@ -158,5 +155,5 @@ gs_errorevery = 1
 if __name__ == "__main__":
     from experiments import *
     mean, std, raw = run_experiment(n_jobs=1, **globals())
-    #save_results(**globals())
-    plot_errorbar(**globals())
+    save_results(**globals())
+    #plot_errorbar(**globals())

@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Grid-search on a queue-based cluster. This script is not finished and does
+not run properly at the moment.
+"""
+__author__ = "Christoph Dann <cdann@cdann.de>"
+
 #from experiments.gridsearch import *
 import argparse
 import sys

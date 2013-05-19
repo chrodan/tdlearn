@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+pole balancing experiment with rbf features and on-policy samples
+"""
+__author__ = "Christoph Dann <cdann@cdann.de>"
+
 import td
 import examples
 import regtd

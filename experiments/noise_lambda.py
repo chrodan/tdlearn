@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Experiment to illustrate the effect of e-traces on LSTD for perfect and
+imperfect features in a contructed MDP to control the amount of stochasticity
+"""
+__author__ = "Christoph Dann <cdann@cdann.de>"
+
 import td
 import examples
 import numpy as np

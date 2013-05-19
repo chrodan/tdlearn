@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Dynamic programming value function estimation
-Created on Sun Jan 22 00:51:55 2012
-
-@author: Christoph Dann <cdann@cdann.de>
 """
+__author__ = "Christoph Dann <cdann@cdann.de>"
 import numpy as np
 import logging
 from joblib import Memory

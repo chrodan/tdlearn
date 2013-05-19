@@ -1,9 +1,15 @@
+# -*- coding: utf-8 -*-
+"""
+Comparison of graident-based and least-squares methods (TDC vs. LSTD)
+in terms of CPU time on the discrete random MDP.
+"""
+__author__ = "Christoph Dann <cdann@cdann.de>"
+
 import td
 from joblib import Parallel
 import examples
 import numpy as np
 import regtd
-#import matplotlib.pyplot as plt
 import features
 import policies
 from task import LinearDiscreteValuePredictionTask
@@ -64,7 +70,7 @@ t = np.arange(min_diff, max_t, min_diff)
 e = np.ones((len(t), 3)) * np.nan
 
 
-def  run(s):
+def run(s):
     e = np.ones((len(t), 3)) * np.nan
     lstd.time = 0.
     rlstd.time = 0.
@@ -97,7 +103,7 @@ def  run(s):
     return e, el, tl
 
 if __name__ == "__main__":
-    from experiments import *
+    from .experiments import *
     import matplotlib.pyplot as plt
     fn = "data/budget_disc.npz"
     n_jobs = 1
@@ -105,7 +111,8 @@ if __name__ == "__main__":
         d = np.load(fn)
         globals().update(d)
     else:
-        #task.fill_trajectory_cache(seeds=range(n_indep), n_eps=n_eps, n_samples=l, n_jobs=n_jobs)
+        # task.fill_trajectory_cache(seeds=range(n_indep), n_eps=n_eps,
+        # n_samples=l, n_jobs=n_jobs)
         task.mu
         jobs = []
         for s in range(n_indep):

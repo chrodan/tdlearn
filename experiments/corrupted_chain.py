@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Convergence speed comparison of TD methods on the Boyan chain example
-
-Created on Mon Jan 30 21:06:12 2012
-
-@author: Christoph Dann <cdann@cdann.de>
+Corrupted chain example for evaluating advanced LSTD regularization schemes
 """
+__author__ = "Christoph Dann <cdann@cdann.de>"
 
 import td
 import regtd
@@ -16,7 +13,6 @@ import matplotlib.pyplot as plt
 import features
 import policies
 
-#np.seterr(all="raise")
 n = 20
 n_random = 800
 mdp = examples.CorruptedChain(n_states=n)

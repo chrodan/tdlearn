@@ -1,11 +1,13 @@
+# -*- coding: utf-8 -*-
 """
+Comparisoof CPU time of LSTD and TDC on a 100-link pendulum balancing task
 
 Make sure to set the environment
 variable OMP_NUM_THREADS=1 (only
 use one cpu) to have a fair
 comparison.
-
 """
+__author__ = "Christoph Dann <cdann@cdann.de>"
 
 import td
 from joblib import Parallel

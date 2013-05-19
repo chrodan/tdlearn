@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+Grid-search script. This is not only a module but also a script.
+"""
+__author__ = "Christoph Dann <cdann@cdann.de>"
+
 import td
 import os
 import numpy as np

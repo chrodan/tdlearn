@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+"""
+Implementations of different regularization schemes
+for LSTD. The code relies on external solver cvxopt and gurobi.
+If these libraries are not present, the module only prints an
+error message. It will only throw an exception when unavailable solvers
+are actually called.
+"""
+__author__ = "Christoph Dann <cdann@cdann.de>"
 import td
 import util
 try:

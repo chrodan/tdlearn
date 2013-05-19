@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+Dynamics of Cart-pole swingup in cython. This file needs to be compiled!
+"""
+__author__ = "Christoph Dann <cdann@cdann.de>"
 import numpy as np
 cimport numpy as np
 cimport cython

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Convergence speed comparison of TD methods on a (uniformly) random MDP
-@author: Christoph Dann <cdann@cdann.de>
+Uniformly sampled random MDP with discrete states, off-policy case
 """
+__author__ = "Christoph Dann <cdann@cdann.de>"
 
 import td
 import examples

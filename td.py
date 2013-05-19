@@ -1,11 +1,11 @@
-        # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
-Temporal Difference Learning for finite MDPs
+Implementations of temporal difference learning algorithms
 
-Created on Sun Dec 11 01:06:00 2011
-
-@author: Christoph Dann <cdann@cdann.de>
+due to historical reasons the TO off-policy weighting is called JP or CO in
+this code.
 """
+__author__ = "Christoph Dann <cdann@cdann.de>"
 
 import numpy as np
 import itertools
@@ -16,6 +16,7 @@ import util
 
 
 class ValueFunctionPredictor(object):
+
     """
         predicts the value function of a MDP for a given policy from given
         samples
@@ -67,6 +68,7 @@ class ValueFunctionPredictor(object):
 
 
 class LinearValueFunctionPredictor(ValueFunctionPredictor):
+
     """
         base class for value function predictors that predict V as a linear
         approximation, i.e.:
@@ -96,6 +98,7 @@ class LinearValueFunctionPredictor(ValueFunctionPredictor):
 
 
 class LambdaValueFunctionPredictor(ValueFunctionPredictor):
+
     """
         base class for predictors that have the lambda parameter as a tradeoff
         parameter for bootstrapping and sampling
@@ -111,6 +114,7 @@ class LambdaValueFunctionPredictor(ValueFunctionPredictor):
 
 
 class OffPolicyValueFunctionPredictor(ValueFunctionPredictor):
+
     """
         base class for value function predictors for a MDP given target and
         behaviour policy
@@ -137,6 +141,7 @@ class OffPolicyValueFunctionPredictor(ValueFunctionPredictor):
 
 
 class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
+
     """ Base class for GTD, GTD2 and TDC algorithm """
 
     def __init__(self, alpha, beta=None, mu=None, **kwargs):
@@ -196,6 +201,7 @@ class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
 
 
 class GTD(GTDBase):
+
     """
     GTD algorithm with linear function approximation
     for details see
@@ -241,6 +247,7 @@ class GTD(GTDBase):
 
 
 class GTD2(GTDBase):
+
     """
     GTD2 algorithm with linear function approximation
     for details see
@@ -287,6 +294,7 @@ class GTD2(GTDBase):
 
 
 class TDC(GTDBase):
+
     """
     TDC algorithm with linear function approximation
     for details see
@@ -332,6 +340,7 @@ class TDC(GTDBase):
 
 
 class TDCLambda(GTDBase, LambdaValueFunctionPredictor):
+
     """
     TDC algorithm with linear function approximation
     for details see
@@ -408,6 +417,7 @@ class GeriTDCLambda(TDCLambda):
 
 
 class GeriTDC(TDC):
+
     """
     the TDC algorithm except that the pseudo-stationary guess for off-policy estimation is computed differently
     """
@@ -437,6 +447,7 @@ class GeriTDC(TDC):
 
 
 class KTD(LinearValueFunctionPredictor):
+
     """ Kalman Temporal Difference Learning
 
         for details see Geist, M. (2010).
@@ -503,13 +514,15 @@ class KTD(LinearValueFunctionPredictor):
         # Compute statistics of interest
         rhat = (W * R).sum()
         Pxr = ((W * (R - rhat))[:, None] * (X - xn)).sum(axis=0)
-        Pr = max((W * (R - rhat) * (R - rhat)).sum(), 10e-5)  # ensure a minimum amount of noise to avoid numerical instabilities
+        Pr = max((W * (R - rhat) * (R - rhat)).sum(), 10e-5)
+                 # ensure a minimum amount of noise to avoid numerical
+                 # instabilities
 
         # Correction Step
         K = Pxr * (1. / Pr)
-        #try:
+        # try:
         #    np.linalg.cholesky(Pn - np.outer(K,K)*Pr)
-        #except Exception:
+        # except Exception:
         #    import ipdb
         #    ipdb.set_trace()
 
@@ -521,6 +534,7 @@ class KTD(LinearValueFunctionPredictor):
 
 
 class GPTDP(LinearValueFunctionPredictor):
+
     """
     Parametric GPTD
     for details see
@@ -563,6 +577,7 @@ class GPTDP(LinearValueFunctionPredictor):
 
 
 class GPTDPLambda(LinearValueFunctionPredictor, LambdaValueFunctionPredictor):
+
     def __init__(self, tau=0., **kwargs):
         """
             lam: lambda in [0, 1] specifying the tradeoff between bootstrapping
@@ -593,10 +608,11 @@ class GPTDPLambda(LinearValueFunctionPredictor, LambdaValueFunctionPredictor):
         try:
             self._tic()
             n = self.C1.shape[0]
-            r = np.dot(np.linalg.pinv(np.dot(self.C1, np.dot(self.C2, self.C1.T)) + self.tau * self.tau * np.eye(n)), self.C1)
+            r = np.dot(np.linalg.pinv(np.dot(self.C1, np.dot(
+                self.C2, self.C1.T)) + self.tau * self.tau * np.eye(n)), self.C1)
             r = np.dot(r, np.dot(self.C2, self.b))
             return r
-        except np.linalg.LinAlgError, e:
+        except np.linalg.LinAlgError as e:
             print e
             return np.zeros_like(self.b)
         finally:
@@ -623,6 +639,7 @@ class GPTDPLambda(LinearValueFunctionPredictor, LambdaValueFunctionPredictor):
 
 
 class GPTD(ValueFunctionPredictor):
+
     """
         Gaussian Process Temporal Difference Learning implementation
         with online sparsification
@@ -680,7 +697,7 @@ class GPTD(ValueFunctionPredictor):
             r - float(np.inner(dk, self.alpha.view.flatten()))
         # sparsification test
         if delta > self.nu:
-            #import ipdb; ipdb.set_trace()
+            # import ipdb; ipdb.set_trace()
             dk2 = np.array((self.kernel(self.D, s0) - 2 *
                            self.gamma * self.kernel(self.D, s1))).flatten()
             self.D.append(s1)
@@ -689,7 +706,7 @@ class GPTD(ValueFunctionPredictor):
             self.Kinv.expand(cols=-a.reshape(
                 -1, 1), rows=-a.reshape(1, -1), block=np.array([[1]]))
             self.Kinv.view /= delta
-            #print "inverted Kernel matrix:", self.Kinv.view
+            # print "inverted Kernel matrix:", self.Kinv.view
 
             a = np.zeros(self.Kinv.shape[0])
             a[-1] = 1
@@ -701,7 +718,8 @@ class GPTD(ValueFunctionPredictor):
             dktt = float(np.inner(self.a, dk2)) + self.gamma ** 2 * ktt
 
             cm1 = self.c.view.copy().flatten()
-            self.c.view = self.c.view.flatten() * self.sinv * self.gamma * self.sigma0 ** 2 + self.a - np.dot(self.C.view, dk)
+            self.c.view = self.c.view.flatten() * self.sinv * self.gamma * self.sigma0 ** 2 + self.a - np.dot(
+                self.C.view, dk)
             self.c.expand(rows=np.array(- self.gamma))
 
             s = (1 + self.gamma ** 2) * self.sigma0 ** 2 - self.sinv * self.gamma ** 2 * self.sigma0 ** 4 + dktt - \
@@ -715,11 +733,12 @@ class GPTD(ValueFunctionPredictor):
 
         else:
             self.hbar = self.a - self.gamma * a
-            #dktt = np.dot(hbar, dk)
+            # dktt = np.dot(hbar, dk)
 
             cm1 = self.c.view.copy()
 
-            self.c.view = self.c.view.flatten() * self.sinv * self.gamma * self.sigma0 ** 2 + self.hbar - np.dot(self.C.view, dk)
+            self.c.view = self.c.view.flatten() * self.sinv * self.gamma * self.sigma0 ** 2 + self.hbar - np.dot(
+                self.C.view, dk)
 
             s = (1 + self.gamma ** 2) * self.sigma0 ** 2 - self.sinv * self.gamma ** 2 * self.sigma0 ** 4 + \
                 np.dot(dk, self.c.view +
@@ -734,6 +753,7 @@ class GPTD(ValueFunctionPredictor):
 
 
 class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
+
     """
         Implementation of Least Squared Temporal Difference Learning
          LSTD(\lambda) with linear function approximation, also works in the
@@ -775,7 +795,7 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
             self._tic()
             n = self.C1.shape[0]
             return -np.dot(np.linalg.pinv(self.C1 + self.C2 + self.tau * np.eye(n)), self.b)
-        except np.linalg.LinAlgError, e:
+        except np.linalg.LinAlgError as e:
             print e
             return np.zeros_like(self.b)
         finally:
@@ -820,6 +840,7 @@ class LSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, 
 
 
 class LSTDLambdaJP(LSTDLambda):
+
     """
         Implementation of Least Squared Temporal Difference Learning
          LSTD(\lambda) with linear function approximation, also works in the
@@ -855,6 +876,7 @@ class LSTDLambdaJP(LSTDLambda):
 
 
 class RecursiveLSTDLambdaJP(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
+
     """
         recursive Implementation of Least Squared Temporal Difference Learning
          LSTD(\lambda) with linear function approximation, also works in the
@@ -875,7 +897,7 @@ class RecursiveLSTDLambdaJP(OffPolicyValueFunctionPredictor, LambdaValueFunction
         OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
         LambdaValueFunctionPredictor.__init__(self, **kwargs)
         self.eps = eps
-        #import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         self.init_vals["C"] = np.eye(len(self.init_vals["theta"])) * eps
         self.reset()
 
@@ -915,6 +937,7 @@ class RecursiveLSTDLambdaJP(OffPolicyValueFunctionPredictor, LambdaValueFunction
 
 
 class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
+
     """
         recursive Implementation of Least Squared Policy Evaluation
          LSPE(\lambda) with linear function approximation, also works in the
@@ -998,6 +1021,7 @@ class RecursiveLSPELambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
 
 
 class RecursiveLSPELambdaCO(RecursiveLSPELambda):
+
     """
         recursive Implementation of Least Squared Policy Evaluation
          LSPE(\lambda) with linear function approximation, also works in the
@@ -1038,6 +1062,7 @@ class RecursiveLSPELambdaCO(RecursiveLSPELambda):
 
 
 class FPKF(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
+
     """
         recursive Implementation of Least Squared Policy Evaluation
          LSPE(\lambda) with linear function approximation, also works in the
@@ -1130,6 +1155,7 @@ class FPKF(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, Linear
 
 
 class RecursiveLSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
+
     """
         recursive Implementation of Least Squared Temporal Difference Learning
          LSTD(\lambda) with linear function approximation, also works in the
@@ -1150,7 +1176,7 @@ class RecursiveLSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
         OffPolicyValueFunctionPredictor.__init__(self, **kwargs)
         LambdaValueFunctionPredictor.__init__(self, **kwargs)
         self.eps = eps
-        #import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         self.init_vals["C"] = np.eye(len(self.init_vals["theta"])) * eps
         self.reset()
 
@@ -1185,6 +1211,7 @@ class RecursiveLSTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPr
 
 
 class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
+
     """
         TD(\lambda) with linear function approximation
         for details see Szepesvári (2009): Algorithms for Reinforcement
@@ -1238,7 +1265,8 @@ class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredict
         delta = r + self.gamma * np.dot(theta, f1) \
             - np.dot(theta, f0)
 
-        theta_d = theta + self.alpha.next(el_trace=self.z, f0=f0, f1=f1, gamma=self.gamma) * delta * self.z
+        theta_d = theta + self.alpha.next(
+            el_trace=self.z, f0=f0, f1=f1, gamma=self.gamma) * delta * self.z
         self.theta = theta_d
         self._toc()
         return theta
@@ -1263,6 +1291,7 @@ class LinearTDLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredict
 
 
 class RMalpha(object):
+
     """
     step size generator of the form
         alpha = c*t^{-mu}
@@ -1287,6 +1316,7 @@ class RMalpha(object):
 
 
 class ConstAlpha(object):
+
     """
     step size generator for constant alphas
     """
@@ -1305,7 +1335,9 @@ class ConstAlpha(object):
     def next(self, **kwargs):
         return self.alpha
 
+
 class DabneyAlpha(object):
+
     """
     step size generator from Dabney [2012]: Adaptive Step-Size for Online TD Learning
     """
@@ -1322,10 +1354,13 @@ class DabneyAlpha(object):
         return self
 
     def next(self, el_trace, f0, f1, gamma, **kwargs):
-        self.alpha = min(self.alpha, np.abs(np.dot(el_trace, gamma*f1 - f0))**(-1))
+        self.alpha = min(self.alpha, np.abs(
+            np.dot(el_trace, gamma*f1 - f0))**(-1))
         return self.alpha
 
+
 class ResidualGradient(OffPolicyValueFunctionPredictor, LinearValueFunctionPredictor):
+
     """
         Residual Gradient algorithm with linear function approximation
         for details see Baird, L. (1995): Residual Algorithms : Reinforcement :
@@ -1406,6 +1441,7 @@ class ResidualGradientDS(ResidualGradient):
 
 
 class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
+
     """
     TD(0) learning algorithm for on- and off-policy value function estimation
     with linear function approximation
@@ -1459,14 +1495,14 @@ class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
         self._tic()
         delta = r + self.gamma * np.dot(theta, f1) \
             - np.dot(theta, f0)
-        #if np.isnan(delta):
+        # if np.isnan(delta):
         #    import ipdb; ipdb.set_trace()
-        #print theta, delta
+        # print theta, delta
         logging.debug("TD Learning Delta {}".format(delta))
-        #print theta
-        #print f0, f1
+        # print theta
+        # print f0, f1
         al = self.alpha.next()
-        #if isinstance(self.alpha,  RMalpha):
+        # if isinstance(self.alpha,  RMalpha):
         #    print al, self.alpha.t
         theta += al * delta * rho * f0
         self.theta = theta
@@ -1475,6 +1511,7 @@ class LinearTD0(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
 
 
 class TabularTD0(ValueFunctionPredictor):
+
     """
         Tabular TD(0)
         for details see Szepesvári (2009): Algorithms for Reinforcement
@@ -1503,6 +1540,7 @@ class TabularTD0(ValueFunctionPredictor):
 
 
 class TabularTDLambda(ValueFunctionPredictor):
+
     """
         Tabular TD(\lambda)
         for details see Szepesvári (2009): Algorithms for Reinforcement
@@ -1639,6 +1677,7 @@ class BRMDS(BRM):
 
 
 class RecursiveBRMDS(OffPolicyValueFunctionPredictor, LinearValueFunctionPredictor):
+
     """
     recursive implementation of Bellman Residual Minimization with double sampling
     """
@@ -1682,6 +1721,7 @@ class RecursiveBRMDS(OffPolicyValueFunctionPredictor, LinearValueFunctionPredict
 
 
 class RecursiveBRMLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPredictor, LinearValueFunctionPredictor):
+
     """
     recursive implementation of Bellman Residual Minimization without double sampling
     but with e-traces, see Algorithm 4 of
@@ -1744,12 +1784,13 @@ class RecursiveBRMLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPre
 
         # Update parameters
         In = np.linalg.pinv(np.eye(2) + np.dot(V, np.dot(self.C, U)))
-        self.theta += np.dot(np.dot(self.C, U), np.dot(In, W - np.dot(V, self.theta)))
+        self.theta += np.dot(np.dot(self.C, U), np.dot(
+            In, W - np.dot(V, self.theta)))
         self.C -= np.dot(np.dot(self.C, U), np.dot(In, np.dot(V, self.C)))
-        #self.b += df * r
-        #print "BRM Lambda Estimation:"
-        #print self.theta
-        #self.theta =  np.dot(self.C, self.b)
+        # self.b += df * r
+        # print "BRM Lambda Estimation:"
+        # print self.theta
+        # self.theta =  np.dot(self.C, self.b)
         # Post-update traces
         self.y = y
         self.z = self.lam * self.gamma * last_rho * self.z + r * rho * y
@@ -1767,6 +1808,7 @@ class RecursiveBRMLambda(OffPolicyValueFunctionPredictor, LambdaValueFunctionPre
 
 
 class RecursiveBRM(OffPolicyValueFunctionPredictor, LinearValueFunctionPredictor):
+
     """
     recursive implementation of Bellman Residual Minimization without double sampling
     """
