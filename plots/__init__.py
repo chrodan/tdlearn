@@ -3,13 +3,20 @@ import os.path
 import subprocess
 import sys
 
+from matplotlib.ticker import MultipleLocator, FuncFormatter
 folder="/home/christoph/Dropbox/ChristophDann/tdpaper/img/"
-
+criteria_label = {"RMSBE": r"$\sqrt{\operatorname{MSBE}}$",
+                  "RMSE": r"$\sqrt{\operatorname{MSE}}$",
+                  "RMSPBE": r"$\sqrt{\operatorname{MSPBE}}$"}
 def plot_errorbar(title, methods, mean, std, l, error_every, criterion,
                   criteria, n_eps, episodic=False, ncol=1, figsize=(8,6),
-                  order=None, **kwargs):
+                  order=None, kformatter=False, **kwargs):
     f = plt.figure(figsize=figsize)
-    plt.ylabel(criterion)
+    if criterion in criteria_label:
+        crit_label = criteria_label[criterion]
+    else:
+        crit_label = criterion
+    plt.ylabel(crit_label)
     plt.xlabel("Timesteps")
     if title is not None:
         plt.title(title)
@@ -29,11 +36,18 @@ def plot_errorbar(title, methods, mean, std, l, error_every, criterion,
         if hasattr(m, "hide") and m.hide:
             continue
         ls = m.ls if hasattr(m,"ls") else "-"
+        marker = getattr(m, "marker", ".")
+
         if hasattr(m, "nobar") and m.nobar:
-            plt.plot(x, mean[i,k,:], label=m.name, ls=ls)
+            plt.plot(x, mean[i,k,:], label=m.name, marker=marker, ls=ls,
+                     markevery=ee)
         else:
             plt.errorbar(x, mean[i, k, :], yerr=std[i, k, :],
-                     errorevery=ee, label=m.name, ls=ls)
+                         errorevery=ee, markevery=ee, label=m.name,
+                         ls=ls, marker=marker)
+    if kformatter:
+        major_formatter = FuncFormatter(lambda x,pos:  str(int(x/1000))+"k" if x >= 1000 else str(int(x)))
+        plt.gca().xaxis.set_major_formatter(major_formatter)
     plt.legend(ncol=ncol)
     return f
 

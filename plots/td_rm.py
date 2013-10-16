@@ -4,6 +4,7 @@ from matplotlib.ticker import MultipleLocator, FuncFormatter
 
 d = load_results("lqr_imp_onpolicy")
 l = [2,3,4]
+marker = ["o", "v", "D", "*"]
 names = [r"TD $\searrow$", r"TD $\rightarrow$", r"TDC $\rightarrow$"]
 for i,m in enumerate(d["methods"]):
     if i not in l:
@@ -11,6 +12,8 @@ for i,m in enumerate(d["methods"]):
     else:
         m.ls = "-"
         m.name = names[0]
+        m.marker = marker[0]
+        marker = marker[1:]
         names = names[1:]
         if i == 4:
             m.ls = "--"
@@ -24,6 +27,7 @@ plt.ylim(0,.4)
 plt.xlim(0,15000)
 save_figure("td_rm", fig=f)
 
+marker = ["o", "v", "D", "*"]
 names = [r"TD $\searrow$", r"TD $\rightarrow$", r"TDC $\rightarrow$"]
 d = load_results("disc_random_on")
 l = [2,3,4]
@@ -33,6 +37,8 @@ for i,m in enumerate(d["methods"]):
     else:
         m.ls = "-"
         m.name = names[0]
+        m.marker = marker[0]
+        marker = marker[1:]
         names = names[1:]
         if i == 4:
             m.ls = "--"

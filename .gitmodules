@@ -1,3 +1,0 @@
-[submodule "joblib_repo"]
-	path = joblib_repo
-	url = git@github.com:chrodan/joblib.git

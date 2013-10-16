@@ -1,10 +1,13 @@
 backend 	: TkAgg
-
-#font.family        : serif
-font.size	   : 14
+font.family    : serif
+font.size	   : 12
+#font.weight : bold
+axes.labelsize: 12
+xtick.labelsize: 12
+ytick.labelsize: 12
 #font.serif         : Times, Palatino, New Century Schoolbook, Bookman, Computer Modern Roman
-#font.sans-serif    : Helvetica, Avant Garde, Computer Modern Sans serif
+font.sans-serif    : Helvetica, Avant Garde, Computer Modern Sans serif
 #font.cursive       : Zapf Chancery
 #font.monospace     : Courier, Computer Modern Typewriter
-
+#figure.dpi : 50
 #text.usetex        : true
