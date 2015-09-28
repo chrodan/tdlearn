@@ -582,3 +582,81 @@ class BairdStarExample(mdp.MDP):
 
         mdp.MDP.__init__(self, range(1, n_corners + 1) + ["center", ],
                          actions, r, P, d0)
+
+class FinancialDerivative(mdp.ContinuousMDP):
+    """
+    Simulation of a financial derivative security. The value of the derivative is derived from the price of a stock modeled by brownian motion.
+    The task is to determine an effective value function and corresponding policy for when to excercise the derivative.  Domain is motivated by
+    Van Roy's paper.
+
+    The only two actions available are "stop", which means to excercise the derivative, and "continue", which means to wait to excercise the
+    derivative at a later time.
+
+    The task has the following parameters:
+    rho: Constant continuously compounded short-term interest rate of a money market available for investment [1/t]
+    sigma: Daily volatility of the underlying stock price [1/t]
+    p0: Stock price at time t = 0 [$]
+    pay_int: Payoff interval for derivative [t]
+    seed: Seed for random number generator []
+
+    The state, x, is 'pay_int' dimensional:
+        x_t = [p_j/p_k]'
+        where k = t - pay_int
+        and   j = t - pay_int + 1 ... t
+
+    """
+    def __init__(self, rho=0.0004, sigma=0.02, p0=100., pay_int=100, seed=None):
+        self.rho = rho
+        self.sigma = sigma
+        self.p0 = p0
+        self.pay_int = pay_int
+        self.seed = seed
+        self.t = pay_int
+        if seed:
+            np.random.rand(seed)
+        mdp.ContinuousMDP.__init__(self, self.statefun, self.rewardfun, pay_int,
+                                   1, lambda: self.__class__.randstart(rho,sigma,p0,pay_int), self.terminal_f)
+
+    def __repr__(self):
+        return "<FinancialDerivative(" + repr([self.rho, self.sigma, self.p0, self.pay_int, self.seed]) + ")>"
+
+    @staticmethod
+    def randstart(rho, sigma, p0, pay_int, dt=1):
+        p = []
+        for day in xrange(pay_int):
+            new_price = p0 * np.exp( (rho - 0.5 * sigma ** 2) * dt \
+                + sigma * np.sqrt(dt) * np.random.standard_normal() )
+            p.append(new_price)
+        return np.true_divide(p,p0)
+
+    def statefun(self, s, a, dt=1):
+        if a == 'stop':
+            return None
+        old_si = s[0]
+        new_si = s[-1] * np.exp( (self.rho - 0.5 * self.sigma ** 2) * dt \
+                + self.sigma * np.sqrt(dt) * np.random.standard_normal() )
+        new_s = np.roll(s,-1) # [x[1],...,x[last],x[0]]
+        new_s[-1] = new_si
+        new_s /= old_si
+        self.t += dt
+        return new_s
+
+    def rewardfun(self, s, a):
+        if a == 'stop':
+            return np.exp(-self.rho*self.t)*s[-1]
+        return 0.
+
+    def terminal_f(self, s):
+        return s is None
+
+    def __getstate__(self):
+        res = mdp.ContinuousMDP.__getstate__(self)
+        del res["rf"]
+        del res["sf"]
+        return res
+
+    def __setstate__(self, state):
+        mdp.ContinuousMDP.__setstate__(self, state)
+        self.rf = self.rewardfun
+        self.sf = self.statefun
+        self.start = lambda: self.__class__.randstart(self.rho, self.sigma, self.p0, self.pay_int)

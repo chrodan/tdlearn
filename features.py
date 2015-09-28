@@ -305,3 +305,26 @@ class squared_diag(object):
         if self.normalization is not None:
             r *= self.normalization
         return r
+
+class FinancialDerivativeBasis(object):
+
+    def __init__(self,pay_int):
+        self.pay_int = pay_int
+
+    def __repr__(self):
+        return "FinancialDerivativeBasis(" + repr(self.pay_int) + ")"
+
+    def __call__(self,state):
+        if state is None:
+            return None
+        j = np.array(xrange(1,self.pay_int+1))*2./self.pay_int-1
+        return np.array([1.,
+                        x[-1],
+                        np.min(x)-1.,
+                        np.max(x)-1.,
+                        np.argmin(x)*2./self.pay_int-1.,
+                        np.argmax(x)*2./self.pay_int-1.,
+                        np.sum(x-1.)/(self.pay_int*np.sqrt(2.)),
+                        np.sum(x*j)*np.sqrt(3./2.)/self.pay_int,
+                        np.sum(x*(3.*j**2-1.)/2.)*np.sqrt(5./2.)/self.pay_int,
+                        np.sum(x*(5.*j**2-3.*j)/2.)*np.sqrt(7./2.)/self.pay_int])

@@ -13,6 +13,7 @@ import logging
 import copy
 import time
 import util
+from numpy import linalg as LA
 
 
 class ValueFunctionPredictor(object):
@@ -27,6 +28,10 @@ class ValueFunctionPredictor(object):
         self.time = 0
         if not hasattr(self, "init_vals"):
             self.init_vals = {}
+
+        # Bo add counter    
+        self.nd = 1 # iteration count
+
 
     def update_V(self, s0, s1, r, V, **kwargs):
         raise NotImplementedError("Each predictor has to implement this")
@@ -74,7 +79,7 @@ class LinearValueFunctionPredictor(ValueFunctionPredictor):
         approximation, i.e.:
             V(x) = theta * phi(x)
     """
-    def __init__(self, phi, theta0=None, **kwargs):
+    def __init__(self, phi, theta0=None,  **kwargs):
 
         ValueFunctionPredictor.__init__(self, **kwargs)
 
@@ -83,6 +88,11 @@ class LinearValueFunctionPredictor(ValueFunctionPredictor):
             self.init_vals['theta'] = np.array([0])
         else:
             self.init_vals['theta'] = theta0
+
+        # if avg0 is None:
+        #     self.init_vals['avg'] = np.array([1])
+        # else:
+        #     self.init_vals['avg'] = avg0
 
     def V(self, theta=None):
         """
@@ -93,6 +103,7 @@ class LinearValueFunctionPredictor(ValueFunctionPredictor):
                 raise Exception("no theta available, has to be specified"
                                 " by parameter")
             theta = self.theta
+
 
         return lambda x: np.dot(theta, self.phi(x))
 
@@ -139,12 +150,13 @@ class OffPolicyValueFunctionPredictor(ValueFunctionPredictor):
             ipdb.set_trace()
         return self.update_V(s0, s1, r, f0=f0, f1=f1, theta=theta, **kwargs)
 
+ 
 
 class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
 
     """ Base class for GTD, GTD2 and TDC algorithm """
 
-    def __init__(self, alpha, beta=None, mu=None, **kwargs):
+    def __init__(self, alpha, beta=None, mu=1, **kwargs):
         """
             alpha:  step size. This can either be a constant number or
                     an iterable object providing step sizes
@@ -183,8 +195,10 @@ class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
     def reset(self):
         LinearValueFunctionPredictor.reset(self)
         self.alpha = self._assert_iterator(self.init_vals['alpha'])
-        self.beta = self._assert_iterator(self.init_vals['beta'])
-        self.w = np.zeros_like(self.init_vals['theta'])
+        self.beta  = self._assert_iterator(self.init_vals['beta'])
+        self.w     = np.zeros_like(self.init_vals['theta'])
+        self.nd    = 1# number of iterations, start from 1
+
         if hasattr(self, "A"):
             del(self.A)
         if hasattr(self, "b"):
@@ -198,6 +212,236 @@ class GTDBase(LinearValueFunctionPredictor, OffPolicyValueFunctionPredictor):
     def init_deterministic(self, task):
         self.F, self.Cmat, self.b = self._compute_detTD_updates(task)
         self.A = np.array(self.F - self.Cmat)
+
+class TD(GTDBase):
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        theta= self.theta
+        if theta is None:
+            theta = self.theta
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+
+        self._tic()
+        delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
+        gt =  self.alpha.next() * rho * (delta * f0)# theoretically should not have learnrate:self.alpha.next() 
+        theta += gt
+
+        self.theta = theta
+        self._toc()
+        return theta
+
+class TDMP(GTDBase):
+
+    """
+    TD algorithm with MIRROR-PROX algorithm
+    """
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        if theta is None:
+            theta = self.theta
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+
+        alpha =  self.alpha.next()
+
+        self._tic()
+        delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
+        thetamid = theta + alpha * rho * (delta * f0 )
+
+
+        #extragradient
+        delta = None #del delta, which is better
+        delta = r + self.gamma * np.dot(thetamid, f1) - np.dot(thetamid, f0)
+        theta +=    alpha * rho * (delta * f0)
+
+
+        self.theta = theta
+        self._toc()
+        return theta
+
+class TDRDA(GTDBase):
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+            gammon: real gammon = 1/alpha =1/self.alpha.next()
+            MINUS SIGN to gt
+        """
+        rho = 1
+        gammon = 1 # 
+
+        theta= self.theta
+        if theta is None:
+            theta = self.theta
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+
+        self._tic()
+        delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
+        gt =  -self.alpha.next() * rho * (delta * f0)# theoretically should not have learnrate:self.alpha.next() 
+
+
+        # RDA START
+        if self.nd<1: 
+            self.nd=1 # nd start from 1
+        nd  = self.nd   
+        if not hasattr(self, "gtsum"):
+            self.gtsum = gt
+        else:
+            self.gtsum += gt
+        avg = self.gtsum /nd
+        
+        coef = np.power(nd, .5) /gammon
+        theta= -coef * avg
+        self.nd +=1
+        #RDA START END
+
+        # print 'delta', delta
+
+
+        self.theta = theta
+        self._toc()
+        return theta
+
+
+class TDARDA(GTDBase):
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+            gammon: real gammon = 1/alpha =1/self.alpha.next()
+            beta: interploation parameter for averaging and interpolation
+            MINUS SIGN to gt
+        """
+        rho = 1
+        gammon = 1
+
+        theta= self.theta
+        if theta is None:
+            theta = self.theta
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+        # prepare
+        if not hasattr(self, "zt"):
+            self.zt = theta
+        zt = self.zt
+        
+
+        self._tic()
+
+        ''' ARDA '''
+        if self.nd<1: 
+            self.nd=1 # nd start from 1
+        nd  = self.nd
+        beta= 2/(nd+2);
+
+        # print 'beta:{}'.format(beta)
+
+
+        # interpolation step
+        yt = (1- beta ) *zt + beta *theta
+        # compute gt based on yt
+        delta = r + self.gamma * np.dot(yt, f1) - np.dot(yt, f0)
+        gt =  -self.alpha.next() * rho * (delta * f0)
+
+
+        # RDA Step
+        if not hasattr(self, "gtsum"):
+            self.gtsum = gt
+        else:
+            self.gtsum += gt
+        avg = self.gtsum /nd
+
+        coef = np.power(nd, .5) /gammon
+        theta= -coef * avg
+        self.nd +=1
+        # RDA end
+        
+
+        # averging step
+        zt = (1- beta ) *zt + beta *theta
+
+
+ 
+        self.theta = theta
+        self.zt    = zt
+
+        self._toc()
+        return theta
+
+
+
+class GTD2RDA(GTDBase):
+
+    """
+    Method DIFFERENT FROM ZHIWEI's ICML2014 paper
+    have NOT checked MINUS SIGN yet
+    """
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        rho = 1
+        gammon = 1
+
+        w = self.w
+        if theta is None:
+            theta = self.theta
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+
+        self._tic()
+
+        delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
+        a = np.dot(f0, w)
+
+        gwt    = self.beta.next() * (rho * delta - a) * f0
+        w     += gwt
+        gtheta = self.alpha.next() * rho * a * (f0 - self.gamma * f1)
+        theta += gtheta
+        gt     = np.concatenate([gwt, gtheta])
+        # print 'gt.shape', gt.shape, 'gw.shape', gwt.shape, 'theta.shape', theta.shape
+
+
+        # RDA START
+        if self.nd<1: 
+            self.nd=1 # nd start from 1
+        nd  = self.nd
+        if not hasattr(self, "gtsum"):
+            self.gtsum = gt
+        else:
+            self.gtsum += gt
+        avg = self.gtsum /nd
+
+        coef = np.power(nd, .5) /gammon
+        zt   = -coef * avg
+
+        w    = zt[: w.size]
+        theta= zt[w.size:]
+        self.nd    +=1
+        #RDA START END
+
+        # print 'delta:', delta, 'gt:', LA.norm(gt), 'avg:', LA.norm(avg), 'alpha:', self.alpha.next(), \
+        #       'phi', LA.norm(f0), 'nd:', nd, 'rho:', rho
+
+        self.w = w
+        self.theta = theta
+        self._toc()
+        return theta
+
 
 
 class GTD(GTDBase):
@@ -225,7 +469,8 @@ class GTD(GTDBase):
         delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
         a = np.dot(f0, w)
 
-        w += self.beta.next() * rho * (delta * f0 - w)
+        #w += self.beta.next() * rho * (delta * f0 - w)# there is a bug here
+        w += self.beta.next() *  (rho * delta * f0 - w)
         theta += self.alpha.next() * rho * (f0 - self.gamma * f1) * a
 
         self.w = w
@@ -240,7 +485,7 @@ class GTD(GTDBase):
             theta = self.theta
 
         w_d = w + self.beta.next() * (np.dot(self.A, theta) - w + self.b)
-        theta_d = theta + self.alpha.next() * (- np.dot(self.A.T, w) + self.b)
+        theta_d = theta + self.alpha.next() * np.dot(-self.A.T, w) 
         self.theta = theta_d
         self.w = w_d
         return self.theta
@@ -275,6 +520,60 @@ class GTD2(GTDBase):
         w += self.beta.next() * (rho * delta - a) * f0
         theta += self.alpha.next() * rho * a * (f0 - self.gamma * f1)
 
+        # print 'delta:', delta, 'alpha:', self.alpha.next(), 'phi', LA.norm(f0), 'rho:', rho, 'r', r
+
+
+        self.w = w
+        self.theta = theta
+        self._toc()
+        return theta
+
+    def deterministic_update(self, theta=None):
+        w = self.w
+        if theta is None:
+            theta = self.theta
+
+        w_d = w + self.beta.next(
+        ) * (np.dot(self.A, theta) - np.dot(self.Cmat, w) + self.b)
+        theta_d = theta + self.alpha.next() * np.dot(-self.A.T, w) 
+        self.theta = theta_d
+        self.w = w_d
+        return self.theta
+
+class GTD2AC(GTDBase):
+
+    """
+    GTD2 algorithm  with accelerated gradient in Pock's paper
+    """
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        w = self.w
+
+        if theta is None:
+            theta = self.theta
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+
+        self._tic()
+
+        delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
+        a = np.dot(f0, w)
+
+        
+        theta_prev= theta
+        theta += self.alpha.next() * rho * a * (f0 - self.gamma * f1)
+
+        la = self.alpha.next()
+        theta_bar = theta*(1+la) - theta_prev*la# CONST STEPSIZE
+        delta_bar = r + self.gamma * np.dot(theta_bar, f1) - np.dot(theta_bar, f0)
+
+        w     += self.beta.next()  * (rho * delta_bar - a) * f0
+
+        
         self.w = w
         self.theta = theta
         self._toc()
@@ -288,6 +587,127 @@ class GTD2(GTDBase):
         w_d = w + self.beta.next(
         ) * (np.dot(self.A, theta) - np.dot(self.Cmat, w) + self.b)
         theta_d = theta + self.alpha.next() * (- np.dot(self.A.T, w) + self.b)
+        self.theta = theta_d
+        self.w = w_d
+        return self.theta
+
+class GTD2MP(GTDBase):
+
+    """
+    GTD2 algorithm with MIRROR-PROX algorithm
+    """
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        w = self.w
+        if theta is None:
+            theta = self.theta
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+
+        alpha =  self.alpha.next()
+        beta  =  self.beta.next()
+
+        self._tic()
+        delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
+        
+        a = np.dot(f0, w)
+        wmid     = w     + beta * (rho * delta - a) * f0
+        thetamid = theta + alpha * rho * a * (f0 - self.gamma * f1)
+        a =  None
+
+        # extragradient
+        b = np.dot(f0, wmid)
+        delta =  None
+        delta =  r + self.gamma * np.dot(thetamid, f1) - np.dot(thetamid, f0)
+        w     += beta * (rho * delta - b) * f0
+        theta += alpha * rho *  b * (f0 - self.gamma * f1)
+
+        self.w = w
+        self.theta = theta
+        self._toc()
+        return theta
+
+    def deterministic_update(self, theta=None):
+        w = self.w
+        if theta is None:
+            theta = self.theta
+
+        w_dmid = w + self.beta.next(
+        ) * (np.dot(self.A, theta) - np.dot(self.Cmat, w) + self.b)
+        theta_dmid = theta + self.alpha.next(
+        ) * np.dot(-self.A.T, w) 
+
+        w_d = w + self.beta.next(
+        ) * (np.dot(self.A, theta_dmid) - np.dot(self.Cmat, w_dmid) + self.b)
+        theta_d = theta + self.alpha.next(
+        ) * np.dot(-self.A.T, w_dmid) 
+
+
+        self.theta = theta_d
+        self.w = w_d
+        return self.theta
+
+class GTDMP(GTDBase):
+
+    """
+    GTD algorithm with MIRROR-PROX algorithm, based on GTD2MP
+    """
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        w = self.w
+        if theta is None:
+            theta = self.theta
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+
+        alpha =  self.alpha.next()
+        beta  =  self.beta.next()
+
+        
+        self._tic()
+        delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
+        
+        a = np.dot(f0, w)
+        wmid     = w     + beta  * (rho * delta * f0 - w)
+        thetamid = theta + alpha * rho * a * (f0 - self.gamma * f1)
+        a =  None
+
+        # extragradient
+        b = np.dot(f0, wmid)
+        delta =  None
+        delta =  r + self.gamma * np.dot(thetamid, f1) - np.dot(thetamid, f0)
+        w     += beta  * (rho * delta * f0 - w)
+        theta += alpha * rho *  b * (f0 - self.gamma * f1)
+
+        self.w = w
+        self.theta = theta
+        self._toc()
+        return theta
+
+    def deterministic_update(self, theta=None):
+        w = self.w
+        if theta is None:
+            theta = self.theta
+
+        w_dmid = w + self.beta.next(
+        ) * (np.dot(self.A, theta) - w + self.b)
+        theta_dmid = theta + self.alpha.next(
+        ) * np.dot(-self.A.T, w) 
+
+        w_d = w + self.beta.next(
+        ) * (np.dot(self.A, theta_dmid) - w_dmid + self.b)
+        theta_d = theta + self.alpha.next(
+        ) * np.dot(-self.A.T, w_dmid) 
+
+
         self.theta = theta_d
         self.w = w_d
         return self.theta
@@ -337,6 +757,292 @@ class TDC(GTDBase):
         self.theta = theta_d
         self.w = w_d
         return self.theta
+
+class TDCNG(GTDBase):
+
+    """
+    Will's Natural TDC algorithm in AAAI2014
+    """
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        w = self.w
+        if theta is None:
+            theta = self.theta
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+
+        self._tic()
+        delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
+        a = np.dot(f0, w)
+
+        # SHERMAN-MORRIS
+        gt = f0 - self.gamma*f1;
+
+        if self.invGt is None:
+            invGt = np.identity(len(gt))
+        else:
+            invGt = self.invGt
+        tmp = np.dot(gt, invGt);
+        invGt = invGt - (delta**2 * np.dot(tmp, tmp)) /(1+ delta**2 * np.dot(gt, np.transpose(tmp)));#np.dot(gt, np.dot(invGt, gt))
+
+        w += self.beta.next() * (rho * delta - a) * f0 # same
+        incr_theta = rho * (delta * f0 - self.gamma * f1 * a)
+        theta += self.alpha.next() *  np.dot(invGt, incr_theta) # times invGt
+
+        self.w = w
+        self.theta = theta
+        self.invGt = invGt
+        self._toc()
+        return theta
+
+class TDCMPNG(GTDBase):
+
+    """
+    Will's Natural TDC algorithm in AAAI2014
+    """
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        w = self.w
+        if theta is None:
+            theta = self.theta
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+
+        self._tic()
+        delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
+
+        # SHERMAN-MORRIS
+        gt = f0 - self.gamma*f1;
+
+        if self.invGt is None:
+            invGt = np.identity(len(gt))
+        else:
+            invGt = self.invGt
+
+        # SHERMON-MORRIS   
+        tmp = np.dot(gt, invGt);
+        invGt = invGt - (delta**2 * np.dot(tmp, tmp)) /(1+ delta**2 * np.dot(gt, np.transpose(tmp)));#np.dot(gt, np.dot(invGt, gt))
+        
+        # update
+        a     = np.dot(f0, w)
+        wmid  = w + self.beta.next() * (rho * delta - a) * f0
+        # thetamid = theta + self.alpha.next() * rho * (delta * f0 - self.gamma * f1 * a)
+        incr_thetamid = rho * (delta * f0 - self.gamma * f1 * a)
+        thetamid = theta + self.alpha.next() * np.dot(invGt, incr_thetamid) # times invGt
+
+        a     = None
+        incr_theta = None
+
+
+
+        #extragradient
+        b     = np.dot(f0, wmid)
+        delta = None #del delta, which is better
+        delta = r + self.gamma * np.dot(thetamid, f1) - np.dot(thetamid, f0)
+        w     +=    self.beta.next() * (rho * delta - b) * f0
+        # theta +=    self.alpha.next() * rho * (delta * f0 - self.gamma * f1 * b)
+        incr_theta = rho * (delta * f0 - self.gamma * f1 * b)
+        theta += self.alpha.next() *  np.dot(invGt, incr_theta) # times invGt
+
+        self.w = w
+        self.theta = theta
+        self.invGt = invGt
+        self._toc()
+        return theta
+
+
+class TDCAC(GTDBase):
+
+    """
+    TDC algorithm  with accelerated gradient in Pock's paper
+    """
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        w = self.w
+        if theta is None:
+            theta = self.theta
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+
+        self._tic()
+        delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
+        a = np.dot(f0, w)
+
+        theta_prev= theta
+        theta += self.alpha.next() * rho * (delta * f0 - self.gamma * f1 * a)
+
+        la = self.alpha.next()
+        theta_bar = theta*(1+la) - theta_prev*la
+        delta_bar = r + self.gamma * np.dot(theta_bar, f1) - np.dot(theta_bar, f0)
+
+        w     += self.beta.next()  * (rho * delta_bar - a) * f0
+
+ 
+    
+        self.w = w
+        self.theta = theta
+        self._toc()
+        return theta
+
+    def deterministic_update(self, theta=None):
+        w = self.w
+        if theta is None:
+            theta = self.theta
+
+        w_d = w + self.beta.next(
+        ) * (np.dot(self.A, theta) - np.dot(self.Cmat, w) + self.b)
+        theta_d = theta + self.alpha.next(
+        ) * (np.dot(self.A, theta) - np.dot(self.F.T, w) + self.b)
+        self.theta = theta_d
+        self.w = w_d
+        return self.theta
+
+
+class TDCMP(GTDBase):
+
+    """
+    TDC algorithm with MIRROR-PROX algorithm
+    """
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        w = self.w
+        if theta is None:
+            theta = self.theta
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+
+        alpha =  self.alpha.next()
+        beta  =  self.beta.next()
+
+        self._tic()
+        delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
+        
+
+        a     = np.dot(f0, w)
+        wmid  = w + beta * (rho * delta - a) * f0
+        thetamid = theta + alpha * rho * (delta * f0 - self.gamma * f1 * a)
+        a     = None
+
+        #extragradient
+        b     = np.dot(f0, wmid)
+        delta = None #del delta, which is better
+        delta = r + self.gamma * np.dot(thetamid, f1) - np.dot(thetamid, f0)
+        w     +=    beta * (rho * delta - b) * f0
+        theta +=    alpha * rho * (delta * f0 - self.gamma * f1 * b)
+
+        # print 'delta:', delta, 'alpha:', self.alpha.next(), 'phi', LA.norm(f0), 'rho:', rho, 'r', r
+
+        self.w = w
+        self.theta = theta
+        self._toc()
+        return theta
+
+    def deterministic_update(self, theta=None):
+        w = self.w
+        if theta is None:
+            theta = self.theta
+
+        w_dmid = w + self.beta.next(
+        ) * (np.dot(self.A, theta) - np.dot(self.Cmat, w) + self.b)
+        theta_dmid = theta + self.alpha.next(
+        ) * (np.dot(self.A, theta) - np.dot(self.F.T, w) + self.b)
+
+        w_d = w + self.beta.next(
+        ) * (np.dot(self.A, theta_dmid) - np.dot(self.Cmat, w_dmid) + self.b)
+        theta_d = theta + self.alpha.next(
+        ) * (np.dot(self.A, theta_dmid) - np.dot(self.F.T, w_dmid) + self.b)
+
+
+        self.theta = theta_d
+        self.w = w_d
+        return self.theta
+
+
+
+class TDCHeu(GTDBase):
+
+    """
+    TDC algorithm with MIRROR-PROX algorithm
+    """
+
+    def update_V(self, s0, s1, r, f0=None, f1=None, rho=1, theta=None, **kwargs):
+        """
+            rho: weight for this sample in case of off-policy learning
+        """
+        w = self.w
+        if theta is None:
+            theta = self.theta
+        if f0 is None or f1 is None:
+            f0 = self.phi(s0)
+            f1 = self.phi(s1)
+
+        self._tic()
+        delta = r + self.gamma * np.dot(theta, f1) - np.dot(theta, f0)
+        
+
+        a     = np.dot(f0, w)
+        w_g0  = self.beta.next() * (rho * delta - a) * f0
+        wmid  = w + w_g0
+        theta_g0 = self.alpha.next() * rho * (delta * f0 - self.gamma * f1 * a)
+        thetamid = theta + theta_g0
+        a     = None
+
+        # extragradient
+        b     = np.dot(f0, wmid)
+        delta = None #del delta, which is better
+        delta = r + self.gamma * np.dot(thetamid, f1) - np.dot(thetamid, f0)
+
+        # Heun
+        w_g1   = self.beta.next() * (rho * delta - b) * f0
+        w_grad = .5*(w_g0 + w_g1)
+        w     +=  w_grad
+
+        theta_g1= self.alpha.next() * rho * (delta * f0 - self.gamma * f1 * b) 
+        theta_grad = .5*(theta_g0 +theta_g1)
+        theta +=  theta_grad 
+
+        self.w = w
+        self.theta = theta
+        self._toc()
+        return theta
+
+    def deterministic_update(self, theta=None):
+        # have not revised yet
+        w = self.w
+        if theta is None:
+            theta = self.theta
+
+        w_dmid = w + self.beta.next(
+        ) * (np.dot(self.A, theta) - np.dot(self.Cmat, w) + self.b)
+        theta_dmid = theta + self.alpha.next(
+        ) * (np.dot(self.A, theta) - np.dot(self.F.T, w) + self.b)
+
+        w_d = w + self.beta.next(
+        ) * (np.dot(self.A, theta_dmid) - np.dot(self.Cmat, w_dmid) + self.b)
+        theta_d = theta + self.alpha.next(
+        ) * (np.dot(self.A, theta_dmid) - np.dot(self.F.T, w_dmid) + self.b)
+
+
+        self.theta = theta_d
+        self.w = w_d
+        return self.theta
+
 
 
 class TDCLambda(GTDBase, LambdaValueFunctionPredictor):
